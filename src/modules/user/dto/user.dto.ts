@@ -175,6 +175,7 @@ export class CreateUserDto extends UserBaseDto {
     dateOfBirth: Date,
     isActive: boolean,
     isEmailVerified: boolean,
+    isTwoFactorEnabled: boolean,
     departmentIds: UUID[],
     roleIds: UUID[],
   ) {
@@ -182,7 +183,7 @@ export class CreateUserDto extends UserBaseDto {
     this.isActive = isActive;
     this.isEmailVerified = isEmailVerified;
     this.departmentIds = departmentIds;
-    this.isTwoFactorEnabled = false;
+    this.isTwoFactorEnabled = isTwoFactorEnabled;
     this.roleIds = roleIds;
   }
 }

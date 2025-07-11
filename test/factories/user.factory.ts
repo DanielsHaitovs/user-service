@@ -32,6 +32,7 @@ export async function createUser(
     password: generatePassword(),
     phone: faker.phone.number(),
     dateOfBirth: faker.date.birthdate(),
+    isTwoFactorEnabled: true,
     isActive: true,
     isEmailVerified: false,
   };

@@ -1,4 +1,8 @@
-import type { CreateRoleDto, UpdateRoleDto } from '@/role/dto/role.dto';
+import type {
+  CreateRoleDto,
+  RoleListResponseDto,
+  UpdateRoleDto,
+} from '@/role/dto/role.dto';
 import type { Role } from '@/role/entities/role.entity';
 import type { PermissionService } from '@/role/services/permission.service';
 import type { RoleService } from '@/role/services/role.service';
@@ -105,7 +109,7 @@ export async function findRolesByIds(
 
 export async function searchForRoles(
   roleService: RoleService,
-): Promise<Role[]> {
+): Promise<RoleListResponseDto> {
   return await roleService.searchFor({
     value: faker.lorem.word(),
     pagination: { limit: 10, page: 1 },
@@ -115,14 +119,12 @@ export async function searchForRoles(
 
 export async function updateRole(roleService: RoleService): Promise<Role> {
   const role = await createRole(roleService);
-  console.log('Role created for update:', role);
   const updateDto: UpdateRoleDto = {
     name: `${role.name}-updated`,
   };
 
   const updatedRole = await roleService.update(role.id, updateDto);
 
-  console.log('Updated role:', updatedRole);
   expect(updatedRole).toBeDefined();
   expect(updatedRole.id).toBeDefined();
   expect(updatedRole.id).toBe(role.id);

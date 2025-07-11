@@ -61,6 +61,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         password: generatePassword(),
         phone: faker.phone.number(),
         dateOfBirth: faker.date.birthdate(),
+        isTwoFactorEnabled: true,
         isActive: true,
         isEmailVerified: false,
       };
@@ -81,6 +82,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         password: generatePassword(),
         phone: faker.phone.number(),
         dateOfBirth: faker.date.birthdate(),
+        isTwoFactorEnabled: true,
         isActive: true,
         isEmailVerified: false,
       };
@@ -115,6 +117,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         password: generatePassword(),
         phone: faker.phone.number(),
         dateOfBirth: faker.date.birthdate(),
+        isTwoFactorEnabled: true,
         isActive: true,
         isEmailVerified: false,
       };

@@ -6,8 +6,8 @@ import type { Department } from '@/department/entities/department.entity';
 import type { DepartmentService } from '@/department/services/department.service';
 import { getRandomCountryCode } from '@/lib/helper/country.helper';
 import { faker } from '@faker-js/faker/.';
-import { NotFoundException } from '@nestjs/common';
 
+import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 export async function createDepartment(
@@ -105,6 +105,6 @@ export async function deleteDepartments(
   expect(result).toEqual({ deleted: 1 });
 
   await expect(service.findByIds([department.id])).rejects.toThrow(
-    NotFoundException,
+    EntityNotFoundError,
   );
 }

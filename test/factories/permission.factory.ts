@@ -1,5 +1,6 @@
 import type {
   CreatePermissionDto,
+  PermissionListResponseDto,
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
@@ -87,7 +88,7 @@ export async function findPermissionsByCodes(
 
 export async function searchForPermission(
   permissionService: PermissionService,
-): Promise<Permission[]> {
+): Promise<PermissionListResponseDto> {
   return await permissionService.searchFor({
     value: faker.lorem.word(),
     pagination: { limit: 10, page: 1 },

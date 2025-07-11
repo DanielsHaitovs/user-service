@@ -1,0 +1,179 @@
+6. **Attribute Data Types**
+
+   When creating an attribute, you should specify its data type (string, integer, float, boolean, json, date, long text). Depending on the data type, validate and store the attribute value accordingly in the `AttributeValueEntity`.
+
+7. **Associating Attributes with Entities**
+
+   Implement methods in your service to associate attributes and their values with specific entities. You can do this by creating a function that takes the entity ID, attribute ID, and value, then creates a new `AttributeValueEntity` record.
+
+
+
+3. **Entity, Attribute, and Value Models**
+
+   Define your TypeORM entities for Entity, Attribute, and AttributeValue.
+
+   ```typescript
+   // entity.entity.ts
+   import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+   @Entity()
+   export class EntityEntity {
+     @PrimaryGeneratedColumn()
+     id: number;
+
+     @Column()
+     entity_type: string;
+   }
+
+   // attribute.entity.ts
+   import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+   @Entity()
+   export class AttributeEntity {
+     @PrimaryGeneratedColumn()
+     id: number;
+
+     @Column()
+     name: string;
+
+     @Column()
+     data_type: string;
+   }
+
+   // attribute-value.entity.ts
+   import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+   import { EntityEntity } from './entity.entity';
+   import { AttributeEntity } from './attribute.entity';
+
+   @Entity()
+   export class AttributeValueEntity {
+     @PrimaryGeneratedColumn()
+     id: number;
+
+     @ManyToOne(() => EntityEntity)
+     entity: EntityEntity;
+
+     @ManyToOne(() => AttributeEntity)
+     attribute: AttributeEntity;
+
+     @Column({ nullable: true })
+     string_value: string;
+
+     @Column({ nullable: true })
+     int_value: number;
+
+     @Column({ nullable: true })
+     float_value: number;
+
+     @Column({ nullable: true })
+     bool_value: boolean;
+
+     @Column('jsonb', { nullable: true })
+     json_value: any;
+
+     @Column({ nullable: true })
+     date_value: Date;
+
+     @Column('text', { nullable: true })
+     long_text_value: string;
+   }
+   ```
+
+
+### 6. Validation for Attribute Data Types
+
+Implement validation functions for different data types, ensuring that attribute values match their specified data types. Here's an example of validation functions:
+
+```typescript
+// Create a validation service or class
+
+@Injectable()
+export class ValidationService {
+  validateString(value: string): boolean {
+    // Implement your string validation logic here
+    return typeof value === 'string';
+  }
+
+  validateInteger(value: number): boolean {
+    // Implement your integer validation logic here
+    return Number.isInteger(value);
+  }
+
+  validateFloat(value: number): boolean {
+    // Implement your float validation logic here
+    return typeof value === 'number';
+  }
+
+  validateBoolean(value: boolean): boolean {
+    // Implement your boolean validation logic here
+    return typeof value === 'boolean';
+  }
+
+  validateJson(value: any): boolean {
+    // Implement your JSON validation logic here
+    try {
+      JSON.parse(value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  validateDate(value: Date): boolean {
+    // Implement your date validation logic here
+    return value instanceof Date && !isNaN(value.getTime());
+  }
+}
+```
+
+You can inject this `ValidationService` into your EAV service and use it to validate attribute values before saving them to the database.
+
+13. **Attribute Validation**
+
+    Ensure that attribute values are validated according to their data types. You can create validation functions for each data type, and before saving an attribute value, check if it adheres to the specified data type.
+
+    ```typescript
+    // Sample validation function for integer attributes
+    validateInteger(value: number): boolean {
+      // Implement your validation logic here
+      return Number.isInteger(value);
+    }
+    ```
+
+
+14. **Array of Values**
+
+    If an attribute can have multiple values, you can create a separate table to store these relationships. For example, if a product can have multiple sizes, create a `product_size` table that associates products with sizes.
+
+    ```sql
+    CREATE TABLE product_size (
+      id SERIAL PRIMARY KEY,
+      product_id INT NOT NULL,
+      size_id INT NOT NULL,
+      FOREIGN KEY (product_id) REFERENCES entity (id),
+      FOREIGN KEY (size_id) REFERENCES attribute_value (id)
+    );
+    ```
+
+    Then, in your code, you can create a function to associate these values with products.
+
+    ```typescript
+    async associateAttributeWithEntity(entityId: number, attributeId: number, values: any[]) {
+      const entity = await this.entityRepository.findOne(entityId);
+      const attribute = await this.attributeRepository.findOne(attributeId);
+
+      if (entity && attribute) {
+        for (const value of values) {
+          // Create a new AttributeValueEntity for each value and associate it with the entity and attribute.
+          const attributeValue = new AttributeValueEntity();
+          attributeValue.entity = entity;
+          attributeValue.attribute = attribute;
+          attributeValue.string_value = value; // Modify this based on data type
+
+          // Save the attribute value to the database
+          await this.attributeValueRepository.save(attributeValue);
+        }
+      }
+    }
+    ```
+

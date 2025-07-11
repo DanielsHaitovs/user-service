@@ -1,0 +1,87 @@
+### 4. EAV Service
+
+Here's a basic outline of the EAV service with placeholder functions for CRUD operations:
+
+```typescript
+// eav.service.ts
+import { Injectable } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityEntity, AttributeEntity, AttributeValueEntity } from './entities';
+
+@Injectable()
+export class EavService {
+  constructor(
+    @InjectRepository(EntityEntity)
+    private readonly entityRepository: Repository<EntityEntity>,
+    @InjectRepository(AttributeEntity)
+    private readonly attributeRepository: Repository<AttributeEntity>,
+    @InjectRepository(AttributeValueEntity)
+    private readonly attributeValueRepository: Repository<AttributeValueEntity>,
+  ) {}
+
+  // Create a new entity
+  async createEntity(entityData: Partial<EntityEntity>): Promise<EntityEntity> {
+    const entity = this.entityRepository.create(entityData);
+    return this.entityRepository.save(entity);
+  }
+
+  // Create a new attribute
+  async createAttribute(attributeData: Partial<AttributeEntity>): Promise<AttributeEntity> {
+    const attribute = this.attributeRepository.create(attributeData);
+    return this.attributeRepository.save(attribute);
+  }
+
+  // Associate an attribute and its value with an entity
+  async associateAttributeWithEntity(
+    entityId: number,
+    attributeId: number,
+    value: any,
+  ): Promise<AttributeValueEntity> {
+    const entity = await this.entityRepository.findOne(entityId);
+    const attribute = await this.attributeRepository.findOne(attributeId);
+
+    if (entity && attribute) {
+      const attributeValue = new AttributeValueEntity();
+      attributeValue.entity = entity;
+      attributeValue.attribute = attribute;
+      attributeValue.string_value = value; // Modify this based on data type
+
+      return this.attributeValueRepository.save(attributeValue);
+    }
+
+    throw new Error('Entity or attribute not found');
+  }
+
+  // Add more CRUD methods as needed
+}
+```
+
+This code provides the basic structure for your service. You can expand it with additional functionality as required.
+
+### 5. Controllers
+
+Create controllers for entities, attributes, and attribute values to handle HTTP requests and interact with the EAV service. These controllers will define the API endpoints for managing EAV data. Here's a simplified example for an entity controller:
+
+```typescript
+// entity.controller.ts
+import { Controller, Post, Body } from '@nestjs/common';
+import { EntityEntity } from './entities';
+import { EavService } from './eav.service';
+
+@Controller('entities')
+export class EntityController {
+  constructor(private readonly eavService: EavService) {}
+
+  @Post()
+  async createEntity(@Body() entityData: Partial<EntityEntity>): Promise<EntityEntity> {
+    return this.eavService.createEntity(entityData);
+  }
+}
+```
+
+Repeat this process for attribute and attribute value controllers, defining appropriate endpoints for your application.
+
+Remember that this code serves as a starting point, and you'll need to customize it based on your specific requirements and validation logic for different data types. Additionally, you should add error handling and validation to ensure the robustness and security of your EAV module.
+ 
+Certainly, let's continue with code examples for the remaining components of your EAV (Entity-Attribute-Value) module in NestJS.

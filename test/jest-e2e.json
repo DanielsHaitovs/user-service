@@ -1,0 +1,24 @@
+{
+  "preset": "ts-jest",
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@/common/(.*)$": "<rootDir>/src/common/$1",
+    "^@/modules/(.*)$": "<rootDir>/src/modules/$1",
+    "^@/shared/(.*)$": "<rootDir>/src/shared/$1",
+    "^@/base/(.*)$": "<rootDir>/src/modules/base/$1",
+    "^@/middleware/(.*)$": "<rootDir>/src/middleware/$1",
+    "^@/interceptors/(.*)$": "<rootDir>/src/interceptors/$1",
+    "^@/utils/(.*)$": "<rootDir>/src/utils/$1",
+    "^@/lib/(.*)$": "<rootDir>/src/lib/$1",
+    "^@/config/(.*)$": "<rootDir>/src/config/$1",
+    "^@/user/(.*)$": "<rootDir>/src/modules/user/$1",
+    "^@/role/(.*)$": "<rootDir>/src/modules/role/$1",
+    "^@/department/(.*)$": "<rootDir>/src/modules/department/$1"
+  }
+}

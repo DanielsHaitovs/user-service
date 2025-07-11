@@ -1,0 +1,308 @@
+#### Authorization
+
+For authorization, you can implement role-based or permission-based access control logic in your service methods. Depending on your application's requirements, you may need to integrate a role and permission management system.
+
+### 15. Authentication and Authorization
+
+Implementing authentication and authorization is crucial for securing your EAV module. Here's an example of setting up JWT (JSON Web Tokens) authentication:
+
+#### JWT Authentication
+
+1. Install the required dependencies:
+
+   ```bash
+   npm install --save @nestjs/jwt passport passport-jwt
+   ```
+
+2. Create an `auth` module and configure JWT authentication:
+
+   ```typescript
+   // auth.module.ts
+   import { Module } from '@nestjs/common';
+   import { JwtModule } from '@nestjs/jwt';
+   import { AuthService } from './auth.service';
+   import { JwtStrategy } from './jwt.strategy';
+
+   @Module({
+     imports: [
+       JwtModule.register({
+         secret: 'your-secret-key', // Replace with your secret key
+         signOptions: { expiresIn: '1h' },
+       }),
+     ],
+     providers: [AuthService, JwtStrategy],
+     exports: [AuthService],
+   })
+   export class AuthModule {}
+   ```
+
+   Replace `'your-secret-key'` with your actual JWT secret key.
+
+3. Create an `AuthService` that handles JWT authentication:
+
+   ```typescript
+   // auth.service.ts
+   import { Injectable } from '@nestjs/common';
+   import { JwtService } from '@nestjs/jwt';
+
+   @Injectable()
+   export class AuthService {
+     constructor(private readonly jwtService: JwtService) {}
+
+     async createToken(userId: number): Promise<string> {
+       const payload = { sub: userId };
+       return this.jwtService.sign(payload);
+     }
+   }
+   ```
+
+4. Implement a JWT strategy for Passport:
+
+   ```typescript
+   // jwt.strategy.ts
+   import { Injectable, UnauthorizedException } from '@nestjs/common';
+   import { PassportStrategy } from '@nestjs/passport';
+   import { ExtractJwt, Strategy } from 'passport-jwt';
+
+   @Injectable()
+   export class JwtStrategy extends PassportStrategy(Strategy) {
+     constructor() {
+       super({
+         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+         secretOrKey: 'your-secret-key', // Replace with your secret key
+       });
+     }
+
+     async validate(payload: any) {
+       // Add logic to validate the payload and fetch the user if needed
+       // For example, fetch the user from a database based on the payload's sub (subject) property
+       // If the user is not found, throw an UnauthorizedException
+       // Return the user if authentication is successful
+     }
+   }
+   ```
+
+5. Configure your authentication strategy in your module:
+
+   ```typescript
+   // Your module that needs authentication
+   import { Module } from '@nestjs/common';
+   import { AuthModule } from './auth/auth.module';
+   import { UserController } from './user/user.controller';
+
+   @Module({
+     imports: [AuthModule],
+     controllers: [UserController],
+   })
+   export class YourModule {}
+   ```
+
+6. Protect the routes that require authentication by applying the `@UseGuards` decorator:
+
+   ```typescript
+   import { Controller, Get, UseGuards } from '@nestjs/common';
+   import { JwtAuthGuard } from './auth/jwt-auth.guard';
+
+   @Controller('secure-route')
+   @UseGuards(JwtAuthGuard)
+   export class SecureController {
+     @Get()
+     getSecureData() {
+       return 'This data is protected!';
+     }
+   }
+   ```
+
+Now, routes in your `SecureController` will be protected, and users will need a valid JWT token to access them.
+
+
+
+------------------------------------------------------------------------
+### 59. Implementing Authentication with Passport
+
+If your application requires user authentication, you can implement it using the `passport` library. Here's how to set it up:
+
+1. Install the required dependencies:
+
+   ```bash
+   npm install --save passport passport-local passport-jwt bcrypt
+   ```
+
+2. Create a user entity and authentication service:
+
+   ```typescript
+   // user.entity.ts
+   import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+   @Entity()
+   export class User {
+     @PrimaryGeneratedColumn()
+     id: number;
+
+     @Column()
+     username: string;
+
+     @Column()
+     password: string;
+   }
+   ```
+
+   ```typescript
+   // auth.service.ts
+   import { Injectable } from '@nestjs/common';
+   import { JwtService } from '@nestjs/jwt';
+   import { User } from './user.entity';
+   import * as bcrypt from 'bcrypt';
+
+   @Injectable()
+   export class AuthService {
+     constructor(private readonly jwtService: JwtService) {}
+
+     async validateUser(username: string, password: string): Promise<User | null> {
+       // Implement user validation logic, e.g., query the database
+       const user = await this.findUserByUsername(username);
+       if (user && bcrypt.compareSync(password, user.password)) {
+         return user;
+       }
+       return null;
+     }
+
+     async login(user: User) {
+       const payload = { sub: user.id };
+       return {
+         access_token: this.jwtService.sign(payload),
+       };
+     }
+
+     private async findUserByUsername(username: string): Promise<User | null> {
+       // Implement a database query to find a user by username
+       // Replace with your database logic
+       return null;
+     }
+   }
+   ```
+
+3. Implement a local strategy for passport authentication:
+
+   ```typescript
+   // local.strategy.ts
+   import { Injectable, UnauthorizedException } from '@nestjs/common';
+   import { PassportStrategy } from '@nestjs/passport';
+   import { Strategy } from 'passport-local';
+   import { AuthService } from './auth.service';
+
+   @Injectable()
+   export class LocalStrategy extends PassportStrategy(Strategy) {
+     constructor(private readonly authService: AuthService) {
+       super();
+     }
+
+     async validate(username: string, password: string): Promise<any> {
+       const user = await this.authService.validateUser(username, password);
+       if (!user) {
+         throw new UnauthorizedException();
+       }
+       return user;
+     }
+   }
+   ```
+
+4. Implement JWT (JSON Web Token) authentication strategy:
+
+   ```typescript
+   // jwt.strategy.ts
+   import { Injectable } from '@nestjs/common';
+   import { PassportStrategy } from '@nestjs/passport';
+   import { ExtractJwt, Strategy } from 'passport-jwt';
+   import { AuthService } from './auth.service';
+   import { ConfigService } from '@nestjs/config';
+
+   @Injectable()
+   export class JwtStrategy extends PassportStrategy(Strategy) {
+     constructor(
+       private readonly authService: AuthService,
+       private readonly configService: ConfigService,
+     ) {
+       super({
+         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+         secretOrKey: configService.get('JWT_SECRET'),
+       });
+     }
+
+     async validate(payload: any) {
+       const user = await this.authService.findUserById(payload.sub);
+       if (!user) {
+         throw new UnauthorizedException();
+       }
+       return user;
+     }
+   }
+   ```
+
+5. Configure Passport and create an authentication module:
+
+   ```typescript
+   // auth.module.ts
+   import { Module } from '@nestjs/common';
+   import { AuthService } from './auth.service';
+   import { LocalStrategy } from './local.strategy';
+   import { JwtModule } from '@nestjs/jwt';
+   import { ConfigModule, ConfigService } from '@nestjs/config';
+   import { JwtStrategy } from './jwt.strategy';
+
+   @Module({
+     imports: [
+       ConfigModule,
+       JwtModule.registerAsync({
+         imports: [ConfigModule],
+         useFactory: async (configService: ConfigService) => ({
+           secret: configService.get('JWT_SECRET'),
+           signOptions: { expiresIn: '1h' }, // Set token expiration time
+         }),
+         inject: [ConfigService],
+       }),
+     ],
+     providers: [AuthService, LocalStrategy, JwtStrategy],
+     exports: [AuthService],
+   })
+   export class AuthModule {}
+   ```
+
+6. Create an authentication controller:
+
+   ```typescript
+   // auth.controller.ts
+   import { Controller, Post, Request, UseGuards } from '@nestjs/common';
+   import { AuthGuard } from '@nestjs/passport';
+   import { AuthService } from './auth.service';
+
+   @Controller('auth')
+   export class AuthController {
+     constructor(private readonly authService: AuthService) {}
+
+     @Post('login')
+     @UseGuards(AuthGuard('local'))
+     async login(@Request() req) {
+       return this.authService.login(req.user);
+     }
+   }
+   ```
+
+7. Secure your routes using authentication guards. For example, use `@UseGuards(AuthGuard('jwt'))` on routes that require authentication.
+
+8. Configure your application to use the `AuthModule`:
+
+   ```typescript
+   // app.module.ts
+   import { Module } from '@nestjs/common';
+   import { AuthModule } from './auth/auth.module';
+
+   @Module({
+     imports: [AuthModule],
+     controllers: [],
+     providers: [],
+   })
+   export class AppModule {}
+   ```
+
+With this setup, you can implement user authentication using Passport in your NestJS application. Users can log in using a username and password, and authenticated requests can be secured using JWT authentication.

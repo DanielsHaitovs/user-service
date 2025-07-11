@@ -9,10 +9,9 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Swagger Configuration
   const config = new DocumentBuilder()
-    .setTitle('MakeEasyCommerce API')
-    .setDescription('E-commerce platform API documentation')
+    .setTitle('MakeEasyCommerce User API')
+    .setDescription('E-commerce platform User API documentation')
     .setVersion('1.0')
     .addTag('App', 'Health check and basic operations')
     .addTag('Users', 'User management operations')
@@ -28,7 +27,7 @@ async function bootstrap(): Promise<void> {
         description: 'Enter JWT token',
         in: 'header',
       },
-      'JWT-auth', // This name here is important for matching up with @ApiBearerAuth() in your controller!
+      'JWT-auth',
     )
     .build();
 

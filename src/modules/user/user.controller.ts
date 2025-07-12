@@ -44,9 +44,12 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -61,6 +64,9 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+import { EntityNotFoundError } from 'typeorm';
+
+import { Permissions } from '../../common/decorators/permission.decorator';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -73,6 +79,9 @@ import { UUID } from 'crypto';
 @ApiTags('Users')
 @TraceController()
 @Controller('users')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(AuthGuard('jwt'))
+@Permissions('user:create', 'user:assign-role')
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -155,6 +164,17 @@ export class UserController {
         statusCode: { type: 'number', example: 409 },
         message: { type: 'string', example: EMAIL_EXISTS_MSG },
         error: { type: 'string', example: ConflictException.name },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'One or more referenced entities not found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 404 },
+        message: { type: 'string', example: 'Department or Role not found' },
+        error: { type: 'string', example: EntityNotFoundError.name },
       },
     },
   })

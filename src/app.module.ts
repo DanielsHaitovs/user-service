@@ -6,8 +6,10 @@ import { RolesModule } from '@/role/role.module';
 import { UserModule } from '@/user/user.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuthModule } from './auth/auth.module';
 import { AppController } from './modules/app.controller';
 
 @Module({
@@ -17,6 +19,30 @@ import { AppController } from './modules/app.controller';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      // eslint-disable-next-line sonarjs/function-return-type
+      useFactory: (configService: ConfigService): ThrottlerModuleOptions => {
+        const ttl = parseInt(
+          configService.get<string>('THROTTLE_TTL') ?? '60',
+          10,
+        );
+        const limit = parseInt(
+          configService.get<string>('THROTTLE_LIMIT') ?? '5',
+          10,
+        );
+
+        return {
+          throttlers: [
+            {
+              ttl,
+              limit,
+            },
+          ],
+        };
+      },
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -38,6 +64,7 @@ import { AppController } from './modules/app.controller';
     UserModule,
     RolesModule,
     DepartmentModule,
+    AuthModule,
   ],
 })
 export class AppModule implements NestModule {

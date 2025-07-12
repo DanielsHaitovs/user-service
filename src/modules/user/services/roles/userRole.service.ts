@@ -50,7 +50,7 @@ export class UserRoleService extends QueryService {
     if (roles.length === 0) {
       throw new EntityNotFoundError(
         'User Role',
-        'No roles found for the provided IDs',
+        `No roles found for the provided IDs: [${roleIds.join(', ')}]`,
       );
     }
 

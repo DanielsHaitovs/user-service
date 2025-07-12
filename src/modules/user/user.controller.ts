@@ -1,3 +1,5 @@
+import { Permissions } from '@/common/decorators/permission.decorator';
+import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { getDepartmentSelectableFields } from '@/department/helper/department-fields.util';
 import { COUNTRIES } from '@/lib/const/countries.const';
 import { EXAMPLE_DEPARTMENT_ID } from '@/lib/const/department.const';
@@ -32,6 +34,7 @@ import {
   ConflictException,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -44,6 +47,7 @@ import {
   Patch,
   Post,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -53,6 +57,7 @@ import {
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -61,12 +66,11 @@ import {
   ApiParam,
   ApiQuery,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
-
-import { Permissions } from '../../common/decorators/permission.decorator';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -80,8 +84,7 @@ import { Permissions } from '../../common/decorators/permission.decorator';
 @TraceController()
 @Controller('users')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(AuthGuard('jwt'))
-@Permissions('user:create', 'user:assign-role')
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -96,6 +99,7 @@ export class UserController {
    * DTO validation. Generates secure passwords and initialization tokens.
    */
   @Post()
+  @Permissions('user:create', 'user:assign-role')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new user',
@@ -175,6 +179,28 @@ export class UserController {
         statusCode: { type: 'number', example: 404 },
         message: { type: 'string', example: 'Department or Role not found' },
         error: { type: 'string', example: EntityNotFoundError.name },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized access',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Unauthorized' },
+        error: { type: 'string', example: UnauthorizedException.name },
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden access',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 403 },
+        message: { type: 'string', example: 'Forbidden' },
+        error: { type: 'string', example: ForbiddenException.name },
       },
     },
   })

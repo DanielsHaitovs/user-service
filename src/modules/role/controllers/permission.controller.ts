@@ -13,6 +13,7 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
+import { getPermissionsSelectableFields } from '@/role/helper/role-fields.util';
 import { PermissionService } from '@/role/services/permission.service';
 import {
   BadRequestException,
@@ -48,8 +49,6 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { getPermissionsSelectableFields } from '../helper/role-fields.util';
 
 @ApiTags('Permissions')
 @TraceController()

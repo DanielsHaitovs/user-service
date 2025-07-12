@@ -1,14 +1,12 @@
+import { LoginDto } from '@/auth/dto/auth.dto';
+import { RoleQueryService } from '@/role/services/query.service';
 import { UserResponseDto } from '@/user/dto/user.dto';
+import { getUserSelectableFields } from '@/user/helper/user-fields.util';
+import { UserQueryService } from '@/user/services/query.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import * as bcrypt from 'bcrypt';
-
-import { RoleQueryService } from '../modules/role/services/query.service';
-import { getUserSelectableFields } from '../modules/user/helper/user-fields.util';
-import { UserQueryService } from '../modules/user/services/query.service';
-
-import { LoginDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -19,15 +17,11 @@ export class AuthService {
   ) {}
 
   async login(data: LoginDto): Promise<{ access_token: string }> {
-    const { user, permissions } = await this.validateUser(
-      data.email,
-      data.password,
-    );
+    const { permissions } = await this.validateUser(data.email, data.password);
 
     return {
       access_token: this.jwtService.sign({
-        email: user.email,
-        sub: user.id,
+        email: data.email,
         permissions,
       }),
     };
@@ -60,14 +54,14 @@ export class AuthService {
       throw new UnauthorizedException('Authentication failed');
     }
 
-    if (!(await bcrypt.compare(pass, users[0].password))) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
     if (!users[0].isActive) {
       throw new UnauthorizedException(
         'User is not active, if you think this is an mistake please contact support',
       );
+    }
+
+    if (!(await bcrypt.compare(pass, users[0].password))) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const { userRoles } = users[0];

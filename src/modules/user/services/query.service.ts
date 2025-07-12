@@ -61,7 +61,7 @@ export class UserQueryService extends QueryService {
       },
       includeDepartment,
       includeRoles,
-      sort: { sortField, sortOrder },
+      sort,
       pagination: { page, limit },
       selectUserFields,
       selectDepartmentFields,
@@ -143,13 +143,12 @@ export class UserQueryService extends QueryService {
       selectRoleFields,
     );
 
-    // Apply sorting, pagination, and field selection optimizations
     this.optimizeQuery(
       queryBuilder,
       { page, limit },
-      { sortField, sortOrder },
+      sort,
       this.setQuerySelect({
-        sortField,
+        sortField: sort?.sortField,
         selectUserFields,
         includeDepartment,
         departmentIds,
@@ -216,7 +215,7 @@ export class UserQueryService extends QueryService {
     selectRoleFields,
     includeRoles,
   }: {
-    sortField?: string;
+    sortField?: string | undefined;
     selectUserFields?: string[] | undefined;
     selectDepartmentFields?: string[] | undefined;
     includeDepartment?: boolean | undefined;

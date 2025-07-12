@@ -1,3 +1,5 @@
+import { RequestWithUserPermissions } from '@/auth/interfaces/req.interface';
+import { PERMISSIONS_KEY } from '@/common/decorators/permission.decorator';
 import {
   CanActivate,
   ExecutionContext,
@@ -5,11 +7,6 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-
-import { Request } from 'express';
-
-import { UserResponseDto } from '../../modules/user/dto/user.dto';
-import { PERMISSIONS_KEY } from '../decorators/permission.decorator';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -25,15 +22,11 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request>();
-    const { permissions } = request.user as {
-      user: UserResponseDto;
-      permissions: string[];
-    };
+    const request = context
+      .switchToHttp()
+      .getRequest<RequestWithUserPermissions>();
 
-    if (permissions.length === 0) {
-      throw new ForbiddenException('User permissions not found');
-    }
+    const { permissions } = request.user;
 
     if (permissions.includes('root_all')) return true;
 
@@ -42,7 +35,9 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!hasAllPermissions) {
-      throw new ForbiddenException('Missing required permissions');
+      throw new ForbiddenException(
+        `You do not have the required permissions: ${requiredPermissions.join(', ')}`,
+      );
     }
 
     return true;

@@ -211,7 +211,7 @@ export class UserQueryDto {
     required: false,
   })
   @Type(() => SortDto)
-  sort: SortDto;
+  sort?: SortDto;
 
   @ApiProperty({
     description:

@@ -1,8 +1,16 @@
+import { Permissions } from '@/common/decorators/permission.decorator';
+import { PermissionsGuard } from '@/common/guards/permission.guard';
 import {
+  CREATE_ROLE,
+  DELETE_PERMISSION,
+  DELETE_ROLE,
   EXAMPLE_ROLE_DESCRIPTION,
   EXAMPLE_ROLE_ID,
   EXAMPLE_ROLE_NAME,
+  READ_PERMISSION,
+  READ_ROLE,
   ROLE_NOT_FOUND_MSG,
+  UPDATE_ROLE,
 } from '@/lib/const/role.const';
 import { TraceController } from '@/lib/decorators/trace.decorator';
 import {
@@ -34,9 +42,12 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
@@ -54,6 +65,8 @@ import { UUID } from 'crypto';
 @ApiTags('Roles')
 @TraceController()
 @Controller('roles')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class RolesController {
   constructor(
     private readonly roleService: RoleService,
@@ -61,6 +74,7 @@ export class RolesController {
   ) {}
 
   @Post()
+  @Permissions(CREATE_ROLE, READ_ROLE, DELETE_PERMISSION)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new role',
@@ -125,6 +139,7 @@ export class RolesController {
   }
 
   @Get('ids')
+  @Permissions(READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get roles by IDs',
@@ -189,6 +204,7 @@ export class RolesController {
   }
 
   @Get(':value')
+  @Permissions(READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     description: 'Searches for role by name, code, id',
@@ -271,6 +287,7 @@ export class RolesController {
   }
 
   @Patch(':id')
+  @Permissions(UPDATE_ROLE, READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update roles',
@@ -363,6 +380,7 @@ export class RolesController {
   }
 
   @Delete()
+  @Permissions(DELETE_ROLE, READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete roles by IDs',
@@ -436,6 +454,7 @@ export class RolesController {
    * @throws NotFoundException if the role or any of the permissions do not exist.
    */
   @Post('add-permissions')
+  @Permissions(UPDATE_ROLE, READ_ROLE, READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Add permissions to a role',
@@ -503,6 +522,8 @@ export class RolesController {
    * management scenarios requiring fine-grained data access control.
    */
   @Get('query/filter')
+  @Permissions(READ_ROLE, READ_PERMISSION)
+  @HttpCode(HttpStatus.OK)
   @ApiQuery({
     name: 'ids',
     type: String,
@@ -612,7 +633,6 @@ export class RolesController {
     @Query('selectPermissions', new ParseArrayPipe({ optional: true }))
     selectPermissions: string[],
   ): Promise<RoleListResponseDto> {
-    // Construct comprehensive query object from individual parameters
     return await this.queryService.getRoles({
       rolesQuery: {
         ids,

@@ -15,6 +15,7 @@ import {
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
 
@@ -45,7 +46,9 @@ export class UserService {
    * @returns Promise resolving to the created user entity
    * @throws ConflictException when email address is already registered
    */
-  async create(createUserDto: CreateUserDto, createdBy?: UUID): Promise<User> {
+  async create(createUserDto: CreateUserDto, createdBy: UUID): Promise<User> {
+    await this.findById(createdBy);
+
     const { departmentIds, roleIds } = createUserDto;
     const department = await this.departmentService.findByIds(departmentIds);
 
@@ -66,6 +69,8 @@ export class UserService {
       throw new ConflictException('User with this email already exists');
     }
 
+    createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
+
     const user = this.userRepository.create({
       // eslint-disable-next-line @typescript-eslint/no-misused-spread
       ...createUserDto,
@@ -77,16 +82,21 @@ export class UserService {
 
     const newUser = await this.userRepository.save(user);
 
-    if (roleIds.length > 0) {
-      const userRoles = await this.roleService.create({
-        userId: newUser.id,
-        roleIds,
-        assignedById: createdBy ?? newUser.id,
-      });
+    try {
+      if (roleIds.length > 0) {
+        const userRoles = await this.roleService.create({
+          userId: newUser.id,
+          roleIds,
+          assignedById: createdBy,
+        });
 
-      newUser.userRoles = userRoles;
+        newUser.userRoles = userRoles;
 
-      return newUser;
+        return newUser;
+      }
+    } catch (error) {
+      await this.userRepository.remove(newUser);
+      throw error;
     }
 
     return newUser;

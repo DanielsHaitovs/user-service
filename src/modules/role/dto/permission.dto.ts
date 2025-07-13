@@ -1,3 +1,4 @@
+import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
 import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
@@ -15,8 +16,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UUID } from 'crypto';
-
-import { PaginatedResponseDto } from '../../base/dto/pagination.dto';
 
 export class PermissionBaseDto {
   @ApiProperty({

@@ -6,7 +6,10 @@ import {
 import { RolesQueryDto } from '@/role/dto/query.dto';
 import { RoleListResponseDto } from '@/role/dto/role.dto';
 import { Role } from '@/role/entities/role.entity';
-import { getPermissionsSelectableFields } from '@/role/helper/role-fields.util';
+import {
+  getPermissionsSelectableFields,
+  getRoleSelectableFields,
+} from '@/role/helper/role-fields.util';
 import { Injectable } from '@nestjs/common';
 
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
@@ -171,12 +174,54 @@ export class RoleQueryService extends QueryService {
   ): string[] {
     const select = new Array<string>();
 
+    this.setRoleQuerySelect(
+      select,
+      selectRoles,
+      selectPermissions,
+      includePermissions,
+    );
+    this.setPermissionsQuerySelect(
+      select,
+      selectPermissions,
+      includePermissions,
+      ids,
+      codes,
+      names,
+    );
+
+    return select;
+  }
+
+  private setRoleQuerySelect(
+    select: string[],
+    selectRoles?: string[],
+    selectPermissions?: string[],
+    includePermissions?: boolean,
+  ): void {
     if (selectRoles && selectRoles.length > 0) {
       select.push(
         ...selectRoles.flatMap((field) => `${ROLE_QUERY_ALIAS}.${field}`),
       );
+    } else if (
+      (includePermissions != undefined && includePermissions) ||
+      (selectPermissions && selectPermissions.length > 0)
+    ) {
+      select.push(
+        ...getRoleSelectableFields().flatMap(
+          (field) => `${ROLE_QUERY_ALIAS}.${field}`,
+        ),
+      );
     }
+  }
 
+  private setPermissionsQuerySelect(
+    select: string[],
+    selectPermissions?: string[],
+    includePermissions?: boolean,
+    ids?: string[],
+    codes?: string[],
+    names?: string[],
+  ): void {
     if (selectPermissions && selectPermissions.length > 0) {
       select.push(
         ...selectPermissions.flatMap(
@@ -189,8 +234,6 @@ export class RoleQueryService extends QueryService {
       (codes && codes.length > 0) ||
       (names && names.length > 0)
     ) {
-      // If no specific permissions are selected but permissions are included,
-      // select all fields from the permission entity
       select.push(
         ...getPermissionsSelectableFields().flatMap(
           (field) => `${PERMISSION_QUERY_ALIAS}.${field}`,
@@ -208,7 +251,5 @@ export class RoleQueryService extends QueryService {
     ) {
       select.push(`${ROLE_QUERY_ALIAS}.id`);
     }
-
-    return select;
   }
 }

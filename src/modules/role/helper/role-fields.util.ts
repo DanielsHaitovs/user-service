@@ -11,11 +11,17 @@ import { getMetadataArgsStorage } from 'typeorm';
  * Dynamically extract all column names from the Role entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getRoleSelectableFields(): string[] {
+export function getRoleSelectableFields(fields?: string[]): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
   const columns = metadata.columns.filter((column) => column.target === Role);
+
+  if (fields && fields.length > 0) {
+    return fields.filter((field) =>
+      columns.some((column) => column.propertyName === field),
+    );
+  }
 
   // Extract column property names
   return [
@@ -30,13 +36,19 @@ export function getRoleSelectableFields(): string[] {
  * Dynamically extract all column names from the Permission entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getPermissionsSelectableFields(): string[] {
+export function getPermissionsSelectableFields(fields?: string[]): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
   const columns = metadata.columns.filter(
     (column) => column.target === Permission,
   );
+
+  if (fields && fields.length > 0) {
+    return fields.filter((field) =>
+      columns.some((column) => column.propertyName === field),
+    );
+  }
 
   // Extract column property names
   return [

@@ -1,3 +1,5 @@
+import { Permissions } from '@/common/decorators/permission.decorator';
+import { PermissionsGuard } from '@/common/guards/permission.guard';
 import {
   CreateDepartmentDto,
   UpdateDepartmentDto,
@@ -5,8 +7,12 @@ import {
 import { Department } from '@/department/entities/department.entity';
 import { DepartmentService } from '@/department/services/department.service';
 import {
+  CREATE_DEPARTMENT,
+  DELETE_DEPARTMENT,
   EXAMPLE_DEPARTMENT_ID,
   EXAMPLE_DEPARTMENT_NAME,
+  READ_DEPARTMENT,
+  UPDATE_DEPARTMENT,
 } from '@/lib/const/department.const';
 import {
   Body,
@@ -20,8 +26,11 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -36,10 +45,13 @@ import { UUID } from 'crypto';
 
 @ApiTags('Departments')
 @Controller('departments')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 
   @Post()
+  @Permissions(CREATE_DEPARTMENT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new department',
@@ -64,6 +76,7 @@ export class DepartmentController {
   }
 
   @Get(':id')
+  @Permissions(READ_DEPARTMENT)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get department by ID',
@@ -96,6 +109,7 @@ export class DepartmentController {
   }
 
   @Patch(':id')
+  @Permissions(UPDATE_DEPARTMENT)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update department',
@@ -129,6 +143,7 @@ export class DepartmentController {
   }
 
   @Delete()
+  @Permissions(DELETE_DEPARTMENT)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete departments by IDs',

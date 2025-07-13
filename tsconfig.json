@@ -37,6 +37,7 @@
       "@/config/*": ["src/config/*"],
       "@/user/*": ["src/modules/user/*"],
       "@/role/*": ["src/modules/role/*"],
+      "@/auth/*": ["src/auth/*"],
       "@/department/*": ["src/modules/department/*"]
     }
   },

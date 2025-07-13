@@ -144,7 +144,7 @@ export class RoleService {
     sort: SortDto;
   }): Promise<RoleListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
-      throw new ConflictException(
+      throw new BadRequestException(
         'Pagination parameters must be greater than 0',
       );
     }

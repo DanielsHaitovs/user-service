@@ -27,3 +27,24 @@ export const EXAMPLE_DEPARTMENT_COUNTRY = 'United States';
  * Represents a department name that is commonly used for testing scenarios.
  */
 export const DEPARTMENT_QUERY_ALIAS = 'department';
+
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a department description that is commonly used for testing scenarios.
+ */
+export const READ_DEPARTMENT = 'department:read';
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a department description that is commonly used for testing scenarios.
+ */
+export const CREATE_DEPARTMENT = 'department:create';
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a department description that is commonly used for testing scenarios.
+ */
+export const UPDATE_DEPARTMENT = 'department:update';
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a department description that is commonly used for testing scenarios.
+ */
+export const DELETE_DEPARTMENT = 'department:delete';

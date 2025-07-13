@@ -1,3 +1,4 @@
+import { AuthModule } from '@/auth/auth.module';
 import { DepartmentModule } from '@/department/department.module';
 import { RolesModule } from '@/role/role.module';
 import { UserModule } from '@/user/user.module';
@@ -20,6 +21,7 @@ export const createTestModule = async (): Promise<{
       DepartmentModule,
       UserModule,
       RolesModule,
+      AuthModule,
       TypeOrmModule.forRootAsync({
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({

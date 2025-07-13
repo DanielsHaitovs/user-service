@@ -4,7 +4,7 @@ import { CreateUserRoleDto } from '@/user/dto/userRole.dto';
 import { User } from '@/user/entities/user.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { batch } from '@/utils/batch.util';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
@@ -14,9 +14,9 @@ import { EntityManager, EntityNotFoundError } from 'typeorm';
 export class UserRoleService extends QueryService {
   constructor(
     @InjectEntityManager()
-    private readonly roleManager: EntityManager,
+    private readonly queryManager: EntityManager,
   ) {
-    super(roleManager);
+    super(queryManager);
   }
 
   /**
@@ -30,19 +30,19 @@ export class UserRoleService extends QueryService {
   async create(createUserRoleDto: CreateUserRoleDto): Promise<UserRole[]> {
     const { userId, roleIds, assignedById } = createUserRoleDto;
 
-    const userQuery = this.roleManager
+    const userQuery = this.queryManager
       .createQueryBuilder(User, 'user')
       .where('user.id = :userId', { userId })
       .getOneOrFail();
 
-    const assignedByQuery = this.roleManager
+    const assignedByQuery = this.queryManager
       .createQueryBuilder(User, 'user')
       .where('user.id = :assignedById', { assignedById })
       .getOneOrFail();
 
     const [user, assignedBy] = await Promise.all([userQuery, assignedByQuery]);
 
-    const roles = await this.roleManager
+    const roles = await this.queryManager
       .createQueryBuilder(Role, 'role')
       .where('role.id IN (:...roleIds)', { roleIds })
       .getMany();
@@ -50,7 +50,7 @@ export class UserRoleService extends QueryService {
     if (roles.length === 0) {
       throw new EntityNotFoundError(
         'User Role',
-        'No roles found for the provided IDs',
+        `No roles found for the provided IDs: [${roleIds.join(', ')}]`,
       );
     }
 
@@ -70,10 +70,10 @@ export class UserRoleService extends QueryService {
 
     for (const roleBatch of rolesBatch) {
       const userRolesBatch = roleBatch.map((role) =>
-        this.roleManager.create(UserRole, { user, role, assignedBy }),
+        this.queryManager.create(UserRole, { user, role, assignedBy }),
       );
 
-      userRoles.push(...(await this.roleManager.save(userRolesBatch)));
+      userRoles.push(...(await this.queryManager.save(userRolesBatch)));
     }
 
     return userRoles;
@@ -97,7 +97,13 @@ export class UserRoleService extends QueryService {
     roleIds?: UUID[];
     assignedByIds?: UUID[];
   }): Promise<UserRole[]> {
-    const query = this.roleManager.createQueryBuilder(UserRole, 'userRole');
+    if (!userIds && !roleIds && !assignedByIds) {
+      throw new BadRequestException(
+        'At least one of userIds, roleIds, or assignedByIds must be provided',
+      );
+    }
+
+    const query = this.queryManager.createQueryBuilder(UserRole, 'userRole');
 
     if (userIds && userIds.length > 0) {
       query.leftJoinAndSelect('userRole.user', 'user');
@@ -130,7 +136,7 @@ export class UserRoleService extends QueryService {
    * @throws EntityNotFoundError if no UserRole is found for the given email
    */
   async findByUserEmail(email: string): Promise<UserRole> {
-    return await this.roleManager
+    return await this.queryManager
       .createQueryBuilder(UserRole, 'userRole')
       .leftJoinAndSelect('userRole.user', 'user')
       .where('user.email = :email', { email })
@@ -143,28 +149,45 @@ export class UserRoleService extends QueryService {
    * Validates the existence of both user and role before assignment.
    *
    * @param userId - UUID of the user to assign the role to
-   * @param roleId - UUID of the role to assign
+   * @param roleIds - Array of UUIDs representing the roles to assign
    * @returns Promise resolving to the created UserRole entity
    * @throws EntityNotFoundError if user or role is not found
    */
-  async assignRoleToUser(userId: UUID, roleId: UUID): Promise<UserRole> {
-    const user = await this.roleManager
+  async assignRolesToUser(userId: UUID, roleIds: UUID[]): Promise<UserRole> {
+    const user = await this.queryManager
       .createQueryBuilder(User, 'user')
       .where('user.id = :userId', { userId })
       .getOneOrFail();
 
-    const role = await this.roleManager
+    const roles = await this.queryManager
       .createQueryBuilder(Role, 'role')
-      .where('role.id = :roleId', { roleId })
-      .getOneOrFail();
+      .where('role.id IN (:...roleIds)', { roleIds })
+      .getMany();
 
-    const userRole = this.roleManager.create(UserRole, {
+    if (roles.length === 0) {
+      throw new EntityNotFoundError(
+        'User Role',
+        `No roles found for the provided IDs: [${roleIds.join(', ')}]`,
+      );
+    }
+
+    if (roles.length !== roleIds.length) {
+      const missingRoleIds = roleIds.filter(
+        (id) => !roles.some((role) => role.id === id),
+      );
+      throw new EntityNotFoundError(
+        'User Role',
+        `Roles with IDs [${missingRoleIds.join(', ')}] not found`,
+      );
+    }
+
+    const userRole = this.queryManager.create(UserRole, {
       user,
-      role,
+      roles,
       assignedBy: user,
     });
 
-    return await this.roleManager.save(userRole);
+    return await this.queryManager.save(userRole);
   }
 
   /**
@@ -184,7 +207,7 @@ export class UserRoleService extends QueryService {
       return { unassigned: false };
     }
 
-    const result = await this.roleManager
+    const result = await this.queryManager
       .createQueryBuilder()
       .delete()
       .from(UserRole)

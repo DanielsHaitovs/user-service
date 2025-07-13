@@ -1,10 +1,17 @@
+import { Permissions } from '@/common/decorators/permission.decorator';
+import { PermissionsGuard } from '@/common/guards/permission.guard';
 import {
+  CREATE_PERMISSION,
+  DELETE_PERMISSION,
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
   EXAMPLE_PERMISSION_NAME,
   EXAMPLE_ROLE_ID,
   PERMISSINO_CODE_EXISTS_MSG,
   PERMISSINO_NOT_FOUND_MSG,
+  READ_PERMISSION,
+  READ_ROLE,
+  UPDATE_PERMISSION,
 } from '@/lib/const/role.const';
 import { TraceController } from '@/lib/decorators/trace.decorator';
 import {
@@ -13,6 +20,7 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
+import { getPermissionsSelectableFields } from '@/role/helper/role-fields.util';
 import { PermissionService } from '@/role/services/permission.service';
 import {
   BadRequestException,
@@ -31,9 +39,12 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -49,15 +60,16 @@ import {
 
 import { UUID } from 'crypto';
 
-import { getPermissionsSelectableFields } from '../helper/role-fields.util';
-
 @ApiTags('Permissions')
 @TraceController()
 @Controller('permission')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class PermissionController {
   constructor(private readonly permissionService: PermissionService) {}
 
   @Post()
+  @Permissions(READ_ROLE, READ_PERMISSION, CREATE_PERMISSION)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new permission',
@@ -130,6 +142,7 @@ export class PermissionController {
   }
 
   @Get('ids')
+  @Permissions(READ_ROLE, READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get permission by ID',
@@ -194,6 +207,7 @@ export class PermissionController {
   }
 
   @Get('codes')
+  @Permissions(READ_ROLE, READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get permission by ID',
@@ -257,6 +271,7 @@ export class PermissionController {
   }
 
   @Get(':value')
+  @Permissions(READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     description: 'Searches for permissions by name, code, id',
@@ -340,6 +355,7 @@ export class PermissionController {
   }
 
   @Patch(':id')
+  @Permissions(READ_PERMISSION, UPDATE_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update permissions',
@@ -447,6 +463,7 @@ export class PermissionController {
   }
 
   @Delete()
+  @Permissions(READ_PERMISSION, DELETE_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete permissions by IDs',

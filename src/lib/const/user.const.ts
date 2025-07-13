@@ -4,6 +4,19 @@
  * to maintain uniformity in examples and mock data.
  */
 
+// Standard email address for the system user.
+// This email is used in tests and API documentation to represent the system user.
+// It should not be used for real user accounts to avoid conflicts.
+export const SYSTEM_USER_EMAIL = 'system@mecService.com';
+
+/**
+ * Password for the system user.
+ * This password is used in tests and API documentation to represent the system user.
+ * It should be a strong password and not used in production environments.
+ */
+// eslint-disable-next-line sonarjs/no-hardcoded-passwords
+export const SYSTEM_USER_PASSWORD = 'VerySecurePassword!';
+
 /**
  * Sample UUID v4 for user identification in tests and API documentation.
  * Format follows RFC 4122 standard for universally unique identifiers.
@@ -71,8 +84,56 @@ export const USER_ROLE_QUERY_ALIAS = 'userRole';
  * Provides a clear indication of the issue in API responses.
  */
 export const USER_NOT_FOUND_MSG = 'User not found';
+
+/**
+ * Error message used when a user role is not found in the database.
+ * Provides a clear indication of the issue in API responses.
+ */
+export const USER_ROLE_NOT_FOUND_MSG = 'User role not found';
+
 /**
  * Error message used when a user is not found in the database.
  * Provides a clear indication of the issue in API responses.
  */
 export const EMAIL_EXISTS_MSG = 'User with this email already exists';
+
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission description that is commonly used for testing scenarios.
+ */
+export const READ_USER_ROLE = 'user-role:read';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission description that is commonly used for testing scenarios.
+ */
+export const CREATE_USER_ROLE = 'user-role:create';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission description that is commonly used for testing scenarios.
+ */
+export const UPDATE_USER_ROLE = 'user-role:update';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission description that is commonly used for testing scenarios.
+ */
+export const DELETE_USER_ROLE = 'user-role:delete';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for managing users.
+ */
+export const CREATE_USER = 'user:create';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for reading user data.
+ */
+export const READ_USER = 'user:read';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for updating user data.
+ */
+export const UPDATE_USER = 'user:update';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for deleting user data.
+ */
+export const DELETE_USER = 'user:delete';

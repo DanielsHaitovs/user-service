@@ -64,3 +64,40 @@ export const PERMISSINO_NOT_FOUND_MSG = 'Permission not found';
  */
 export const PERMISSINO_CODE_EXISTS_MSG =
   'Permissinon with this code already exists';
+
+/**
+ * Standard example message used in API documentation and test fixtures.
+ */
+export const READ_PERMISSION = 'permission:read';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ */
+export const CREATE_PERMISSION = 'permission:create';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ */
+export const UPDATE_PERMISSION = 'permission:update';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ */
+export const DELETE_PERMISSION = 'permission:delete';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for managing roles.
+ */
+export const READ_ROLE = 'role:read';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for creating roles.
+ */
+export const CREATE_ROLE = 'role:create';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for updating roles.
+ */
+export const UPDATE_ROLE = 'role:update';
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for deleting roles.
+ */
+export const DELETE_ROLE = 'role:delete';

@@ -1,4 +1,5 @@
 import type { DepartmentService } from '@/department/services/department.service';
+import { SYSTEM_USER_EMAIL } from '@/lib/const/user.const';
 import { User } from '@/modules/user/entities/user.entity';
 import type { UserService } from '@/modules/user/services/user/user.service';
 import type { PermissionService } from '@/role/services/permission.service';
@@ -18,6 +19,7 @@ export async function createUser(
   permissionService: PermissionService,
   departmentService: DepartmentService,
 ): Promise<User> {
+  const systemUser = await userService.findByEmail(SYSTEM_USER_EMAIL);
   const department = await createDepartment(departmentService);
   const role = await createRoleWithPermissins(roleService, permissionService);
 
@@ -37,7 +39,7 @@ export async function createUser(
     isEmailVerified: false,
   };
 
-  const newUser = await userService.create(userDto);
+  const newUser = await userService.create(userDto, systemUser.id);
 
   validateUser(newUser, userDto);
 
@@ -178,8 +180,8 @@ function validateUser(user: User, newUser: User | UpdateUserDto): void {
   expect(user.email).toBe(newUser.email);
   expect(user.password).toBe(newUser.password);
   expect(user.phone).toBe(newUser.phone);
-  expect(normalizeDate(user.dateOfBirth)).toBe(
-    normalizeDate(newUser.dateOfBirth),
+  expect(normalizeDateLocal(user.dateOfBirth)).toBe(
+    normalizeDateLocal(newUser.dateOfBirth),
   );
   expect(user.isActive).toBe(newUser.isActive);
   expect(user.isEmailVerified).toBe(newUser.isEmailVerified);
@@ -191,15 +193,15 @@ function validateUser(user: User, newUser: User | UpdateUserDto): void {
   }
 }
 
-function normalizeDate(value?: string | Date): string {
+function normalizeDateLocal(value?: string | Date): string {
   if (value == undefined) {
     return '';
   }
 
   const date = new Date(value);
-  const year = String(date.getUTCFullYear());
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
 }

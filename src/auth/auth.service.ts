@@ -1,12 +1,12 @@
 import { LoginDto } from '@/auth/dto/auth.dto';
 import { RoleQueryService } from '@/role/services/query.service';
-import { UserResponseDto } from '@/user/dto/user.dto';
 import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import { UserQueryService } from '@/user/services/query.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import * as bcrypt from 'bcrypt';
+import { UUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -17,11 +17,14 @@ export class AuthService {
   ) {}
 
   async login(data: LoginDto): Promise<{ access_token: string }> {
-    const { permissions } = await this.validateUser(data.email, data.password);
+    const { permissions, userId } = await this.validateUser(
+      data.email,
+      data.password,
+    );
 
     return {
       access_token: this.jwtService.sign({
-        email: data.email,
+        id: userId,
         permissions,
       }),
     };
@@ -30,7 +33,7 @@ export class AuthService {
   private async validateUser(
     email: string,
     pass: string,
-  ): Promise<{ user: UserResponseDto; permissions: string[] }> {
+  ): Promise<{ userId: UUID; permissions: string[] }> {
     const { users } = await this.userService.getUsers({
       query: { emails: [email] },
       includeDepartment: true,
@@ -94,6 +97,6 @@ export class AuthService {
       (role.permissions ?? []).map((permission) => permission.code),
     );
 
-    return { user: users[0], permissions: userPermissions };
+    return { userId: users[0].id, permissions: userPermissions };
   }
 }

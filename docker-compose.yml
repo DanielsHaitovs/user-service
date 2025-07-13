@@ -14,7 +14,7 @@ services:
   user_sys:
     env_file: .env
     build: .
-    command: npm run start:debug
+    # command: npm run start:debug
     volumes:
       - .:/code
     ports:

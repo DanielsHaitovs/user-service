@@ -1,3 +1,4 @@
+import { ensureSystemUser } from '@/base/system-user.bootstrap';
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
@@ -8,6 +9,7 @@ import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  await ensureSystemUser(app);
 
   app.useGlobalInterceptors(new LoggingInterceptor());
 

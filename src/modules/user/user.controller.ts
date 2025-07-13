@@ -1,10 +1,16 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
+import { CurrentUserId } from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { getDepartmentSelectableFields } from '@/department/helper/department-fields.util';
 import { COUNTRIES } from '@/lib/const/countries.const';
-import { EXAMPLE_DEPARTMENT_ID } from '@/lib/const/department.const';
-import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import {
+  EXAMPLE_DEPARTMENT_ID,
+  READ_DEPARTMENT,
+} from '@/lib/const/department.const';
+import { EXAMPLE_ROLE_ID, READ_ROLE } from '@/lib/const/role.const';
+import {
+  CREATE_USER,
+  DELETE_USER,
   EMAIL_EXISTS_MSG,
   EXAMPLE_USER_DATE_OF_BIRTH,
   EXAMPLE_USER_EMAIL,
@@ -13,6 +19,9 @@ import {
   EXAMPLE_USER_ID,
   EXAMPLE_USER_LAST_NAME,
   EXAMPLE_USER_PHONE,
+  READ_USER,
+  READ_USER_ROLE,
+  UPDATE_USER,
   USER_NOT_FOUND_MSG,
 } from '@/lib/const/user.const';
 import { TraceController } from '@/lib/decorators/trace.decorator';
@@ -99,7 +108,7 @@ export class UserController {
    * DTO validation. Generates secure passwords and initialization tokens.
    */
   @Post()
-  @Permissions('user:create', 'user:assign-role')
+  @Permissions(CREATE_USER, READ_USER, READ_DEPARTMENT, READ_ROLE)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new user',
@@ -183,7 +192,7 @@ export class UserController {
     },
   })
   @ApiUnauthorizedResponse({
-    description: 'Unauthorized access',
+    description: ForbiddenException.name,
     schema: {
       type: 'object',
       properties: {
@@ -215,8 +224,11 @@ export class UserController {
       },
     },
   })
-  async createUser(@Body() createUserDto: CreateUserDto): Promise<User> {
-    return await this.userService.create(createUserDto);
+  async createUser(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUserId() createdBy: UUID,
+  ): Promise<User> {
+    return await this.userService.create(createUserDto, createdBy);
   }
 
   /**
@@ -227,6 +239,7 @@ export class UserController {
    * is already known from previous operations or JWT tokens.
    */
   @Get(':id')
+  @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get user by ID',
@@ -299,6 +312,7 @@ export class UserController {
    * email is the primary user identifier available to the client.
    */
   @Get(':email')
+  @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get user by email',
@@ -364,6 +378,7 @@ export class UserController {
   }
 
   @Get(':value')
+  @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     description: 'Searches for permissions by firstname, lastname, email or ID',
@@ -455,6 +470,7 @@ export class UserController {
    * administrative status changes alongside user profile modifications.
    */
   @Patch(':id')
+  @Permissions(UPDATE_USER, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update user by ID',
@@ -596,6 +612,7 @@ export class UserController {
    * and external system integrations that identify users by email.
    */
   @Patch(':email')
+  @Permissions(UPDATE_USER, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update user by email',
@@ -719,6 +736,7 @@ export class UserController {
    * data consistency and provide accurate operation feedback.
    */
   @Delete('byIds')
+  @Permissions(DELETE_USER, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete users by IDs',
@@ -826,6 +844,7 @@ export class UserController {
    * management scenarios requiring fine-grained data access control.
    */
   @Get('query/filter')
+  @Permissions(READ_USER, READ_DEPARTMENT, READ_ROLE, READ_USER_ROLE)
   @ApiQuery({
     name: 'ids',
     type: String,

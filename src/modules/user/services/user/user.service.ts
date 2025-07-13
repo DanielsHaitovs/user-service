@@ -46,7 +46,9 @@ export class UserService {
    * @returns Promise resolving to the created user entity
    * @throws ConflictException when email address is already registered
    */
-  async create(createUserDto: CreateUserDto, createdBy?: UUID): Promise<User> {
+  async create(createUserDto: CreateUserDto, createdBy: UUID): Promise<User> {
+    await this.findById(createdBy);
+
     const { departmentIds, roleIds } = createUserDto;
     const department = await this.departmentService.findByIds(departmentIds);
 
@@ -85,7 +87,7 @@ export class UserService {
         const userRoles = await this.roleService.create({
           userId: newUser.id,
           roleIds,
-          assignedById: createdBy ?? newUser.id,
+          assignedById: createdBy,
         });
 
         newUser.userRoles = userRoles;

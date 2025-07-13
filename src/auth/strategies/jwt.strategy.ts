@@ -9,11 +9,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 
+import { UUID } from 'crypto';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 interface JWTPayload {
   permissions: string[];
-  email: string;
+  id: UUID;
 }
 
 @Injectable()
@@ -38,9 +39,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JWTPayload): Promise<{
     permissions: string[];
+    id: UUID;
   }> {
     const { users } = await this.userService.getUsers({
-      query: { emails: [payload.email] },
+      query: { ids: [payload.id] },
       includeRoles: true,
       pagination: { limit: 1, page: 1 },
       sort: { sortField: 'createdAt', sortOrder: 'DESC' },
@@ -88,6 +90,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       permissions: assignedRoles.roles.flatMap((role) =>
         (role.permissions ?? []).map((permission) => permission.code),
       ),
+      id: payload.id,
     };
   }
 }

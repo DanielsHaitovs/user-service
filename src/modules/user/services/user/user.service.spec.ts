@@ -1,4 +1,5 @@
 import { DepartmentService } from '@/department/services/department.service';
+import { SYSTEM_USER_EMAIL } from '@/lib/const/user.const';
 import { PermissionService } from '@/role/services/permission.service';
 import { RoleService } from '@/role/services/role.service';
 import { createTestModule } from '@/test/db.connection';
@@ -66,7 +67,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         isEmailVerified: false,
       };
 
-      await expect(userService.create(userDto)).rejects.toThrow(
+      await expect(userService.create(userDto, uuid() as UUID)).rejects.toThrow(
         EntityNotFoundError,
       );
     });
@@ -87,12 +88,13 @@ describe('UserService (Integration - PostgreSQL)', () => {
         isEmailVerified: false,
       };
 
-      await expect(userService.create(userDto)).rejects.toThrow(
+      await expect(userService.create(userDto, uuid() as UUID)).rejects.toThrow(
         EntityNotFoundError,
       );
     });
 
     it('should throw conflict error because user email already exists', async () => {
+      const systemUser = await userService.findByEmail(SYSTEM_USER_EMAIL);
       const user = await createUser(
         userService,
         roleService,
@@ -122,9 +124,9 @@ describe('UserService (Integration - PostgreSQL)', () => {
         isEmailVerified: false,
       };
 
-      await expect(userService.create(userWithTheSameEmail)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        userService.create(userWithTheSameEmail, systemUser.id),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

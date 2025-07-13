@@ -1,3 +1,4 @@
+import { ensureSystemUser } from '@/base/system-user.bootstrap';
 import type { INestApplication } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 
@@ -16,6 +17,8 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
+
+    await ensureSystemUser(app);
   });
 
   it('/health (GET)', () => {

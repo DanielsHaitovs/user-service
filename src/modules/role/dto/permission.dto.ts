@@ -3,6 +3,7 @@ import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
   EXAMPLE_PERMISSION_NAME,
+  EXAMPLE_ROLE_ID,
 } from '@/lib/const/role.const';
 import { RoleResponseDto } from '@/role/dto/role.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
@@ -51,20 +52,20 @@ export class PermissionBaseDto {
 export class CreatePermissionDto extends PermissionBaseDto {
   @ApiProperty({
     type: String,
-    isArray: false,
+    isArray: true,
     format: 'uuid',
     description:
-      'Unique identifier of the role to which this permission belongs',
-    example: EXAMPLE_PERMISSION_ID,
+      'Unique identifiers of the role to which this permission belongs',
+    example: [EXAMPLE_ROLE_ID],
     required: true,
   })
   @IsUUID('all', { each: true })
   @IsNotEmpty()
-  roleId: UUID;
+  roleIds: UUID[];
 
-  constructor(name: string, code: string, roleId: UUID) {
+  constructor(name: string, code: string, roleIds: UUID[]) {
     super(name, code);
-    this.roleId = roleId;
+    this.roleIds = roleIds;
   }
 }
 
@@ -83,12 +84,12 @@ export class PermissionResponseDto extends PermissionBaseDto {
 
   @ApiProperty({
     type: RoleResponseDto,
-    isArray: false,
+    isArray: true,
     description: 'Roles associated with this permission',
   })
   @Type(() => RoleResponseDto)
   @ValidateNested({ each: true })
-  role: RoleResponseDto;
+  roles: RoleResponseDto[];
 
   @ApiProperty({
     description: 'Creation timestamp of the permission',
@@ -112,13 +113,13 @@ export class PermissionResponseDto extends PermissionBaseDto {
     id: UUID,
     name: string,
     code: string,
-    role: RoleResponseDto,
+    roles: RoleResponseDto[],
     createdAt: Date,
     updatedAt: Date,
   ) {
     super(name, code);
     this.id = id;
-    this.role = role;
+    this.roles = roles;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }

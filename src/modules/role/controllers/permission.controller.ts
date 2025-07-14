@@ -87,7 +87,7 @@ export class PermissionController {
           {
             name: EXAMPLE_PERMISSION_NAME,
             code: EXAMPLE_PERMISSION_CODE,
-            roleId: EXAMPLE_ROLE_ID,
+            roleIds: [EXAMPLE_ROLE_ID],
           },
         ],
       },

@@ -22,12 +22,12 @@ export async function createPermissions(
     {
       name: `${faker.lorem.word()}-${role.id}`,
       code: `${faker.string.alpha(8)}-${role.id}`,
-      roleId: role.id,
+      roleIds: [role.id],
     },
     {
       name: `${faker.lorem.word()}-${role.id}`,
       code: `${faker.string.alpha(8)}-${role.id}`,
-      roleId: role.id,
+      roleIds: [role.id],
     },
   ];
 
@@ -147,19 +147,21 @@ function validatePermissionsArray(
 ): void {
   const [firstPermission, secondPermission] = permissions;
 
-  if (firstPermission === undefined || secondPermission === undefined) {
-    throw new Error('Permissino should be defined');
+  if (
+    firstPermission?.roles[0] === undefined ||
+    secondPermission?.roles[0] === undefined
+  ) {
+    throw new Error('Permission should be defined');
   }
 
-  if (permissionDto instanceof Permission) {
-    expect(firstPermission.id).toBeDefined();
-    expect(secondPermission.id).toBeDefined();
-    expect(firstPermission.role.id).toBe(
-      (permissionDto as Permission[])[0]?.role.id,
-    );
-    expect(secondPermission.role.id).toBe(
-      (permissionDto as Permission[])[1]?.role.id,
-    );
+  if (
+    permissionDto[0] instanceof Permission &&
+    permissionDto[1] instanceof Permission &&
+    permissionDto[0].roles[0] !== undefined &&
+    permissionDto[1].roles[0] !== undefined
+  ) {
+    expect(firstPermission.roles[0].id).toBe(permissionDto[0].roles[0].id);
+    expect(secondPermission.roles[0].id).toBe(permissionDto[1].roles[0].id);
   }
 
   expect(permissionDto.some((p) => p.code === firstPermission.code)).toBe(true);

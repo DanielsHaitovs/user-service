@@ -6,13 +6,13 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
-import { Role } from '@/role/entities/role.entity';
-import { batch } from '@/utils/batch.util';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
+
+import { Role } from '../entities/role.entity';
 
 @Injectable()
 export class PermissionService {
@@ -29,8 +29,6 @@ export class PermissionService {
    * @returns The created permission entity.
    */
   async create(permissions: CreatePermissionDto[]): Promise<Permission[]> {
-    const permissionsBatch = batch(permissions, this.batchSize);
-
     const conflictNameOrCode = await this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
       .where(`${PERMISSION_QUERY_ALIAS}.name IN (:...names)`, {
@@ -42,24 +40,20 @@ export class PermissionService {
       .getMany();
 
     if (conflictNameOrCode.length > 0) {
-      throw new ConflictException('One or many names or codes alraedy exists');
+      throw new ConflictException(
+        `One or many names or codes alraedy exists ${conflictNameOrCode.map((p) => p.name).join(', ')}`,
+      );
     }
 
-    const savedPermissions: Permission[] = [];
-    for (const batch of permissionsBatch) {
-      const prepareForSave = batch.map((permission) => {
-        return this.permissionRepository.create({
-          code: permission.code,
-          name: permission.name,
-          role: { id: permission.roleId } as Role,
-        });
+    const permissionsToSave = permissions.map((permission) => {
+      return this.permissionRepository.create({
+        code: permission.code,
+        name: permission.name,
+        roles: permission.roleIds.map((roleId) => ({ id: roleId }) as Role),
       });
+    });
 
-      const saved = await this.permissionRepository.save(prepareForSave);
-      savedPermissions.push(...saved);
-    }
-
-    return savedPermissions;
+    return this.permissionRepository.save(permissionsToSave);
   }
 
   /**
@@ -69,8 +63,8 @@ export class PermissionService {
   async findByIds(ids: UUID[]): Promise<Permission[]> {
     const permissions = await this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
+      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.roles`, 'roles')
       .where(`${PERMISSION_QUERY_ALIAS}.id IN (:...ids)`, { ids })
-      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.role`, 'role')
       .getMany();
 
     if (permissions.length === 0) {
@@ -93,7 +87,7 @@ export class PermissionService {
     const permissions = await this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
       .where(`${PERMISSION_QUERY_ALIAS}.code IN (:...codes)`, { codes })
-      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.role`, 'role')
+      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.roles`, 'roles')
       .getMany();
 
     if (permissions.length === 0) {
@@ -236,6 +230,12 @@ export class PermissionService {
         `Could not delete permissinos, because IDs [${missingIds.join(', ')}] not found`,
       );
     }
+
+    existingPermissions.forEach((permission) => {
+      permission.roles = [];
+    });
+
+    await this.permissionRepository.save(existingPermissions);
 
     const result = await this.permissionRepository
       .createQueryBuilder()

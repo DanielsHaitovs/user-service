@@ -4,7 +4,7 @@ import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 
 @Entity('role')
 export class Role extends MecBaseEntity {
@@ -16,8 +16,13 @@ export class Role extends MecBaseEntity {
   @OneToMany(() => UserRole, (userRole) => userRole.role)
   userRoles: UserRole[];
 
-  @OneToMany(() => Permission, (permission) => permission.role)
-  permissions?: Permission[];
+  @ManyToMany(() => Permission, (permission) => permission.roles)
+  @JoinTable({
+    name: 'role_permissions',
+    joinColumn: { name: 'role_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
+  })
+  permissions: Permission[];
 
   constructor(
     id: UUID,

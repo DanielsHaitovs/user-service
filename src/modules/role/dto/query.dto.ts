@@ -12,8 +12,27 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsString, IsUUID } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { UUID } from 'crypto';
+
+export class FindPermissionsByIdsQueryDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID('4', { each: true })
+  @Type(() => String)
+  ids: string[];
+
+  constructor(ids: UUID[]) {
+    this.ids = ids;
+  }
+}
 
 /**
  * DTO containing individual filter parameters for role queries.

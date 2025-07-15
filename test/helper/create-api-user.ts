@@ -1,3 +1,7 @@
+import {
+  SYSTEM_USER_EMAIL,
+  SYSTEM_USER_PASSWORD,
+} from '@/lib/const/user.const';
 import type { CreateUserDto } from '@/user/dto/user.dto';
 import { generatePassword } from '@/utils/token-generator.util';
 import { faker } from '@faker-js/faker/.';
@@ -103,4 +107,19 @@ export async function createNewUser(
     email: userEmail,
     password,
   };
+}
+
+export async function systemUserAuthToken(
+  app: INestApplication,
+): Promise<string> {
+  const httpServer = app.getHttpServer() as Server;
+  const res = await request(httpServer)
+    .post('/auth/login')
+    .send({
+      email: SYSTEM_USER_EMAIL,
+      password: SYSTEM_USER_PASSWORD,
+    })
+    .expect(200);
+
+  return res.body.access_token as string;
 }

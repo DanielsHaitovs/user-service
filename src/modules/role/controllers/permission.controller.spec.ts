@@ -1,25 +1,29 @@
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import {
   CREATE_PERMISSION,
+  CREATE_ROLE,
   READ_PERMISSION,
   READ_ROLE,
+  UPDATE_PERMISSION,
 } from '@/lib/const/role.const';
-import {
-  SYSTEM_USER_EMAIL,
-  SYSTEM_USER_PASSWORD,
-} from '@/lib/const/user.const';
 import { createTestModule } from '@/test/db.connection';
-import { createNewUser } from '@/test/helper/create-api-user';
+import { initTestUser } from '@/test/helper/auth-user-api';
+import { systemUserAuthToken } from '@/test/helper/create-api-user';
 import {
   createNewPermissionApi,
+  findPermissionsByCodesApi,
   findPermissionsByIdsApi,
   generateNewPermissionsApi,
+  searchPermissionsByValueApi,
+  updatePermissionsApi,
   validatePermissionApiResponse,
 } from '@/test/helper/permissions-api';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   type INestApplication,
+  UnauthorizedException,
 } from '@nestjs/common';
 
 import type { UUID } from 'crypto';
@@ -29,272 +33,493 @@ import type { App } from 'supertest/types';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import type { Permission } from '../entities/permissions.entity';
+
 describe('PermissionController', () => {
   let app: INestApplication<App>;
   let systemToken: string;
+  let httpServer: Server;
 
   beforeAll(async () => {
     const { module } = await createTestModule();
     app = module.createNestApplication();
     app.useGlobalFilters(new EntityNotFoundFilter());
+
     await app.init();
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: SYSTEM_USER_EMAIL,
-        password: SYSTEM_USER_PASSWORD,
-      })
-      .expect(200);
+    httpServer = app.getHttpServer() as Server;
 
-    systemToken = res.body.access_token as string;
+    systemToken = await systemUserAuthToken(app);
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('/permissions (POST) - should allow user to create new permissions', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, CREATE_PERMISSION, READ_PERMISSION],
-      systemToken,
-    );
+  describe('/permissions (POST)', () => {
+    it('/permissions (POST) - should allow user to create new permissions', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+      const permissions = await generateNewPermissionsApi(app, userToken);
 
-    const userToken = res.body.access_token as string;
+      validatePermissionApiResponse(permissions);
+    });
+    it('/permissions (POST) - should not allow user to create new permissions because user access is forbiden', async () => {
+      await expect(generateNewPermissionsApi(app, '')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+    it('/permissions (POST) - should not allow user to create new permissions because its missing permission to read permissions entity', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+      ]);
 
-    const permissions = await generateNewPermissionsApi(app, userToken);
+      await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    it('/permissions (POST) - should not allow user to create new permissions because its missing permission to create permissions entity', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        READ_PERMISSION,
+      ]);
 
-    validatePermissionApiResponse(permissions);
+      await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    it('/permissions (POST) - should not allow user to create new permissions because its missing permission to read role entity', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    it('/permissions (POST) - should not allow user to create new permissions because its missing required permissions', async () => {
+      const userToken = await initTestUser(app, systemToken, []);
+
+      await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    it('/permissions (POST) - should not allow user to create new permissions body is missing', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      await expect(createNewPermissionApi(app, userToken, [])).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+    it('/permissions (POST) - should not allow user to create new permissions body is missing permission code', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      await expect(
+        createNewPermissionApi(app, userToken, [{ name: 'Name', roleIds: [] }]),
+      ).rejects.toThrow(BadRequestException);
+    });
+    it('/permissions (POST) - should not allow user to create new permissions body is missing permission name', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      await expect(
+        createNewPermissionApi(app, userToken, [
+          { name: '', code: 'code', roleIds: [] },
+        ]),
+      ).rejects.toThrow(BadRequestException);
+    });
+    it('/permissions (POST) - should not allow user to create new permissions when name is not unique', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      const unniqueValue = uuid();
+
+      await createNewPermissionApi(app, userToken, [
+        { name: unniqueValue, code: unniqueValue, roleIds: [] },
+      ]);
+
+      await expect(
+        createNewPermissionApi(app, userToken, [
+          { name: unniqueValue, code: `${unniqueValue}-1`, roleIds: [] },
+        ]),
+      ).rejects.toThrow(ConflictException);
+    });
+    it('/permissions (POST) - should not allow user to create new permissions when code is not unique', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      const unniqueValue = uuid();
+      await createNewPermissionApi(app, userToken, [
+        { name: unniqueValue, code: unniqueValue, roleIds: [] },
+      ]);
+
+      await expect(
+        createNewPermissionApi(app, userToken, [
+          { name: `${unniqueValue}-1`, code: unniqueValue, roleIds: [] },
+        ]),
+      ).rejects.toThrow(ConflictException);
+    });
   });
-  it('/permissions (POST) - should not allow user to create new permissions because its missing permission to read permissions entity', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, CREATE_PERMISSION],
-      systemToken,
-    );
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+  describe('/permissions (GET) find by Ids', () => {
+    it('/permissions (GET) - should retrieve permissions by ids', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
 
-    const userToken = res.body.access_token as string;
+      const permissions = await generateNewPermissionsApi(app, userToken);
 
-    await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
-      ForbiddenException,
-    );
+      validatePermissionApiResponse(permissions);
+
+      const targetToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        READ_PERMISSION,
+      ]);
+
+      const foundPermissions = await findPermissionsByIdsApi(
+        app,
+        targetToken,
+        permissions.map((p) => p.id),
+      );
+
+      validatePermissionApiResponse(foundPermissions);
+    });
+    it('/permissions (GET) - should not retrieve permissions by ids because user does not have permission -> read role ', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      const targetToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+      ]);
+
+      await expect(
+        findPermissionsByIdsApi(
+          app,
+          targetToken,
+          permissions.map((p) => p.id),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('/permissions (GET) - should not retrieve permissions by ids because user does not have permission -> read permissions ', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      const targetToken = await initTestUser(app, systemToken, [READ_ROLE]);
+
+      await expect(
+        findPermissionsByIdsApi(
+          app,
+          targetToken,
+          permissions.map((p) => p.id),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('/permissions (GET) - should not retrieve permissions by ids because user is not authorized', async () => {
+      await expect(
+        findPermissionsByIdsApi(app, '', [uuid() as UUID]),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+    it('/permissions (GET) - should not retrieve permissions by ids because ids are not found', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        READ_PERMISSION,
+      ]);
+
+      await expect(
+        findPermissionsByIdsApi(app, userToken, [uuid() as UUID]),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+    it('/permissions (GET) - should not retrieve permissions by ids because ids are not UUID', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        READ_PERMISSION,
+      ]);
+
+      await request(httpServer)
+        .get('/permission/ids?ids=aaaa')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(400);
+    });
   });
-  it('/permissions (POST) - should not allow user to create new permissions because its missing permission to create permissions entity', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, READ_PERMISSION],
-      systemToken,
-    );
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+  describe('/permissions (GET) find by codes', () => {
+    it('/permissions (GET) - should retrieve permissions by codes', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
 
-    const userToken = res.body.access_token as string;
+      const permissions = await generateNewPermissionsApi(app, userToken);
 
-    await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
-      ForbiddenException,
-    );
+      validatePermissionApiResponse(permissions);
+
+      const targetToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        READ_PERMISSION,
+      ]);
+
+      const foundPermissions = await findPermissionsByCodesApi(
+        app,
+        targetToken,
+        permissions.map((p) => p.code),
+      );
+
+      validatePermissionApiResponse(foundPermissions);
+    });
+    it('/permissions (GET) - should not retrieve permissions by codes because user does not have permission -> read role ', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      const targetToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+      ]);
+
+      await expect(
+        findPermissionsByCodesApi(
+          app,
+          targetToken,
+          permissions.map((p) => p.code),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('/permissions (GET) - should not retrieve permissions by codes because user does not have permission -> read permissions ', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      const targetToken = await initTestUser(app, systemToken, [READ_ROLE]);
+
+      await expect(
+        findPermissionsByCodesApi(
+          app,
+          targetToken,
+          permissions.map((p) => p.code),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('/permissions (GET) - should not retrieve permissions by codes because user is not authorized', async () => {
+      await expect(
+        findPermissionsByCodesApi(app, '', [uuid() as UUID]),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+    it('/permissions (GET) - should not retrieve permissions by codes because codes are not found', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        READ_PERMISSION,
+      ]);
+
+      await expect(
+        findPermissionsByCodesApi(app, userToken, [uuid() as UUID]),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+    it('/permissions (GET) - should not retrieve permissions by codes because codes are not string', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        READ_PERMISSION,
+      ]);
+
+      await request(httpServer)
+        .get('/permission/codes?codes[0]={}&codes[1]=456')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(400);
+    });
   });
-  it('/permissions (POST) - should not allow user to create new permissions because its missing permission to read role entity', async () => {
-    const user = await createNewUser(
-      app,
-      [CREATE_PERMISSION, READ_PERMISSION],
-      systemToken,
-    );
+  describe('/permissions (GET) search by value', () => {
+    it('/permissions (GET) - should search permissions by value', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+      const permissions = await generateNewPermissionsApi(app, userToken);
 
-    const userToken = res.body.access_token as string;
+      validatePermissionApiResponse(permissions);
 
-    await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
-      ForbiddenException,
-    );
+      const targetToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+      ]);
+
+      if (permissions[0] === undefined) {
+        throw new Error('No permissions found to test search');
+      }
+
+      const partialValue = permissions[0].code.slice(0, 5);
+
+      const { permissions: foundPermissions } =
+        await searchPermissionsByValueApi(app, targetToken, partialValue);
+
+      validatePermissionApiResponse(foundPermissions as Permission[]);
+    });
+    it('/permissions (GET) - should not search permissions by value because user does not have permission -> read permissions', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_ROLE,
+        CREATE_PERMISSION,
+        READ_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      const targetToken = await initTestUser(app, systemToken, []);
+
+      if (permissions[0] === undefined) {
+        throw new Error('No permissions found to test search');
+      }
+
+      const partialValue = permissions[0].code.slice(0, 3);
+
+      await expect(
+        searchPermissionsByValueApi(app, targetToken, partialValue),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('/permissions (GET) - should not retrieve permissions by codes because user is not authorized', async () => {
+      await expect(searchPermissionsByValueApi(app, '', '123')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
   });
-  it('/permissions (POST) - should not allow user to create new permissions because its missing required permissions', async () => {
-    const user = await createNewUser(app, [], systemToken);
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+  describe('/permissions (PATCH)', () => {
+    it('/permissions (PATCH) - should update permissions', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        CREATE_PERMISSION,
+        UPDATE_PERMISSION,
+        READ_ROLE,
+        CREATE_ROLE,
+      ]);
 
-    const userToken = res.body.access_token as string;
+      const permissions = await generateNewPermissionsApi(app, userToken);
 
-    await expect(generateNewPermissionsApi(app, userToken)).rejects.toThrow(
-      ForbiddenException,
-    );
-  });
-  it('/permissions (POST) - should not allow user to create new permissions body is missing', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, CREATE_PERMISSION, READ_PERMISSION],
-      systemToken,
-    );
+      validatePermissionApiResponse(permissions);
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+      if (permissions[0] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
 
-    const userToken = res.body.access_token as string;
+      permissions[0].code = `${permissions[0].code}-updated`;
+      permissions[0].name = `${permissions[0].name}-updated`;
 
-    await expect(createNewPermissionApi(app, userToken, [])).rejects.toThrow(
-      BadRequestException,
-    );
-  });
-  it('/permissions (POST) - should not allow user to create new permissions body is missing permission code', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, CREATE_PERMISSION, READ_PERMISSION],
-      systemToken,
-    );
+      const updatedPermissions = await updatePermissionsApi(
+        app,
+        userToken,
+        { name: permissions[0].name, code: permissions[0].code },
+        permissions[0].id,
+      );
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+      validatePermissionApiResponse([updatedPermissions]);
+    });
+    // it('/permissions (PATCH) - should not update permissions because user does not have permission -> read role ', async () => {
+    //   const userToken = await initTestUser(app, systemToken, [
+    //     READ_ROLE,
+    //     CREATE_PERMISSION,
+    //     READ_PERMISSION,
+    //   ]);
 
-    const userToken = res.body.access_token as string;
+    //   const permissions = await generateNewPermissionsApi(app, userToken);
 
-    await expect(
-      createNewPermissionApi(app, userToken, [{ name: 'Name', roleIds: [] }]),
-    ).rejects.toThrow(BadRequestException);
-  });
-  it('/permissions (POST) - should not allow user to create new permissions body is missing permission name', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, CREATE_PERMISSION, READ_PERMISSION],
-      systemToken,
-    );
+    //   validatePermissionApiResponse(permissions);
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+    //   const targetToken = await initTestUser(app, systemToken, [
+    //     READ_PERMISSION,
+    //   ]);
 
-    const userToken = res.body.access_token as string;
+    //   await expect(
+    //     updatePermissionsApi(
+    //       app,
+    //       targetToken,
+    //       permissions.map((p) => ({
+    //         ...p,
+    //         name: `${p.name}-updated`,
+    //         code: `${p.code}-updated`,
+    //       })),
+    //     ),
+    //   ).rejects.toThrow(ForbiddenException);
+    // });
+    // it('/permissions (PATCH) - should not update permissions because user does not have permission -> read permissions ', async () => {
+    //   const userToken = await initTestUser(app, systemToken, [
+    //     READ_ROLE,
+    //     CREATE_PERMISSION,
+    //     READ_PERMISSION,
+    //   ]);
 
-    await expect(
-      createNewPermissionApi(app, userToken, [
-        { name: '', code: 'code', roleIds: [] },
-      ]),
-    ).rejects.toThrow(BadRequestException);
-  });
-  it('/permissions (GET) - should retrieve permissions by ids', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, CREATE_PERMISSION, READ_PERMISSION],
-      systemToken,
-    );
+    //   const permissions = await generateNewPermissionsApi(app, userToken);
 
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
+    //   validatePermissionApiResponse(permissions);
 
-    const userToken = res.body.access_token as string;
+    //   const targetToken = await initTestUser(app, systemToken, [READ_ROLE]);
 
-    const permissions = await generateNewPermissionsApi(app, userToken);
-
-    validatePermissionApiResponse(permissions);
-
-    const newUser = await createNewUser(
-      app,
-      [READ_ROLE, READ_PERMISSION],
-      systemToken,
-    );
-
-    const newUserAuth = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: newUser.email,
-        password: newUser.password,
-      })
-      .expect(200);
-
-    const targetToken = newUserAuth.body.access_token as string;
-
-    const foundPermissions = await findPermissionsByIdsApi(
-      app,
-      targetToken,
-      permissions.map((p) => p.id),
-    );
-
-    validatePermissionApiResponse(foundPermissions);
-  });
-  it('/permissions (GET) - should not retrieve permissions by ids because ids are not found', async () => {
-    const user = await createNewUser(
-      app,
-      [READ_ROLE, READ_PERMISSION],
-      systemToken,
-    );
-
-    const httpServer = app.getHttpServer() as Server;
-    const res = await request(httpServer)
-      .post('/auth/login')
-      .send({
-        email: user.email,
-        password: user.password,
-      })
-      .expect(200);
-
-    const userToken = res.body.access_token as string;
-
-    await expect(
-      findPermissionsByIdsApi(app, userToken, [uuid() as UUID]),
-    ).rejects.toThrow(EntityNotFoundError);
+    //   await expect(
+    //     updatePermissionsApi(
+    //       app,
+    //       targetToken,
+    //       permissions.map((p) => ({
+    //         ...p,
+    //         name: `${p.name}-updated`,
+    //         code: `${p.code}-updated`,
+    //       })),
+    //     ),
+    //   ).rejects.toThrow(ForbiddenException);
+    // });
+    // it('/permissions (PATCH) - should not update permissions because user is not authorized', async () => {
+    //   await expect(
+    //     updatePermissionsApi(app, '', [{ id: uuid() as UUID }]),
+    //   ).rejects.toThrow(UnauthorizedException);
+    // });
   });
 });

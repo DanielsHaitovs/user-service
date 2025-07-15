@@ -1,5 +1,6 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
+import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
   CREATE_PERMISSION,
   DELETE_PERMISSION,
@@ -165,7 +166,7 @@ export class PermissionController {
     description: 'Permission found and returned successfully',
     example: [
       {
-        id: [EXAMPLE_PERMISSION_ID],
+        id: EXAMPLE_PERMISSION_ID,
         name: EXAMPLE_PERMISSION_NAME,
         code: EXAMPLE_PERMISSION_CODE,
       },
@@ -205,7 +206,7 @@ export class PermissionController {
     },
   })
   async getPermissionById(
-    @Query('ids', ParseArrayPipe) ids: UUID[],
+    @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
   ): Promise<Permission[]> {
     return await this.permissionService.findByIds(ids);
   }

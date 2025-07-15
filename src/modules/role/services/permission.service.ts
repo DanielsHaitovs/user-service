@@ -6,7 +6,11 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
@@ -110,7 +114,7 @@ export class PermissionService {
     sort: SortDto;
   }): Promise<PermissionListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
-      throw new ConflictException(
+      throw new BadRequestException(
         'Pagination parameters must be greater than 0',
       );
     }

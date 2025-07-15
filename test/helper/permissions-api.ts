@@ -1,8 +1,13 @@
-import type { CreatePermissionDto } from '@/role/dto/permission.dto';
+import type {
+  CreatePermissionDto,
+  PermissionListResponseDto,
+  UpdatePermissionDto,
+} from '@/role/dto/permission.dto';
 import type { Permission } from '@/role/entities/permissions.entity';
 import type { Role } from '@/role/entities/role.entity';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   type INestApplication,
   InternalServerErrorException,
@@ -47,6 +52,10 @@ export async function createNewPermissionApi(
     throw new BadRequestException(newPermissions.body.message);
   }
 
+  if (newPermissions.status === 409) {
+    throw new ConflictException(newPermissions.body.message);
+  }
+
   return newPermissions.body as Permission[];
 }
 
@@ -61,6 +70,7 @@ export async function generateNewPermissionsApi(
 
   const dto = new Array<CreatePermissionDto>();
   roleIds = roleIds ?? [];
+
   if (permissions === undefined || permissions.length === 0) {
     name = name ?? `Permission-${uuid()}`;
     dto.push({
@@ -80,15 +90,15 @@ export async function generateNewPermissionsApi(
       permissions,
     );
 
-    const missing = existingPermissions.filter(
-      (p) => !permissions.includes(p.code),
+    const missing = permissions.filter(
+      (p) => !existingPermissions.some((perm) => perm.code === p),
     );
 
     if (missing.length !== 0 && existingPermissions.length > 0) {
       dto.push(
         ...missing.map((p) => ({
-          name: p.code,
-          code: p.code,
+          name: p,
+          code: p,
           roleIds,
         })),
       );
@@ -121,7 +131,7 @@ export async function generateNewPermissionsApi(
   return newPermissions.body as Permission[];
 }
 
-export async function findPermissionsByCodesApi(
+export async function queryPermissionsByCodesApi(
   app: INestApplication,
   accessToken: string,
   permissions: string[],
@@ -195,6 +205,104 @@ export async function findPermissionsByIdsApi(
   }
 
   return permissions.body as Permission[];
+}
+
+export async function findPermissionsByCodesApi(
+  app: INestApplication,
+  accessToken: string,
+  codes: string[],
+): Promise<Permission[]> {
+  const httpServer = app.getHttpServer() as Server;
+
+  const permissionQuery = codes.map((p) => `codes=${p}`).join('&');
+
+  const permissions = await request(httpServer)
+    .get(`/permission/codes?${permissionQuery}`)
+    .set('Authorization', `Bearer ${accessToken}`);
+
+  if (permissions.status === 403) {
+    throw new ForbiddenException(permissions.body.message);
+  }
+
+  if (permissions.status === 401) {
+    throw new UnauthorizedException(permissions.body.message);
+  }
+
+  if (permissions.status === 400) {
+    throw new BadRequestException(permissions.body.message);
+  }
+
+  if (permissions.status === 404) {
+    throw new EntityNotFoundError('Permission', permissions.body.message);
+  }
+
+  if (permissions.status === 500) {
+    throw new InternalServerErrorException(permissions.body.message);
+  }
+
+  return permissions.body as Permission[];
+}
+
+export async function searchPermissionsByValueApi(
+  app: INestApplication,
+  accessToken: string,
+  value: string,
+): Promise<PermissionListResponseDto> {
+  const httpServer = app.getHttpServer() as Server;
+
+  const permissions = await request(httpServer)
+    .get(`/permission/${value}?page=1&limit=10`)
+    .set('Authorization', `Bearer ${accessToken}`);
+
+  if (permissions.status === 403) {
+    throw new ForbiddenException(permissions.body.message);
+  }
+
+  if (permissions.status === 401) {
+    throw new UnauthorizedException(permissions.body.message);
+  }
+
+  if (permissions.status === 400) {
+    throw new BadRequestException(permissions.body.message);
+  }
+
+  if (permissions.status === 500) {
+    throw new InternalServerErrorException(permissions.body.message);
+  }
+
+  return permissions.body as PermissionListResponseDto;
+}
+
+export async function updatePermissionsApi(
+  app: INestApplication,
+  accessToken: string,
+  permission: UpdatePermissionDto,
+  id: UUID,
+): Promise<Permission> {
+  const httpServer = app.getHttpServer() as Server;
+
+  const updatedPermission = await request(httpServer)
+    .patch(`/permission/${id}`)
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send(permission);
+
+  if (updatedPermission.status === 403) {
+    throw new ForbiddenException(updatedPermission.body.message);
+  }
+
+  if (updatedPermission.status === 401) {
+    throw new UnauthorizedException(updatedPermission.body.message);
+  }
+
+  if (updatedPermission.status === 404) {
+    throw new EntityNotFoundError('Permission', updatedPermission.body.message);
+  }
+
+  if (updatedPermission.status === 500) {
+    throw new InternalServerErrorException(updatedPermission.body.message);
+  }
+
+  return updatedPermission.body as Permission;
 }
 
 export function validatePermissionApiResponse(permissions: Permission[]): void {

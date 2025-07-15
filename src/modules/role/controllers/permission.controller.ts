@@ -59,6 +59,7 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+import { EntityNotFoundError } from 'typeorm';
 
 @ApiTags('Permissions')
 @TraceController()
@@ -138,6 +139,9 @@ export class PermissionController {
     @Body(new ParseArrayPipe({ items: CreatePermissionDto }))
     createPermissionDto: CreatePermissionDto[],
   ): Promise<Permission[]> {
+    if (createPermissionDto.length === 0) {
+      throw new BadRequestException('Permission creation data is required');
+    }
     return await this.permissionService.create(createPermissionDto);
   }
 
@@ -249,7 +253,7 @@ export class PermissionController {
       properties: {
         statusCode: { type: 'number', example: 404 },
         message: { type: 'string', example: PERMISSINO_NOT_FOUND_MSG },
-        error: { type: 'string', example: NotFoundException.name },
+        error: { type: 'string', example: EntityNotFoundError.name },
       },
     },
   })

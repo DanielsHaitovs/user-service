@@ -5,33 +5,73 @@ import {
   BadRequestException,
   ForbiddenException,
   type INestApplication,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 
+import type { UUID } from 'crypto';
 import type { Server } from 'http';
 import * as request from 'supertest';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-export async function createNewPermissionsApi(
+export async function createNewPermissionApi(
+  app: INestApplication,
+  accessToken: string,
+  permissions: Partial<CreatePermissionDto>[],
+): Promise<Permission[]> {
+  const httpServer = app.getHttpServer() as Server;
+
+  const newPermissions = await request(httpServer)
+    .post('/permission')
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send(permissions);
+
+  if (newPermissions.status === 403) {
+    throw new ForbiddenException(newPermissions.body.message);
+  }
+
+  if (newPermissions.status === 401) {
+    throw new UnauthorizedException(newPermissions.body.message);
+  }
+
+  if (newPermissions.status === 404) {
+    throw new EntityNotFoundError('Permission', newPermissions.body.message);
+  }
+
+  if (newPermissions.status === 500) {
+    throw new InternalServerErrorException(newPermissions.body.message);
+  }
+
+  if (newPermissions.status === 400) {
+    throw new BadRequestException(newPermissions.body.message);
+  }
+
+  return newPermissions.body as Permission[];
+}
+
+export async function generateNewPermissionsApi(
   app: INestApplication,
   accessToken: string,
   permissions?: string[],
+  roleIds?: UUID[],
+  name?: string,
 ): Promise<Permission[]> {
   const httpServer = app.getHttpServer() as Server;
 
   const dto = new Array<CreatePermissionDto>();
-
+  roleIds = roleIds ?? [];
   if (permissions === undefined || permissions.length === 0) {
+    name = name ?? `Permission-${uuid()}`;
     dto.push({
-      name: `Permission-${uuid()}`,
-      code: `permission-${uuid()}`,
-      roleIds: [],
+      name: `${name}-${uuid()}`,
+      code: `${name}-${uuid()}`,
+      roleIds,
     });
     dto.push({
       name: `Permission2-${uuid()}`,
       code: `permission2-${uuid()}`,
-      roleIds: [],
+      roleIds,
     });
   } else {
     const existingPermissions = await findPermissionsByCodesApi(
@@ -49,7 +89,7 @@ export async function createNewPermissionsApi(
         ...missing.map((p) => ({
           name: p.code,
           code: p.code,
-          roleIds: [],
+          roleIds,
         })),
       );
     } else if (missing.length === 0) {
@@ -119,6 +159,42 @@ export async function findPermissionsByCodesApi(
   const roles = newPermissions.body.roles as Role[];
 
   return roles.flatMap((role) => role.permissions);
+}
+
+export async function findPermissionsByIdsApi(
+  app: INestApplication,
+  accessToken: string,
+  ids: UUID[],
+): Promise<Permission[]> {
+  const httpServer = app.getHttpServer() as Server;
+
+  const permissionQuery = ids.map((p) => `ids=${p}`).join('&');
+
+  const permissions = await request(httpServer)
+    .get(`/permission/ids?${permissionQuery}`)
+    .set('Authorization', `Bearer ${accessToken}`);
+
+  if (permissions.status === 403) {
+    throw new ForbiddenException(permissions.body.message);
+  }
+
+  if (permissions.status === 401) {
+    throw new UnauthorizedException(permissions.body.message);
+  }
+
+  if (permissions.status === 400) {
+    throw new BadRequestException(permissions.body.message);
+  }
+
+  if (permissions.status === 404) {
+    throw new EntityNotFoundError('Permission', permissions.body.message);
+  }
+
+  if (permissions.status === 500) {
+    throw new InternalServerErrorException(permissions.body.message);
+  }
+
+  return permissions.body as Permission[];
 }
 
 export function validatePermissionApiResponse(permissions: Permission[]): void {

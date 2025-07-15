@@ -12,8 +12,10 @@ import { Type } from 'class-transformer';
 import {
   IsDate,
   IsNotEmpty,
+  IsOptional,
   IsString,
   IsUUID,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { UUID } from 'crypto';
@@ -27,6 +29,7 @@ export class PermissionBaseDto {
     required: true,
     type: String,
   })
+  @MinLength(1)
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -39,6 +42,7 @@ export class PermissionBaseDto {
     required: true,
     type: String,
   })
+  @MinLength(1)
   @IsString()
   @IsNotEmpty()
   code: string;
@@ -60,7 +64,7 @@ export class CreatePermissionDto extends PermissionBaseDto {
     required: true,
   })
   @IsUUID('all', { each: true })
-  @IsNotEmpty()
+  @IsOptional()
   roleIds: UUID[];
 
   constructor(name: string, code: string, roleIds: UUID[]) {

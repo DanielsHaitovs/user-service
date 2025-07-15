@@ -15,8 +15,8 @@ import { EntityNotFoundError } from 'typeorm';
 
 import { createNewDepartmentApi } from './department-api';
 import {
-  createNewPermissionsApi,
   findPermissionsByCodesApi,
+  generateNewPermissionsApi,
 } from './permissions-api';
 import { addPermissionsToRoleApi, createNewRoleApi } from './role-api';
 
@@ -35,7 +35,7 @@ export async function createNewUser(
   const role = await createNewRoleApi(app, accessToken);
 
   if (requiredPermissions.length === 0) {
-    const permissions = await createNewPermissionsApi(app, accessToken);
+    const permissions = await generateNewPermissionsApi(app, accessToken);
 
     await addPermissionsToRoleApi(
       app,
@@ -44,7 +44,7 @@ export async function createNewUser(
       permissions.map((p) => p.id),
     );
   } else {
-    await createNewPermissionsApi(app, accessToken, requiredPermissions);
+    await generateNewPermissionsApi(app, accessToken, requiredPermissions);
 
     const permissions = await findPermissionsByCodesApi(
       app,

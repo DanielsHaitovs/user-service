@@ -6,13 +6,17 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
-import { Role } from '@/role/entities/role.entity';
-import { batch } from '@/utils/batch.util';
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { EntityNotFoundError, Repository } from 'typeorm';
+import { Brackets, EntityNotFoundError, Repository } from 'typeorm';
+
+import { Role } from '../entities/role.entity';
 
 @Injectable()
 export class PermissionService {
@@ -29,8 +33,6 @@ export class PermissionService {
    * @returns The created permission entity.
    */
   async create(permissions: CreatePermissionDto[]): Promise<Permission[]> {
-    const permissionsBatch = batch(permissions, this.batchSize);
-
     const conflictNameOrCode = await this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
       .where(`${PERMISSION_QUERY_ALIAS}.name IN (:...names)`, {
@@ -42,24 +44,20 @@ export class PermissionService {
       .getMany();
 
     if (conflictNameOrCode.length > 0) {
-      throw new ConflictException('One or many names or codes alraedy exists');
+      throw new ConflictException(
+        `One or many names or codes alraedy exists ${conflictNameOrCode.map((p) => p.name).join(', ')}`,
+      );
     }
 
-    const savedPermissions: Permission[] = [];
-    for (const batch of permissionsBatch) {
-      const prepareForSave = batch.map((permission) => {
-        return this.permissionRepository.create({
-          code: permission.code,
-          name: permission.name,
-          role: { id: permission.roleId } as Role,
-        });
+    const permissionsToSave = permissions.map((permission) => {
+      return this.permissionRepository.create({
+        code: permission.code,
+        name: permission.name,
+        roles: permission.roleIds.map((roleId) => ({ id: roleId }) as Role),
       });
+    });
 
-      const saved = await this.permissionRepository.save(prepareForSave);
-      savedPermissions.push(...saved);
-    }
-
-    return savedPermissions;
+    return this.permissionRepository.save(permissionsToSave);
   }
 
   /**
@@ -69,8 +67,8 @@ export class PermissionService {
   async findByIds(ids: UUID[]): Promise<Permission[]> {
     const permissions = await this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
+      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.roles`, 'roles')
       .where(`${PERMISSION_QUERY_ALIAS}.id IN (:...ids)`, { ids })
-      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.role`, 'role')
       .getMany();
 
     if (permissions.length === 0) {
@@ -93,7 +91,7 @@ export class PermissionService {
     const permissions = await this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
       .where(`${PERMISSION_QUERY_ALIAS}.code IN (:...codes)`, { codes })
-      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.role`, 'role')
+      .leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.roles`, 'roles')
       .getMany();
 
     if (permissions.length === 0) {
@@ -116,7 +114,7 @@ export class PermissionService {
     sort: SortDto;
   }): Promise<PermissionListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
-      throw new ConflictException(
+      throw new BadRequestException(
         'Pagination parameters must be greater than 0',
       );
     }
@@ -171,20 +169,25 @@ export class PermissionService {
   async update(id: UUID, permission: UpdatePermissionDto): Promise<Permission> {
     await this.findByIds([id]);
 
-    const conflictNameOrCode = this.permissionRepository.createQueryBuilder(
-      PERMISSION_QUERY_ALIAS,
-    );
+    const conflictNameOrCode = this.permissionRepository
+      .createQueryBuilder(PERMISSION_QUERY_ALIAS)
+      .where(`${PERMISSION_QUERY_ALIAS}.id != :id`, { id });
 
-    if (permission.name !== undefined) {
-      conflictNameOrCode.where(`${PERMISSION_QUERY_ALIAS}.name = :name`, {
-        name: permission.name,
-      });
-    }
-
-    if (permission.code !== undefined) {
-      conflictNameOrCode.where(`${PERMISSION_QUERY_ALIAS}.code = :code`, {
-        code: permission.code,
-      });
+    if (permission.name !== undefined || permission.code !== undefined) {
+      conflictNameOrCode.andWhere(
+        new Brackets((qb) => {
+          if (permission.name !== undefined) {
+            qb.where(`${PERMISSION_QUERY_ALIAS}.name = :name`, {
+              name: permission.name,
+            });
+          }
+          if (permission.code !== undefined) {
+            qb.orWhere(`${PERMISSION_QUERY_ALIAS}.code = :code`, {
+              code: permission.code,
+            });
+          }
+        }),
+      );
     }
 
     if (permission.code !== undefined || permission.name !== undefined) {
@@ -236,6 +239,12 @@ export class PermissionService {
         `Could not delete permissinos, because IDs [${missingIds.join(', ')}] not found`,
       );
     }
+
+    existingPermissions.forEach((permission) => {
+      permission.roles = [];
+    });
+
+    await this.permissionRepository.save(existingPermissions);
 
     const result = await this.permissionRepository
       .createQueryBuilder()

@@ -80,11 +80,11 @@ export class RoleService {
     permissionIds: UUID[],
     roleId: UUID,
   ): Promise<Role> {
-    const role = await this.roleRepository.findOneBy({ id: roleId });
-
-    if (!role) {
-      throw new EntityNotFoundError('Role', `Role with id ${roleId} not found`);
-    }
+    const role = await this.roleRepository
+      .createQueryBuilder('role')
+      .where('role.id = :roleId', { roleId })
+      .leftJoinAndSelect('role.permissions', 'permissions')
+      .getOneOrFail();
 
     const permissions = await this.permissionService.findByIds(permissionIds);
 
@@ -96,7 +96,7 @@ export class RoleService {
     }
 
     // Associate permissions with the role
-    if (!role.permissions) {
+    if (role.permissions.length === 0) {
       role.permissions = permissions;
     } else {
       role.permissions.push(...permissions);

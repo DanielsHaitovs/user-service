@@ -50,7 +50,7 @@ import { EntityNotFoundError } from 'typeorm';
 
 const MISSING_ENTITY_MSG = 'User or role(s) not found';
 
-@ApiTags('User Roles')
+@ApiTags('Users Roles')
 @Controller('user-roles')
 @TraceController()
 @ApiBearerAuth('JWT-auth')

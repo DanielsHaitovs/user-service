@@ -10,6 +10,7 @@ import {
 import { EXAMPLE_ROLE_ID, READ_ROLE } from '@/lib/const/role.const';
 import {
   CREATE_USER,
+  CREATE_USER_ROLE,
   DELETE_USER,
   EMAIL_EXISTS_MSG,
   EXAMPLE_USER_DATE_OF_BIRTH,
@@ -108,7 +109,14 @@ export class UserController {
    * DTO validation. Generates secure passwords and initialization tokens.
    */
   @Post()
-  @Permissions(CREATE_USER, READ_USER, READ_DEPARTMENT, READ_ROLE)
+  @Permissions(
+    CREATE_USER,
+    READ_USER,
+    READ_DEPARTMENT,
+    READ_ROLE,
+    CREATE_USER_ROLE,
+    READ_USER_ROLE,
+  )
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new user',

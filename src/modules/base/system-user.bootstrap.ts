@@ -10,6 +10,7 @@ import { User } from '@/user/entities/user.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import type { INestApplication } from '@nestjs/common';
 
+import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 
 export async function ensureSystemUser(app: INestApplication): Promise<void> {
@@ -32,7 +33,7 @@ export async function ensureSystemUser(app: INestApplication): Promise<void> {
     firstName: 'System',
     lastName: 'User',
 
-    password: SYSTEM_USER_PASSWORD,
+    password: await bcrypt.hash(SYSTEM_USER_PASSWORD, 10),
     departments: [systemDepartment],
     isActive: true,
     isEmailVerified: true,
@@ -88,7 +89,7 @@ async function createSystemRole(dataSource: DataSource): Promise<void> {
   const newPermissions = permissionRepo.create({
     name: 'System Permissions',
     code: 'root_all',
-    role: systemRole,
+    roles: [{ id: systemRole.id }],
   });
 
   await permissionRepo.save(newPermissions);

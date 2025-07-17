@@ -84,11 +84,28 @@ export async function generateNewPermissionsApi(
       roleIds,
     });
   } else {
-    const existingPermissions = await findPermissionsByCodesApi(
-      app,
-      accessToken,
-      permissions,
-    );
+    let existingPermissions: Permission[] = [];
+
+    try {
+      existingPermissions = await findPermissionsByCodesApi(
+        app,
+        accessToken,
+        permissions,
+      );
+    } catch {
+      existingPermissions = [];
+    }
+
+    if (existingPermissions.length === 0) {
+      dto.push(
+        ...permissions.map((p) => ({
+          name: p,
+          code: p,
+          roleIds,
+        })),
+      );
+      return await createNewPermissionApi(app, accessToken, dto);
+    }
 
     const missing = permissions.filter(
       (p) => !existingPermissions.some((perm) => perm.code === p),
@@ -286,6 +303,10 @@ export async function updatePermissionsApi(
     .set('Authorization', `Bearer ${accessToken}`)
     .send(permission);
 
+  if (updatedPermission.status === 400) {
+    throw new BadRequestException(updatedPermission.body.message);
+  }
+
   if (updatedPermission.status === 403) {
     throw new ForbiddenException(updatedPermission.body.message);
   }
@@ -298,11 +319,51 @@ export async function updatePermissionsApi(
     throw new EntityNotFoundError('Permission', updatedPermission.body.message);
   }
 
+  if (updatedPermission.status === 409) {
+    throw new ConflictException(updatedPermission.body.message);
+  }
+
   if (updatedPermission.status === 500) {
     throw new InternalServerErrorException(updatedPermission.body.message);
   }
 
   return updatedPermission.body as Permission;
+}
+
+export async function deletePermissionsApi(
+  app: INestApplication,
+  accessToken: string,
+  ids: UUID[],
+): Promise<{ deleted: number }> {
+  const httpServer = app.getHttpServer() as Server;
+
+  const permissionQuery = ids.map((p) => `ids=${p}`).join('&');
+
+  const permissions = await request(httpServer)
+    .delete(`/permission?${permissionQuery}`)
+    .set('Authorization', `Bearer ${accessToken}`);
+
+  if (permissions.status === 400) {
+    throw new BadRequestException(permissions.body.message);
+  }
+
+  if (permissions.status === 403) {
+    throw new ForbiddenException(permissions.body.message);
+  }
+
+  if (permissions.status === 401) {
+    throw new UnauthorizedException(permissions.body.message);
+  }
+
+  if (permissions.status === 404) {
+    throw new EntityNotFoundError('Permission', permissions.body.message);
+  }
+
+  if (permissions.status === 500) {
+    throw new InternalServerErrorException(permissions.body.message);
+  }
+
+  return permissions.body as { deleted: number };
 }
 
 export function validatePermissionApiResponse(permissions: Permission[]): void {

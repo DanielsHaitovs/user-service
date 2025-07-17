@@ -14,7 +14,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { EntityNotFoundError, Repository } from 'typeorm';
+import { Brackets, EntityNotFoundError, Repository } from 'typeorm';
 
 import { Role } from '../entities/role.entity';
 
@@ -169,20 +169,25 @@ export class PermissionService {
   async update(id: UUID, permission: UpdatePermissionDto): Promise<Permission> {
     await this.findByIds([id]);
 
-    const conflictNameOrCode = this.permissionRepository.createQueryBuilder(
-      PERMISSION_QUERY_ALIAS,
-    );
+    const conflictNameOrCode = this.permissionRepository
+      .createQueryBuilder(PERMISSION_QUERY_ALIAS)
+      .where(`${PERMISSION_QUERY_ALIAS}.id != :id`, { id });
 
-    if (permission.name !== undefined) {
-      conflictNameOrCode.where(`${PERMISSION_QUERY_ALIAS}.name = :name`, {
-        name: permission.name,
-      });
-    }
-
-    if (permission.code !== undefined) {
-      conflictNameOrCode.where(`${PERMISSION_QUERY_ALIAS}.code = :code`, {
-        code: permission.code,
-      });
+    if (permission.name !== undefined || permission.code !== undefined) {
+      conflictNameOrCode.andWhere(
+        new Brackets((qb) => {
+          if (permission.name !== undefined) {
+            qb.where(`${PERMISSION_QUERY_ALIAS}.name = :name`, {
+              name: permission.name,
+            });
+          }
+          if (permission.code !== undefined) {
+            qb.orWhere(`${PERMISSION_QUERY_ALIAS}.code = :code`, {
+              code: permission.code,
+            });
+          }
+        }),
+      );
     }
 
     if (permission.code !== undefined || permission.name !== undefined) {

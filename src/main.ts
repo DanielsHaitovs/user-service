@@ -2,6 +2,7 @@ import { ensureSystemUser } from '@/base/system-user.bootstrap';
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -14,6 +15,19 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   app.useGlobalFilters(new EntityNotFoundFilter());
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: false, // 👈 critical
+      },
+      forbidUnknownValues: true, // 👈 also critical
+      validateCustomDecorators: true,
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('MakeEasyCommerce User API')

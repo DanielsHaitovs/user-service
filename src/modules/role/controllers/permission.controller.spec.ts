@@ -2,6 +2,7 @@ import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import {
   CREATE_PERMISSION,
   CREATE_ROLE,
+  DELETE_PERMISSION,
   READ_PERMISSION,
   READ_ROLE,
   UPDATE_PERMISSION,
@@ -11,6 +12,7 @@ import { initTestUser } from '@/test/helper/auth-user-api';
 import { systemUserAuthToken } from '@/test/helper/create-api-user';
 import {
   createNewPermissionApi,
+  deletePermissionsApi,
   findPermissionsByCodesApi,
   findPermissionsByIdsApi,
   generateNewPermissionsApi,
@@ -435,7 +437,7 @@ describe('PermissionController', () => {
   });
 
   describe('/permissions (PATCH)', () => {
-    it('/permissions (PATCH) - should update permissions', async () => {
+    it('/permissions (PATCH) - should update permission name and code', async () => {
       const userToken = await initTestUser(app, systemToken, [
         READ_PERMISSION,
         CREATE_PERMISSION,
@@ -464,62 +466,253 @@ describe('PermissionController', () => {
 
       validatePermissionApiResponse([updatedPermissions]);
     });
-    // it('/permissions (PATCH) - should not update permissions because user does not have permission -> read role ', async () => {
-    //   const userToken = await initTestUser(app, systemToken, [
-    //     READ_ROLE,
-    //     CREATE_PERMISSION,
-    //     READ_PERMISSION,
-    //   ]);
+    it('/permissions (PATCH) - should not update permission because is not authorized', async () => {
+      await expect(
+        updatePermissionsApi(
+          app,
+          '',
+          { name: 'zdfs', code: 'asdasd' },
+          uuid() as UUID,
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+    it('/permissions (PATCH) - should not update permission because is user does not have required permission -> permission:read', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        CREATE_PERMISSION,
+        UPDATE_PERMISSION,
+        READ_ROLE,
+        CREATE_ROLE,
+      ]);
 
-    //   const permissions = await generateNewPermissionsApi(app, userToken);
+      const permissions = await generateNewPermissionsApi(app, userToken);
 
-    //   validatePermissionApiResponse(permissions);
+      validatePermissionApiResponse(permissions);
 
-    //   const targetToken = await initTestUser(app, systemToken, [
-    //     READ_PERMISSION,
-    //   ]);
+      if (permissions[0] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
 
-    //   await expect(
-    //     updatePermissionsApi(
-    //       app,
-    //       targetToken,
-    //       permissions.map((p) => ({
-    //         ...p,
-    //         name: `${p.name}-updated`,
-    //         code: `${p.code}-updated`,
-    //       })),
-    //     ),
-    //   ).rejects.toThrow(ForbiddenException);
-    // });
-    // it('/permissions (PATCH) - should not update permissions because user does not have permission -> read permissions ', async () => {
-    //   const userToken = await initTestUser(app, systemToken, [
-    //     READ_ROLE,
-    //     CREATE_PERMISSION,
-    //     READ_PERMISSION,
-    //   ]);
+      const targetToken = await initTestUser(app, systemToken, [
+        UPDATE_PERMISSION,
+      ]);
 
-    //   const permissions = await generateNewPermissionsApi(app, userToken);
+      permissions[0].code = `${permissions[0].code}-updated`;
+      permissions[0].name = `${permissions[0].name}-updated`;
 
-    //   validatePermissionApiResponse(permissions);
+      await expect(
+        updatePermissionsApi(
+          app,
+          targetToken,
+          { name: permissions[0].name, code: permissions[0].code },
+          permissions[0].id,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('/permissions (PATCH) - should not update permission because is user does not have required permission -> permission:update', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        CREATE_PERMISSION,
+        UPDATE_PERMISSION,
+        READ_ROLE,
+        CREATE_ROLE,
+      ]);
 
-    //   const targetToken = await initTestUser(app, systemToken, [READ_ROLE]);
+      const permissions = await generateNewPermissionsApi(app, userToken);
 
-    //   await expect(
-    //     updatePermissionsApi(
-    //       app,
-    //       targetToken,
-    //       permissions.map((p) => ({
-    //         ...p,
-    //         name: `${p.name}-updated`,
-    //         code: `${p.code}-updated`,
-    //       })),
-    //     ),
-    //   ).rejects.toThrow(ForbiddenException);
-    // });
-    // it('/permissions (PATCH) - should not update permissions because user is not authorized', async () => {
-    //   await expect(
-    //     updatePermissionsApi(app, '', [{ id: uuid() as UUID }]),
-    //   ).rejects.toThrow(UnauthorizedException);
-    // });
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      const targetToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+      ]);
+
+      permissions[0].code = `${permissions[0].code}-updated`;
+      permissions[0].name = `${permissions[0].name}-updated`;
+
+      await expect(
+        updatePermissionsApi(
+          app,
+          targetToken,
+          { name: permissions[0].name, code: permissions[0].code },
+          permissions[0].id,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('/permissions (PATCH) - should not update permission because permission id does not exist', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        CREATE_PERMISSION,
+        UPDATE_PERMISSION,
+        READ_ROLE,
+        CREATE_ROLE,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      permissions[0].code = `${permissions[0].code}-updated`;
+      permissions[0].name = `${permissions[0].name}-updated`;
+
+      await expect(
+        updatePermissionsApi(
+          app,
+          userToken,
+          { name: permissions[0].name, code: permissions[0].code },
+          uuid() as UUID,
+        ),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+    it('/permissions (PATCH) - should not update permission because permission name already exists', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        CREATE_PERMISSION,
+        UPDATE_PERMISSION,
+        READ_ROLE,
+        CREATE_ROLE,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined || permissions[1] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      permissions[1].code = `${permissions[1].code}-updated`;
+
+      await expect(
+        updatePermissionsApi(
+          app,
+          userToken,
+          { name: permissions[0].name, code: permissions[1].code },
+          permissions[1].id,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+    it('/permissions (PATCH) - should not update permission because permission code already exists', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        CREATE_PERMISSION,
+        UPDATE_PERMISSION,
+        READ_ROLE,
+        CREATE_ROLE,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, userToken);
+
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined || permissions[1] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      permissions[1].name = `${permissions[1].name}-updated`;
+
+      await expect(
+        updatePermissionsApi(
+          app,
+          userToken,
+          { name: permissions[1].name, code: permissions[0].code },
+          permissions[1].id,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('/permissions (DELETE)', () => {
+    it('/permissions (DELETE) - should delete permission by ids', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        DELETE_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, systemToken);
+
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined || permissions[1] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      const ids = permissions.map((p) => p.id);
+
+      const deletedPermissions = await deletePermissionsApi(
+        app,
+        userToken,
+        ids,
+      );
+
+      expect(deletedPermissions).toBeDefined();
+      expect(deletedPermissions.deleted).toBe(2);
+    });
+    it('/permissions (DELETE) - should not delete permission by ids because user is not authorized', async () => {
+      await expect(
+        deletePermissionsApi(app, '', [uuid() as UUID]),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+    it('/permissions (PATCH) - should not update permission because is user does not have required permission -> permission:read', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        DELETE_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, systemToken);
+
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined || permissions[1] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      const ids = permissions.map((p) => p.id);
+
+      await expect(deletePermissionsApi(app, userToken, ids)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    it('/permissions (PATCH) - should not update permission because is user does not have required permission -> permission:delete', async () => {
+      const userToken = await initTestUser(app, systemToken, [READ_PERMISSION]);
+
+      const permissions = await generateNewPermissionsApi(app, systemToken);
+
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined || permissions[1] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      const ids = permissions.map((p) => p.id);
+
+      await expect(deletePermissionsApi(app, userToken, ids)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    it('/permissions (PATCH) - should not update permission because permission id was not found', async () => {
+      const userToken = await initTestUser(app, systemToken, [
+        READ_PERMISSION,
+        DELETE_PERMISSION,
+      ]);
+
+      const permissions = await generateNewPermissionsApi(app, systemToken);
+
+      validatePermissionApiResponse(permissions);
+
+      if (permissions[0] === undefined || permissions[1] === undefined) {
+        throw new Error('No permissions found to test update');
+      }
+
+      await expect(
+        deletePermissionsApi(app, userToken, [uuid() as UUID]),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
   });
 });

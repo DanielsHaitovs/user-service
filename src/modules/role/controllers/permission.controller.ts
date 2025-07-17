@@ -529,7 +529,7 @@ export class PermissionController {
     },
   })
   async deleteByIds(
-    @Query(new ParseArrayPipe({ items: String })) ids: UUID[],
+    @Query('ids', new ParseArrayPipe({ items: String })) ids: UUID[],
   ): Promise<{ deleted: number }> {
     return await this.permissionService.deleteByIds(ids);
   }

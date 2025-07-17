@@ -8,6 +8,7 @@ import {
 import { RoleResponseDto } from '@/role/dto/role.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
+import { Trim } from 'class-sanitizer';
 import { Type } from 'class-transformer';
 import {
   IsDate,
@@ -32,6 +33,7 @@ export class PermissionBaseDto {
   @MinLength(1)
   @IsString()
   @IsNotEmpty()
+  @Trim()
   name: string;
 
   @ApiProperty({
@@ -45,6 +47,7 @@ export class PermissionBaseDto {
   @MinLength(1)
   @IsString()
   @IsNotEmpty()
+  @Trim()
   code: string;
 
   constructor(name: string, code: string) {
@@ -65,6 +68,7 @@ export class CreatePermissionDto extends PermissionBaseDto {
   })
   @IsUUID('all', { each: true })
   @IsOptional()
+  @Trim('', { each: true })
   roleIds: UUID[];
 
   constructor(name: string, code: string, roleIds: UUID[]) {

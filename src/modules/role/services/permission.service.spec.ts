@@ -50,10 +50,13 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       const conflictPermissinos = new Array<CreatePermissionDto>();
 
       permissions.forEach((permission) => {
+        if (permission.roles[0] === undefined) {
+          throw new Error('Permission should have a role');
+        }
         conflictPermissinos.push({
           name: permission.name,
           code: `${permission.code}-1`,
-          roleId: permission.role.id,
+          roleIds: [permission.roles[0].id],
         });
       });
 
@@ -71,10 +74,13 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       const conflictPermissinos = new Array<CreatePermissionDto>();
 
       permissions.forEach((permission) => {
+        if (permission.roles[0] === undefined) {
+          throw new Error('Permission should have a role');
+        }
         conflictPermissinos.push({
           name: `${permission.name}-1`,
           code: permission.code,
-          roleId: permission.role.id,
+          roleIds: [permission.roles[0].id],
         });
       });
 

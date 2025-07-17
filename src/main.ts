@@ -2,6 +2,7 @@ import { ensureSystemUser } from '@/base/system-user.bootstrap';
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -15,6 +16,19 @@ async function bootstrap(): Promise<void> {
 
   app.useGlobalFilters(new EntityNotFoundFilter());
 
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: false, // 👈 critical
+      },
+      forbidUnknownValues: true, // 👈 also critical
+      validateCustomDecorators: true,
+    }),
+  );
+
   const config = new DocumentBuilder()
     .setTitle('MakeEasyCommerce User API')
     .setDescription('E-commerce platform User API documentation')
@@ -23,6 +37,7 @@ async function bootstrap(): Promise<void> {
     .addTag('Auth', 'Auth in management operations')
     .addTag('Me', 'Authenticated user session in management operations')
     .addTag('Users', 'User management operations')
+    .addTag('Users Roles', 'User Roles management operations')
     .addTag('Departments', 'Departments management operations')
     .addTag('Roles', 'Roles management operations')
     .addTag('Permissions', 'Permissions management operations')

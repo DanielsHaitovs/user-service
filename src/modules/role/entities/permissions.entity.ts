@@ -3,10 +3,10 @@ import { Role } from '@/role/entities/role.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
-import { Column, Entity, ManyToOne, Unique } from 'typeorm';
+import { Column, Entity, ManyToMany, Unique } from 'typeorm';
 
 @Entity('permissions')
-@Unique('UQ_PERMISSION', ['code', 'name'], {
+@Unique('UQ_PERMISSION', ['name', 'code'], {
   deferrable: 'INITIALLY IMMEDIATE',
 })
 export class Permission extends MecBaseEntity {
@@ -20,13 +20,13 @@ export class Permission extends MecBaseEntity {
   @IsString()
   name: string;
 
-  @ManyToOne(() => Role, (role) => role.permissions)
-  role: Role;
+  @ManyToMany(() => Role, (role) => role.permissions)
+  roles: Role[];
 
   constructor(
     name: string,
     code: string,
-    role: Role,
+    roles: Role[],
     id: UUID,
     createdAt: Date,
     updatedAt: Date,
@@ -34,6 +34,6 @@ export class Permission extends MecBaseEntity {
     super(id, createdAt, updatedAt);
     this.name = name;
     this.code = code;
-    this.role = role;
+    this.roles = roles;
   }
 }

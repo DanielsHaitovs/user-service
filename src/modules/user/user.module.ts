@@ -9,13 +9,15 @@ import { UserController } from '@/user/user.controller';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { UserRoleController } from './user-role.controller';
+
 @Module({
   imports: [
     DepartmentModule,
     RolesModule,
     TypeOrmModule.forFeature([User, UserRole]),
   ],
-  controllers: [UserController],
+  controllers: [UserController, UserRoleController],
   providers: [UserService, UserQueryService, UserRoleService],
   exports: [UserService, UserQueryService, UserRoleService],
 })

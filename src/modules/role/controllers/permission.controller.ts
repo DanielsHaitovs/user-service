@@ -1,5 +1,6 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
+import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
   CREATE_PERMISSION,
   DELETE_PERMISSION,
@@ -59,6 +60,7 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+import { EntityNotFoundError } from 'typeorm';
 
 @ApiTags('Permissions')
 @TraceController()
@@ -87,7 +89,7 @@ export class PermissionController {
           {
             name: EXAMPLE_PERMISSION_NAME,
             code: EXAMPLE_PERMISSION_CODE,
-            roleId: EXAMPLE_ROLE_ID,
+            roleIds: [EXAMPLE_ROLE_ID],
           },
         ],
       },
@@ -138,6 +140,9 @@ export class PermissionController {
     @Body(new ParseArrayPipe({ items: CreatePermissionDto }))
     createPermissionDto: CreatePermissionDto[],
   ): Promise<Permission[]> {
+    if (createPermissionDto.length === 0) {
+      throw new BadRequestException('Permission creation data is required');
+    }
     return await this.permissionService.create(createPermissionDto);
   }
 
@@ -161,7 +166,7 @@ export class PermissionController {
     description: 'Permission found and returned successfully',
     example: [
       {
-        id: [EXAMPLE_PERMISSION_ID],
+        id: EXAMPLE_PERMISSION_ID,
         name: EXAMPLE_PERMISSION_NAME,
         code: EXAMPLE_PERMISSION_CODE,
       },
@@ -201,7 +206,7 @@ export class PermissionController {
     },
   })
   async getPermissionById(
-    @Query('ids', ParseArrayPipe) ids: UUID[],
+    @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
   ): Promise<Permission[]> {
     return await this.permissionService.findByIds(ids);
   }
@@ -249,7 +254,7 @@ export class PermissionController {
       properties: {
         statusCode: { type: 'number', example: 404 },
         message: { type: 'string', example: PERMISSINO_NOT_FOUND_MSG },
-        error: { type: 'string', example: NotFoundException.name },
+        error: { type: 'string', example: EntityNotFoundError.name },
       },
     },
   })
@@ -524,7 +529,7 @@ export class PermissionController {
     },
   })
   async deleteByIds(
-    @Query(new ParseArrayPipe({ items: String })) ids: UUID[],
+    @Query('ids', new ParseArrayPipe({ items: String })) ids: UUID[],
   ): Promise<{ deleted: number }> {
     return await this.permissionService.deleteByIds(ids);
   }

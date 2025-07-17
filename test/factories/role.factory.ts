@@ -39,36 +39,7 @@ export async function createRoleWithPermissins(
 
   const role = await roleService.create(dto);
 
-  expect(role).toBeDefined();
-  expect(role.id).toBeDefined();
-  expect(role.name).toBe(dto.name);
-
-  expect(role.permissions).toHaveLength(2);
-
-  if (role.permissions == undefined) {
-    throw new Error(
-      'Could not create permissions for role, permissions should exist by now',
-    );
-  }
-
-  const [firstPermission, secondPermission] = role.permissions;
-
-  if (firstPermission === undefined || secondPermission === undefined) {
-    throw new Error('Permissino should be defined');
-  }
-
-  expect(role.permissions.some((p) => p.code === firstPermission.code)).toBe(
-    true,
-  );
-  expect(role.permissions.some((p) => p.code === secondPermission.code)).toBe(
-    true,
-  );
-  expect(role.permissions.some((p) => p.name === firstPermission.name)).toBe(
-    true,
-  );
-  expect(role.permissions.some((p) => p.name === secondPermission.name)).toBe(
-    true,
-  );
+  validateRoleWithPermissions(role, dto);
 
   return role;
 }
@@ -92,6 +63,7 @@ export async function addPermissionsToRole(
 
   return updatedRole;
 }
+
 export async function findRolesByIds(
   roleService: RoleService,
 ): Promise<Role[]> {
@@ -156,12 +128,6 @@ function validateRoleWithPermissions(
   expect(role.name).toBe(dto.name);
 
   expect(role.permissions).toHaveLength(2);
-
-  if (role.permissions == undefined) {
-    throw new Error(
-      'Could not create permissions for role, permissions should exist by now',
-    );
-  }
 
   const [firstPermission, secondPermission] = role.permissions;
 

@@ -2,7 +2,6 @@ import { Permissions } from '@/common/decorators/permission.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import {
   CREATE_ROLE,
-  DELETE_PERMISSION,
   DELETE_ROLE,
   EXAMPLE_ROLE_DESCRIPTION,
   EXAMPLE_ROLE_ID,
@@ -74,7 +73,7 @@ export class RolesController {
   ) {}
 
   @Post()
-  @Permissions(CREATE_ROLE, READ_ROLE, DELETE_PERMISSION)
+  @Permissions(CREATE_ROLE, READ_ROLE, READ_PERMISSION)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new role',

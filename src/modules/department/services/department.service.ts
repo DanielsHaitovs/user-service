@@ -1,11 +1,16 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
 import {
   CreateDepartmentDto,
+  DepartmentListResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
 import { Department } from '@/department/entities/department.entity';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
@@ -86,30 +91,43 @@ export class DepartmentService {
     pagination,
     sort,
   }: {
-    value: string | number;
+    value: string;
     pagination: PaginationDto;
     sort: SortDto;
-  }): Promise<Department[]> {
+  }): Promise<DepartmentListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
-      throw new ConflictException(
+      throw new BadRequestException(
         'Pagination parameters must be greater than 0',
       );
     }
 
-    return await this.departmentRepository
+    const { page, limit } = pagination;
+
+    const departments = await this.departmentRepository
       .createQueryBuilder(DEPARTMENT_QUERY_ALIAS)
       .where(`${DEPARTMENT_QUERY_ALIAS}.name like :value`, {
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         value: `%${value}%`,
       })
-      .where(`${DEPARTMENT_QUERY_ALIAS}.country like :value`, {
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      .orWhere(`${DEPARTMENT_QUERY_ALIAS}.country like :value`, {
+        value: `%${value}%`,
+      })
+      .orWhere(`${DEPARTMENT_QUERY_ALIAS}.id::text ILIKE :value`, {
         value: `%${value}%`,
       })
       .orderBy(`${DEPARTMENT_QUERY_ALIAS}.${sort.sortField}`, sort.sortOrder)
-      .skip((pagination.page - 1) * pagination.limit)
-      .take(pagination.limit)
-      .getMany();
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalCount = departments[1];
+
+    return {
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+      departments: departments[0],
+    };
   }
 
   /**

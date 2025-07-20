@@ -25,7 +25,6 @@ import { SelectQueryBuilder } from 'typeorm';
  */
 @Injectable()
 export class UserQueryService extends QueryService {
-  private readonly departmentQueryAlias = `${DEPARTMENT_QUERY_ALIAS}s`;
   private readonly userRolesQueryAlias = `${USER_ROLE_QUERY_ALIAS}s`;
   /**
    * Retrieves users based on dynamic filtering criteria with pagination and sorting support.
@@ -108,7 +107,7 @@ export class UserQueryService extends QueryService {
     }
 
     // Join department relation if specified or if IDs are provided
-    this.joinEntityRelation(queryBuilder, this.departmentQueryAlias, {
+    this.joinEntityRelation(queryBuilder, DEPARTMENT_QUERY_ALIAS, {
       include: includeDepartment,
       filters: {
         id: departmentIds,
@@ -119,12 +118,7 @@ export class UserQueryService extends QueryService {
 
     // Filter by department IDs if provided
     if (departmentIds && departmentIds.length > 0) {
-      this.whereIn(
-        queryBuilder,
-        'id',
-        departmentIds,
-        this.departmentQueryAlias,
-      );
+      this.whereIn(queryBuilder, 'id', departmentIds, DEPARTMENT_QUERY_ALIAS);
     }
 
     if (departmentCountries && departmentCountries.length > 0) {
@@ -132,7 +126,7 @@ export class UserQueryService extends QueryService {
         queryBuilder,
         'country',
         departmentCountries,
-        this.departmentQueryAlias,
+        DEPARTMENT_QUERY_ALIAS,
       );
     }
 
@@ -280,7 +274,7 @@ export class UserQueryService extends QueryService {
     if (selectDepartmentFields && selectDepartmentFields.length > 0) {
       select.push(
         ...selectDepartmentFields.flatMap(
-          (field) => `${this.departmentQueryAlias}.${field}`,
+          (field) => `${DEPARTMENT_QUERY_ALIAS}.${field}`,
         ),
       );
     } else if (
@@ -290,7 +284,7 @@ export class UserQueryService extends QueryService {
     ) {
       select.push(
         ...getDepartmentSelectableFields().flatMap(
-          (field) => `${this.departmentQueryAlias}.${field}`,
+          (field) => `${DEPARTMENT_QUERY_ALIAS}.${field}`,
         ),
       );
     }

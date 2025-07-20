@@ -36,7 +36,7 @@ export async function createNewUser(
   const httpServer = app.getHttpServer() as Server;
 
   const department = await createNewDepartmentApi(app, accessToken);
-  const role = await createNewRoleApi(app, accessToken);
+  const role = await createNewRoleApi(app, accessToken, undefined);
 
   if (requiredPermissions.length === 0) {
     const permissions = await generateNewPermissionsApi(app, accessToken);

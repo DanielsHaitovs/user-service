@@ -641,7 +641,7 @@ describe('PermissionController', () => {
       validatePermissionApiResponse(permissions);
 
       if (permissions[0] === undefined || permissions[1] === undefined) {
-        throw new Error('No permissions found to test update');
+        throw new Error('No permissions found to test delete');
       }
 
       const ids = permissions.map((p) => p.id);
@@ -660,7 +660,7 @@ describe('PermissionController', () => {
         deletePermissionsApi(app, '', [uuid() as UUID]),
       ).rejects.toThrow(UnauthorizedException);
     });
-    it('/permissions (PATCH) - should not update permission because is user does not have required permission -> permission:read', async () => {
+    it('/permissions (DELETE) - should not delete permission because is user does not have required permission -> permission:read', async () => {
       const userToken = await initTestUser(app, systemToken, [
         DELETE_PERMISSION,
       ]);
@@ -670,7 +670,7 @@ describe('PermissionController', () => {
       validatePermissionApiResponse(permissions);
 
       if (permissions[0] === undefined || permissions[1] === undefined) {
-        throw new Error('No permissions found to test update');
+        throw new Error('No permissions found to test delete');
       }
 
       const ids = permissions.map((p) => p.id);
@@ -679,7 +679,7 @@ describe('PermissionController', () => {
         ForbiddenException,
       );
     });
-    it('/permissions (PATCH) - should not update permission because is user does not have required permission -> permission:delete', async () => {
+    it('/permissions (DELETE) - should not delete permission because is user does not have required permission -> permission:delete', async () => {
       const userToken = await initTestUser(app, systemToken, [READ_PERMISSION]);
 
       const permissions = await generateNewPermissionsApi(app, systemToken);
@@ -687,7 +687,7 @@ describe('PermissionController', () => {
       validatePermissionApiResponse(permissions);
 
       if (permissions[0] === undefined || permissions[1] === undefined) {
-        throw new Error('No permissions found to test update');
+        throw new Error('No permissions found to test delete');
       }
 
       const ids = permissions.map((p) => p.id);
@@ -696,7 +696,7 @@ describe('PermissionController', () => {
         ForbiddenException,
       );
     });
-    it('/permissions (PATCH) - should not update permission because permission id was not found', async () => {
+    it('/permissions (DELETE) - should not delete permission because permission id was not found', async () => {
       const userToken = await initTestUser(app, systemToken, [
         READ_PERMISSION,
         DELETE_PERMISSION,
@@ -707,7 +707,7 @@ describe('PermissionController', () => {
       validatePermissionApiResponse(permissions);
 
       if (permissions[0] === undefined || permissions[1] === undefined) {
-        throw new Error('No permissions found to test update');
+        throw new Error('No permissions found to test delete');
       }
 
       await expect(

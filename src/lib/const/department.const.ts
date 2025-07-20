@@ -26,7 +26,7 @@ export const EXAMPLE_DEPARTMENT_COUNTRY = 'United States';
  * Standard example name used in API documentation and test fixtures.
  * Represents a department name that is commonly used for testing scenarios.
  */
-export const DEPARTMENT_QUERY_ALIAS = 'department';
+export const DEPARTMENT_QUERY_ALIAS = 'departments';
 
 /**
  * Standard example description used in API documentation and test fixtures.

@@ -22,9 +22,9 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: {
-        enableImplicitConversion: false, // 👈 critical
+        enableImplicitConversion: false,
       },
-      forbidUnknownValues: true, // 👈 also critical
+      forbidUnknownValues: true,
       validateCustomDecorators: true,
     }),
   );
@@ -41,6 +41,7 @@ async function bootstrap(): Promise<void> {
     .addTag('Departments', 'Departments management operations')
     .addTag('Roles', 'Roles management operations')
     .addTag('Permissions', 'Permissions management operations')
+    .addServer('/users')
     .addBearerAuth(
       {
         type: 'http',

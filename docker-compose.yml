@@ -3,11 +3,11 @@ services:
     image: postgres
     env_file: .env
     environment:
-      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_DB: ${USER_DATABASE_NAME}
       POSTGRES_USER: ${DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     ports:
-      - "${DATABASE_PORT}:5432"
+      - "${USER_DATABASE_PORT}:5432"
     networks:
       mec_network:
       #     ipv4_address: 172.28.0.2

@@ -2,9 +2,16 @@ import {
   EXAMPLE_DEPARTMENT_COUNTRY,
   EXAMPLE_DEPARTMENT_NAME,
 } from '@/lib/const/department.const';
+import { PaginatedResponseDto } from '@/modules/base/dto/pagination.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 import { UUID } from 'crypto';
 
 export class DepartmentBaseDto {
@@ -54,6 +61,28 @@ export class DepartmentResponseDto extends DepartmentBaseDto {
     this.id = id;
     this.name = name;
     this.country = country;
+  }
+}
+
+export class DepartmentListResponseDto extends PaginatedResponseDto {
+  @ApiProperty({
+    type: DepartmentResponseDto,
+    isArray: true,
+    description: 'List of departments',
+  })
+  @Type(() => DepartmentResponseDto)
+  @ValidateNested({ each: true })
+  departments: DepartmentResponseDto[];
+
+  constructor(
+    total: number,
+    page: number,
+    limit: number,
+    totalPages: number,
+    departments: DepartmentResponseDto[],
+  ) {
+    super(total, page, limit, totalPages);
+    this.departments = departments;
   }
 }
 

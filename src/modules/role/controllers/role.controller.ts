@@ -1,5 +1,6 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
+import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
   CREATE_ROLE,
   DELETE_ROLE,
@@ -103,10 +104,7 @@ export class RolesController {
         message: {
           type: 'array',
           items: { type: 'string' },
-          example: [
-            'name should not be empty',
-            'description should not be empty',
-          ],
+          example: ['name should not be empty'],
         },
         error: { type: 'string', example: BadRequestException.name },
       },
@@ -114,13 +112,11 @@ export class RolesController {
   })
   @ApiCreatedResponse({
     description: 'Role successfully created',
-    example: [
-      {
-        id: [EXAMPLE_ROLE_ID],
-        name: EXAMPLE_ROLE_NAME,
-        description: EXAMPLE_ROLE_DESCRIPTION,
-      },
-    ],
+    example: {
+      id: [EXAMPLE_ROLE_ID],
+      name: EXAMPLE_ROLE_NAME,
+      description: EXAMPLE_ROLE_DESCRIPTION,
+    },
   })
   @ApiInternalServerErrorResponse({
     description: InternalServerErrorException.name,
@@ -197,7 +193,7 @@ export class RolesController {
     },
   })
   async getRolesByIds(
-    @Query('ids', ParseArrayPipe) ids: UUID[],
+    @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
   ): Promise<Role[]> {
     return await this.roleService.findByIds(ids);
   }
@@ -272,6 +268,10 @@ export class RolesController {
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
   ): Promise<RoleListResponseDto> {
+    if (!sortField || sortField === '') {
+      sortField = 'name';
+    }
+
     return await this.roleService.searchFor({
       value,
       pagination: {
@@ -440,7 +440,7 @@ export class RolesController {
     },
   })
   async deleteByIds(
-    @Query(new ParseArrayPipe({ items: String })) ids: UUID[],
+    @Query('ids', new ParseArrayPipe({ items: String })) ids: UUID[],
   ): Promise<{ deleted: number }> {
     return await this.roleService.deleteByIds(ids);
   }

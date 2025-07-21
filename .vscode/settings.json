@@ -39,5 +39,6 @@
   "emmet.includeLanguages": {
     "typescript": "html"
   },
-  "jest.runMode": "on-demand"
+  "jest.runMode": "on-demand",
+  "jest.rootPath": "./dist"
 }

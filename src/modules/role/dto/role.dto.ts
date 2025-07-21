@@ -15,6 +15,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { UUID } from 'crypto';
@@ -23,8 +24,10 @@ export class RoleBaseDto {
   @ApiProperty({
     example: EXAMPLE_ROLE_NAME,
     description: 'Name of the role',
+    required: true,
     type: String,
   })
+  @MinLength(5)
   @IsString()
   @IsNotEmpty()
   name: string;

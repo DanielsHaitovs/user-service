@@ -457,6 +457,10 @@ export class UserController {
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
   ): Promise<UserListResponseDto> {
+    if (!sortField || sortField === '') {
+      sortField = 'name';
+    }
+
     return await this.userService.searchFor({
       value,
       pagination: {

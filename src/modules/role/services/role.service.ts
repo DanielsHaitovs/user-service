@@ -33,8 +33,24 @@ export class RoleService {
    * @returns The created role entity.
    */
   async create(roleDto: CreateRoleDto): Promise<Role> {
+    if (!roleDto.name) {
+      throw new BadRequestException('Role name is required');
+    }
+
     const { permissions, ...roleData } = roleDto;
     const permissionsBuffer = new Array<Permission>();
+
+    // Check for existing role with the same name
+    const existingRole = await this.roleRepository
+      .createQueryBuilder(ROLE_QUERY_ALIAS)
+      .where(`${ROLE_QUERY_ALIAS}.name = :name`, { name: roleData.name })
+      .getOne();
+
+    if (existingRole) {
+      throw new ConflictException(
+        `Role with name "${roleData.name}" already exists. Please choose a different name.`,
+      );
+    }
 
     // Create a new role entity
     const role = this.roleRepository.create(roleData);

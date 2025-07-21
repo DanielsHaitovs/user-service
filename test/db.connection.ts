@@ -30,7 +30,7 @@ export const createTestModule = async (): Promise<{
           port: parseInt(configService.get('USER_DATABASE_PORT') ?? '5432', 10),
           username: configService.get('DATABASE_USERNAME') ?? 'postgres',
           password: configService.get('DATABASE_PASSWORD') ?? 'postgres',
-          database: configService.get('DATABASE_NAME') ?? 'postgres',
+          database: configService.get('USER_DATABASE_NAME') ?? 'postgres',
           synchronize: configService.get('DATABASE_SYNCHRONIZE') === 'true',
           logging: configService.get('DATABASE_LOGGING') === 'true',
           entities: [`${__dirname}/**/*.entity{.ts,.js}`],

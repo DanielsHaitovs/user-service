@@ -2,6 +2,7 @@ import { Permissions } from '@/common/decorators/permission.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import {
   CreateDepartmentDto,
+  DepartmentListResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
 import { Department } from '@/department/entities/department.entity';
@@ -21,8 +22,10 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  InternalServerErrorException,
   Param,
   ParseArrayPipe,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -33,15 +36,19 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
+  ApiInternalServerErrorResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+
+import { getDepartmentSelectableFields } from './helper/department-fields.util';
 
 @ApiTags('Departments')
 @Controller('departments')
@@ -51,7 +58,7 @@ export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 
   @Post()
-  @Permissions(CREATE_DEPARTMENT)
+  @Permissions(CREATE_DEPARTMENT, READ_DEPARTMENT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new department',
@@ -108,8 +115,101 @@ export class DepartmentController {
     return await this.departmentService.findByIds([id]);
   }
 
+  @Get('search/:value')
+  @Permissions(READ_DEPARTMENT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description: 'Searches for department by name, country, id',
+  })
+  @ApiParam({
+    name: 'value',
+    type: String,
+    required: true,
+    description: 'Search value for department (name, country, or ID)',
+    example: EXAMPLE_DEPARTMENT_NAME,
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter departments by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter departments by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: 'Sort departments by sort field',
+    enum: getDepartmentSelectableFields(),
+    example: 'name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: 'Order departments by sort order',
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiOkResponse({
+    description: 'Departments found and returned successfully',
+    example: {
+      total: 1,
+      page: 1,
+      limit: 10,
+      departments: [
+        {
+          id: EXAMPLE_DEPARTMENT_ID,
+          name: EXAMPLE_DEPARTMENT_NAME,
+          country: 'US',
+        },
+      ],
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: InternalServerErrorException.name,
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 500 },
+        message: { type: 'string', example: InternalServerErrorException.name },
+        error: { type: 'string', example: InternalServerErrorException.name },
+      },
+    },
+  })
+  async searchForRoles(
+    @Param('value') value: string,
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+  ): Promise<DepartmentListResponseDto> {
+    if (!sortField || sortField === '') {
+      sortField = 'name';
+    }
+
+    return await this.departmentService.searchFor({
+      value,
+      pagination: {
+        page,
+        limit,
+      },
+      sort: {
+        sortField,
+        sortOrder,
+      },
+    });
+  }
+
   @Patch(':id')
-  @Permissions(UPDATE_DEPARTMENT)
+  @Permissions(UPDATE_DEPARTMENT, READ_DEPARTMENT)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update department',
@@ -143,7 +243,7 @@ export class DepartmentController {
   }
 
   @Delete()
-  @Permissions(DELETE_DEPARTMENT)
+  @Permissions(DELETE_DEPARTMENT, READ_DEPARTMENT)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete departments by IDs',
@@ -176,7 +276,7 @@ export class DepartmentController {
     },
   })
   async deleteDepartments(
-    @Query(new ParseArrayPipe({ items: String })) ids: UUID[],
+    @Query('ids', new ParseArrayPipe({ items: String })) ids: UUID[],
   ): Promise<{ deleted: number }> {
     return await this.departmentService.deleteByIds(ids);
   }

@@ -346,6 +346,10 @@ export class PermissionController {
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
   ): Promise<PermissionListResponseDto> {
+    if (!sortField || sortField === '') {
+      sortField = 'name';
+    }
+
     return await this.permissionService.searchFor({
       value,
       pagination: {

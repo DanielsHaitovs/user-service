@@ -1,7 +1,9 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
+import { CurrentUserId } from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { EXAMPLE_ROLE_ID, READ_ROLE } from '@/lib/const/role.const';
 import {
+  ASSIGN_USER_ROLE,
   CREATE_USER_ROLE,
   DELETE_USER_ROLE,
   EXAMPLE_USER_EMAIL,
@@ -10,7 +12,12 @@ import {
   READ_USER_ROLE,
 } from '@/lib/const/user.const';
 import { TraceController } from '@/lib/decorators/trace.decorator';
-import { CreateUserRoleDto } from '@/user/dto/userRole.dto';
+import {
+  AssignRoleIdsDto,
+  CreateUserRoleDto,
+  UnassignRoleIdsDto,
+  UserRoleResponseDto,
+} from '@/user/dto/userRole.dto';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { UserRoleService } from '@/user/services/roles/userRole.service';
 import {
@@ -75,7 +82,7 @@ export class UserRoleController {
   })
   @ApiOkResponse({
     description: 'Roles assigned successfully',
-    type: UserRole,
+    type: UserRoleResponseDto,
     isArray: true,
   })
   @ApiBadRequestResponse({
@@ -140,14 +147,17 @@ export class UserRoleController {
       },
     },
   })
-  async create(@Body() dto: CreateUserRoleDto): Promise<UserRole[]> {
-    return await this.userRoleService.create(dto);
+  async create(
+    @Body() dto: CreateUserRoleDto,
+    @CurrentUserId() assignedById: UUID,
+  ): Promise<UserRole[]> {
+    return await this.userRoleService.create(dto, assignedById);
   }
 
   /**
    * Finds a user-role association using user email.
    */
-  @Get()
+  @Get('ids')
   @HttpCode(HttpStatus.OK)
   @Permissions(READ_USER_ROLE, READ_USER, READ_ROLE)
   @ApiOperation({
@@ -161,6 +171,7 @@ export class UserRoleController {
     isArray: true,
     format: 'uuid',
     example: [EXAMPLE_USER_ID],
+    required: false,
   })
   @ApiQuery({
     name: 'assignedByIds',
@@ -168,6 +179,7 @@ export class UserRoleController {
     isArray: true,
     format: 'uuid',
     example: [EXAMPLE_USER_ID],
+    required: false,
   })
   @ApiQuery({
     name: 'roleIds',
@@ -175,6 +187,7 @@ export class UserRoleController {
     isArray: true,
     format: 'uuid',
     example: [EXAMPLE_ROLE_ID],
+    required: false,
   })
   @ApiOkResponse({
     description: 'User-role(s) found',
@@ -257,7 +270,7 @@ export class UserRoleController {
   /**
    * Finds a user-role association using user email.
    */
-  @Get(':email')
+  @Get('attribute/:email')
   @Permissions(READ_USER_ROLE, READ_USER, READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @Permissions(READ_USER_ROLE)
@@ -337,17 +350,22 @@ export class UserRoleController {
       },
     },
   })
-  async findByUserEmail(@Param('email') email: string): Promise<UserRole> {
+  async findByUserEmail(@Param('email') email: string): Promise<UserRole[]> {
     return await this.userRoleService.findByUserEmail(email);
   }
 
   /**
-   * Assigns a single role to a user.
+   * Assigns a roles to a user.
    */
   @Post('assign/:userId')
-  @Permissions(CREATE_USER_ROLE, READ_USER, READ_ROLE)
+  @Permissions(
+    CREATE_USER_ROLE,
+    READ_USER,
+    READ_ROLE,
+    READ_USER_ROLE,
+    ASSIGN_USER_ROLE,
+  )
   @HttpCode(HttpStatus.CREATED)
-  @Permissions('user-role:assign')
   @ApiOperation({
     summary: 'Assign a role to a user',
     description: 'Assigns a specific role to a user by his UUID.',
@@ -359,12 +377,9 @@ export class UserRoleController {
     description: 'User ID to assign the role to',
     example: EXAMPLE_USER_ID,
   })
-  @ApiQuery({
-    name: 'roleId',
-    type: String,
-    format: 'uuid',
-    isArray: true,
-    example: [EXAMPLE_ROLE_ID],
+  @ApiBody({
+    type: AssignRoleIdsDto,
+    description: 'Array of role IDs to assign to the user',
   })
   @ApiOkResponse({
     description: 'Role assigned successfully',
@@ -435,37 +450,37 @@ export class UserRoleController {
     },
   })
   async assignRoleToUser(
-    @Query('userId') userId: UUID,
-    @Query('roleIds', ParseArrayPipe) roleIds: UUID[],
-  ): Promise<UserRole> {
-    return await this.userRoleService.assignRolesToUser(userId, roleIds);
+    @Param('userId') userId: UUID,
+    @Body() roleIds: AssignRoleIdsDto,
+    @CurrentUserId() assignedById: UUID,
+  ): Promise<UserRole[]> {
+    return await this.userRoleService.assignRolesToUser(
+      userId,
+      roleIds,
+      assignedById,
+    );
   }
 
   /**
    * Unassigns one or more roles from one or more users.
    */
   @Post('unassign')
-  @Permissions(DELETE_USER_ROLE, READ_USER, READ_ROLE)
+  @Permissions(
+    DELETE_USER_ROLE,
+    READ_USER,
+    READ_ROLE,
+    READ_USER_ROLE,
+    ASSIGN_USER_ROLE,
+  )
   @HttpCode(HttpStatus.OK)
-  @Permissions('user-role:unassign')
   @ApiOperation({
     summary: 'Unassign roles from users',
     description:
       'Removes roles from users. Both userIds and roleIds must be provided.',
   })
-  @ApiQuery({
-    name: 'userIds',
-    type: 'array',
-    isArray: true,
-    required: true,
-    example: [EXAMPLE_USER_ID],
-  })
-  @ApiQuery({
-    name: 'roleIds',
-    type: 'array',
-    isArray: true,
-    required: true,
-    example: [EXAMPLE_ROLE_ID],
+  @ApiBody({
+    type: UnassignRoleIdsDto,
+    description: 'Array of role IDs to unassign from the users',
   })
   @ApiOkResponse({
     description: 'Roles unassigned successfully',
@@ -541,9 +556,8 @@ export class UserRoleController {
     },
   })
   async unassignRoleFromUser(
-    @Query('userIds') userIds: UUID[],
-    @Query('roleIds') roleIds: UUID[],
+    @Body() data: UnassignRoleIdsDto,
   ): Promise<{ unassigned: boolean }> {
-    return await this.userRoleService.unassignRoleFromUser(userIds, roleIds);
+    return await this.userRoleService.unassignRolesFromUsers(data);
   }
 }

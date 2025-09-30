@@ -1,4 +1,5 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
+import { CurrentUserId } from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
@@ -25,6 +26,7 @@ import {
 } from '@/role/helper/role-fields.util';
 import { RoleQueryService } from '@/role/services/query.service';
 import { RoleService } from '@/role/services/role.service';
+import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import {
   BadRequestException,
   Body,
@@ -128,12 +130,13 @@ export class RolesController {
   })
   async createRole(
     @Body()
-    createRoleDto: CreateRoleDto,
+    roleDto: CreateRoleDto,
+    @CurrentUserId() createdBy: UUID,
   ): Promise<Role> {
-    return await this.roleService.create(createRoleDto);
+    return await this.roleService.create({ roleDto, createdBy });
   }
 
-  @Get('ids')
+  @Get('attributes/ids')
   @Permissions(READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -148,6 +151,36 @@ export class RolesController {
     required: true,
     description: 'Role unique identifiers',
     example: [EXAMPLE_ROLE_ID],
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter roles by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter roles by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: 'Sort roles by sort field',
+    enum: getRoleSelectableFields(),
+    example: 'name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: 'Order roles by sort order',
+    enum: ['ASC', 'DESC'],
   })
   @ApiOkResponse({
     description: 'Roles found and returned successfully',
@@ -194,11 +227,122 @@ export class RolesController {
   })
   async getRolesByIds(
     @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
   ): Promise<Role[]> {
-    return await this.roleService.findByIds(ids);
+    return await this.roleService.findByIds({
+      ids,
+      pagination: { page, limit },
+      ...(sortField && { sort: { sortField, sortOrder } }),
+    });
   }
 
-  @Get(':value')
+  @Get('attributes/createdBy')
+  @Permissions(READ_ROLE)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get roles by IDs of users who created them',
+    description: 'Retrieves roles by their unique identifiers.',
+  })
+  @ApiQuery({
+    name: 'createdByUserIds',
+    type: String,
+    isArray: true,
+    format: 'uuid',
+    required: true,
+    description: 'User ids that created Role',
+    example: [EXAMPLE_ROLE_ID],
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter roles by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter roles by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: 'Sort roles by sort field',
+    enum: getRoleSelectableFields(),
+    example: 'name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: 'Order roles by sort order',
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiOkResponse({
+    description: 'Roles found and returned successfully',
+    example: [
+      {
+        id: [EXAMPLE_ROLE_ID],
+        name: EXAMPLE_ROLE_NAME,
+        description: EXAMPLE_ROLE_DESCRIPTION,
+      },
+    ],
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid UUID format provided',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: { type: 'string', example: 'Invalid UUID format' },
+        error: { type: 'string', example: BadRequestException.name },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: ROLE_NOT_FOUND_MSG,
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 404 },
+        message: { type: 'string', example: ROLE_NOT_FOUND_MSG },
+        error: { type: 'string', example: NotFoundException.name },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: InternalServerErrorException.name,
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 500 },
+        message: { type: 'string', example: InternalServerErrorException.name },
+        error: { type: 'string', example: InternalServerErrorException.name },
+      },
+    },
+  })
+  async getRolesCreatedByUserId(
+    @Query('ids', ParseUUIDArrayPipe) createdByUserIds: UUID[],
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+  ): Promise<Role[]> {
+    return await this.roleService.findCreatedByUserWithId({
+      createdByUserIds,
+      pagination: { page, limit },
+      sort: { sortField, sortOrder },
+    });
+  }
+
+  @Get('attributes/:value')
   @Permissions(READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -373,9 +517,9 @@ export class RolesController {
   async updateRole(
     @Param('id') id: UUID,
     @Body()
-    updateRoleDto: UpdateRoleDto,
+    role: UpdateRoleDto,
   ): Promise<Role> {
-    return await this.roleService.update(id, updateRoleDto);
+    return await this.roleService.update({ id, role });
   }
 
   @Delete()
@@ -509,7 +653,7 @@ export class RolesController {
     permissionIds: UUID[],
     @Body('roleId') roleId: UUID,
   ): Promise<Role> {
-    return this.roleService.addPermissionsToRole(permissionIds, roleId);
+    return this.roleService.addPermissionsToRole({ permissionIds, roleId });
   }
 
   /**
@@ -520,7 +664,7 @@ export class RolesController {
    * Designed for administrative interfaces, reporting systems, and complex roles&permissins
    * management scenarios requiring fine-grained data access control.
    */
-  @Get('query/filter')
+  @Get('attributes/filter')
   @Permissions(READ_ROLE, READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiQuery({
@@ -531,11 +675,25 @@ export class RolesController {
     description: 'Filter roles by IDs',
   })
   @ApiQuery({
+    name: 'createdByIds',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter by IDs of users who created the roles',
+  })
+  @ApiQuery({
     name: 'names',
     type: String,
     isArray: true,
     required: false,
     description: 'Filter role by names',
+  })
+  @ApiQuery({
+    name: 'includeCreatedBy',
+    type: Boolean,
+    isArray: false,
+    required: false,
+    description: 'Include created by user in the response',
   })
   @ApiQuery({
     name: 'includePermissions',
@@ -585,7 +743,11 @@ export class RolesController {
     type: String,
     required: false,
     description: 'Filter users by sort order',
-    enum: [...getRoleSelectableFields(), ...getPermissionsSelectableFields()],
+    enum: [
+      ...getRoleSelectableFields(),
+      ...getPermissionsSelectableFields(),
+      ...getUserSelectableFields(),
+    ],
     example: 'name',
   })
   @ApiQuery({
@@ -600,7 +762,7 @@ export class RolesController {
     type: String,
     isArray: true,
     required: false,
-    description: 'Filter users by ID',
+    description: 'Set role fields to include in response',
     enum: getRoleSelectableFields(),
   })
   @ApiQuery({
@@ -608,15 +770,27 @@ export class RolesController {
     type: String,
     isArray: true,
     required: false,
-    description: 'Filter users by ID',
+    description: 'Set permissions fields to include in response',
+    enum: getPermissionsSelectableFields(),
+  })
+  @ApiQuery({
+    name: 'selectCreatedBy',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Set created by user fields to include in response',
     enum: getPermissionsSelectableFields(),
   })
   async filterUsers(
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
+    @Query('createdByIds', new ParseArrayPipe({ optional: true }))
+    createdByIds: UUID[],
     @Query('names', new ParseArrayPipe({ optional: true }))
     names: string[],
     @Query('includePermissions', new ParseBoolPipe({ optional: true }))
     includePermissions: boolean,
+    @Query('includeCreatedBy', new ParseBoolPipe({ optional: true }))
+    includeCreatedBy: boolean,
     @Query('permissionIds', new ParseArrayPipe({ optional: true }))
     permissionIds: UUID[],
     @Query('permissionNames', new ParseArrayPipe({ optional: true }))
@@ -631,11 +805,14 @@ export class RolesController {
     selectRoles: string[],
     @Query('selectPermissions', new ParseArrayPipe({ optional: true }))
     selectPermissions: string[],
+    @Query('selectCreatedBy', new ParseArrayPipe({ optional: true }))
+    selectCreatedBy: string[],
   ): Promise<RoleListResponseDto> {
     return await this.queryService.getRoles({
       rolesQuery: {
         ids,
         names,
+        createdByIds,
       },
       permissionsQuery: {
         ids: permissionIds,
@@ -643,6 +820,7 @@ export class RolesController {
         codes: permissionCodes,
       },
       includePermissions,
+      includeCreatedBy,
       pagination: {
         page,
         limit,
@@ -653,6 +831,7 @@ export class RolesController {
       },
       selectRoles,
       selectPermissions,
+      selectCreatedBy,
     });
   }
 }

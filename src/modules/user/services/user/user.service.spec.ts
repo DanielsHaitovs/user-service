@@ -2,7 +2,8 @@ import { DepartmentService } from '@/department/services/department.service';
 import { SYSTEM_USER_EMAIL } from '@/lib/const/user.const';
 import { PermissionService } from '@/role/services/permission.service';
 import { RoleService } from '@/role/services/role.service';
-import { createTestModule } from '@/test/db.connection';
+import { getSystemUserId } from '@/test/api/auth-user-api';
+import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import { createDepartment } from '@/test/factories/department.factory';
 import {
   createUser,
@@ -16,27 +17,30 @@ import type { CreateUserDto, UpdateUserDto } from '@/user/dto/user.dto';
 import { UserService } from '@/user/services/user/user.service';
 import { generatePassword } from '@/utils/token-generator.util';
 import { faker } from '@faker-js/faker/.';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, type INestApplication } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 
 import type { UUID } from 'crypto';
+import type { App } from 'supertest/types';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 describe('UserService (Integration - PostgreSQL)', () => {
+  let app: INestApplication<App>;
   let module: TestingModule;
   let permissionService: PermissionService;
   let roleService: RoleService;
   let departmentService: DepartmentService;
   let userService: UserService;
+  let systemUserId: UUID;
 
   beforeAll(async () => {
-    const { module: testingModule } = await createTestModule();
-    module = testingModule;
+    ({ moduleFixture: module, app } = await bootstrapTestApp());
     permissionService = module.get<PermissionService>(PermissionService);
     roleService = module.get<RoleService>(RoleService);
     userService = module.get<UserService>(UserService);
     departmentService = module.get<DepartmentService>(DepartmentService);
+    systemUserId = await getSystemUserId(app);
   });
 
   afterAll(async () => {
@@ -50,6 +54,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
     });
     it('should throw notfound error, because department(s) for user is not found', async () => {
@@ -72,7 +77,10 @@ describe('UserService (Integration - PostgreSQL)', () => {
       );
     });
     it('should throw notfound error, because role(s) for user is not found', async () => {
-      const department = await createDepartment(departmentService);
+      const department = await createDepartment(
+        departmentService,
+        systemUserId,
+      );
 
       const userDto: CreateUserDto = {
         departmentIds: [department.id],
@@ -100,6 +108,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
 
       if (user.departments[0] === undefined) {
@@ -137,6 +146,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
     });
 
@@ -153,6 +163,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
     });
 
@@ -170,6 +181,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
     });
 
@@ -179,6 +191,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
 
       const updatedUserDto: UpdateUserDto = {
@@ -195,6 +208,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
 
       await expect(
@@ -224,6 +238,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
     });
 
@@ -233,6 +248,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
 
       const updatedUserDto: UpdateUserDto = {
@@ -249,6 +265,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
 
       await expect(
@@ -279,6 +296,7 @@ describe('UserService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         departmentService,
+        systemUserId,
       );
     });
 

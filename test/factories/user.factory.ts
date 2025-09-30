@@ -10,6 +10,7 @@ import type { CreateUserDto, UpdateUserDto } from '@/user/dto/user.dto';
 import { generatePassword } from '@/utils/token-generator.util';
 import { faker } from '@faker-js/faker/.';
 
+import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -18,10 +19,15 @@ export async function createUser(
   roleService: RoleService,
   permissionService: PermissionService,
   departmentService: DepartmentService,
+  createdBy: UUID,
 ): Promise<User> {
   const systemUser = await userService.findByEmail(SYSTEM_USER_EMAIL);
-  const department = await createDepartment(departmentService);
-  const role = await createRoleWithPermissins(roleService, permissionService);
+  const department = await createDepartment(departmentService, createdBy);
+  const role = await createRoleWithPermissins(
+    roleService,
+    permissionService,
+    systemUser.id,
+  );
 
   const userEmail = `${uuid()}@example.com`;
 
@@ -51,12 +57,14 @@ export async function findUserById(
   roleService: RoleService,
   permissionService: PermissionService,
   departmentService: DepartmentService,
+  createdBy: UUID,
 ): Promise<User> {
   const newUser = await createUser(
     userService,
     roleService,
     permissionService,
     departmentService,
+    createdBy,
   );
 
   const user = await userService.findById(newUser.id);
@@ -71,12 +79,14 @@ export async function findUserByEmail(
   roleService: RoleService,
   permissionService: PermissionService,
   departmentService: DepartmentService,
+  createdBy: UUID,
 ): Promise<User> {
   const newUser = await createUser(
     userService,
     roleService,
     permissionService,
     departmentService,
+    createdBy,
   );
 
   const user = await userService.findByEmail(newUser.email);
@@ -91,12 +101,14 @@ export async function updateUserById(
   roleService: RoleService,
   permissionService: PermissionService,
   departmentService: DepartmentService,
+  createdBy: UUID,
 ): Promise<User> {
   const newUser = await createUser(
     userService,
     roleService,
     permissionService,
     departmentService,
+    createdBy,
   );
 
   const updatedUserDto: UpdateUserDto = {
@@ -122,12 +134,14 @@ export async function updateUserByEmail(
   roleService: RoleService,
   permissionService: PermissionService,
   departmentService: DepartmentService,
+  createdBy: UUID,
 ): Promise<User> {
   const newUser = await createUser(
     userService,
     roleService,
     permissionService,
     departmentService,
+    createdBy,
   );
 
   const updatedUserDto: UpdateUserDto = {
@@ -156,12 +170,14 @@ export async function deleteUsersByIds(
   roleService: RoleService,
   permissionService: PermissionService,
   departmentService: DepartmentService,
+  createdBy: UUID,
 ): Promise<void> {
   const user = await createUser(
     userService,
     roleService,
     permissionService,
     departmentService,
+    createdBy,
   );
 
   const result = await userService.deleteByIds([user.id]);

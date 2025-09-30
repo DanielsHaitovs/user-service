@@ -4,7 +4,14 @@ import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { IsBoolean, IsDate, IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
-import { Column, Entity, OneToMany, Unique } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  OneToMany,
+  Unique,
+} from 'typeorm';
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })
@@ -70,8 +77,13 @@ export class User extends MecBaseEntity {
   @Column({ nullable: true })
   twoFactorSecret: string;
 
-  @OneToMany(() => Department, (department) => department.user)
-  departments: Department[];
+  @ManyToMany(() => Department, (department) => department.user)
+  @JoinTable({
+    name: 'user_departments',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'department_id', referencedColumnName: 'id' },
+  })
+  department: Department[];
 
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   userRoles: UserRole[];
@@ -93,7 +105,7 @@ export class User extends MecBaseEntity {
     updatedAt: Date,
     isTwoFactorEnabled: boolean,
     twoFactorSecret: string,
-    departments: Department[],
+    department: Department[],
     userRoles: UserRole[],
   ) {
     super(id, createdAt, updatedAt);
@@ -109,7 +121,7 @@ export class User extends MecBaseEntity {
     this.emailVerificationToken = emailVerificationToken;
     this.passwordResetToken = passwordResetToken;
     this.passwordResetExpires = passwordResetExpires;
-    this.departments = departments;
+    this.department = department;
     this.isTwoFactorEnabled = isTwoFactorEnabled;
     this.twoFactorSecret = twoFactorSecret;
     this.userRoles = userRoles;

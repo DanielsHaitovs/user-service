@@ -1,3 +1,4 @@
+import { JWTPayload } from '@/auth/interfaces/req.interface';
 import { RoleQueryService } from '@/role/services/query.service';
 import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import { UserQueryService } from '@/user/services/query.service';
@@ -11,11 +12,6 @@ import { PassportStrategy } from '@nestjs/passport';
 
 import { UUID } from 'crypto';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-
-interface JWTPayload {
-  permissions: string[];
-  id: UUID;
-}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -46,7 +42,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       includeRoles: true,
       pagination: { limit: 1, page: 1 },
       sort: { sortField: 'createdAt', sortOrder: 'DESC' },
-      selectUserFields: getUserSelectableFields(['id', 'email', 'isActive']),
+      selectUserFields: getUserSelectableFields([
+        'id',
+        'email',
+        'isActive',
+        'isEmailVerified',
+      ]),
       selectRoleFields: ['id', 'name'],
     });
 
@@ -58,6 +59,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException(
         'User is not active, if you think this is an mistake please contact support',
       );
+    }
+
+    if (!users[0].isEmailVerified) {
+      throw new UnauthorizedException('User was not verified');
     }
 
     const { userRoles } = users[0];

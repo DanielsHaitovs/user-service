@@ -1,3 +1,4 @@
+import { BaseModule } from '@/base/base.module';
 import { DepartmentModule } from '@/department/department.module';
 import { RolesModule } from '@/role/role.module';
 import { User } from '@/user/entities/user.entity';
@@ -13,6 +14,7 @@ import { UserRoleController } from './user-role.controller';
 
 @Module({
   imports: [
+    BaseModule,
     DepartmentModule,
     RolesModule,
     TypeOrmModule.forFeature([User, UserRole]),

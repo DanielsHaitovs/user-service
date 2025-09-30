@@ -7,21 +7,31 @@ import type { Role } from '@/role/entities/role.entity';
 import type { PermissionService } from '@/role/services/permission.service';
 import type { RoleService } from '@/role/services/role.service';
 import { createPermissions } from '@/test/factories/permission.factory';
+import {
+  validateDeleteRoleResponse,
+  validateRoleApiResponse,
+} from '@/test/validation/role';
 import { faker } from '@faker-js/faker/.';
 
+import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-export async function createRole(service: RoleService): Promise<Role> {
-  const dto: CreateRoleDto = {
+export async function createRole(
+  service: RoleService,
+  createdBy: UUID,
+): Promise<Role> {
+  const roleDto: CreateRoleDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
   };
 
-  const result = await service.create(dto);
+  const result = await service.create({ roleDto, createdBy });
 
-  expect(result).toBeDefined();
-  expect(result.id).toBeDefined();
-  expect(result.name).toBe(dto.name);
+  validateRoleApiResponse({
+    roles: [result],
+    expectedAmount: 1,
+    names: [roleDto.name],
+  });
 
   return result;
 }
@@ -29,17 +39,30 @@ export async function createRole(service: RoleService): Promise<Role> {
 export async function createRoleWithPermissins(
   roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<Role> {
-  const permissions = await createPermissions(roleService, permissionService);
+  const permissions = await createPermissions(
+    roleService,
+    permissionService,
+    createdBy,
+  );
 
-  const dto: CreateRoleDto = {
+  const roleDto: CreateRoleDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
     permissions: permissions.flatMap((permission) => permission.code),
   };
 
-  const role = await roleService.create(dto);
+  const role = await roleService.create({ roleDto, createdBy });
 
-  validateRoleWithPermissions(role, dto);
+  validateRoleApiResponse({
+    roles: [role],
+    expectedAmount: 1,
+    names: [roleDto.name],
+    expectedPermissionAmount: permissions.length,
+    permissionNames: permissions.map((p) => p.name),
+    permissionCodes: permissions.map((p) => p.code),
+    permissionIds: permissions.map((p) => p.id),
+  });
 
   return role;
 }
@@ -47,104 +70,112 @@ export async function createRoleWithPermissins(
 export async function addPermissionsToRole(
   roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<Role> {
-  const permissions = await createPermissions(roleService, permissionService);
+  const permissions = await createPermissions(
+    roleService,
+    permissionService,
+    createdBy,
+  );
 
-  const role = await createRole(roleService);
+  const role = await createRole(roleService, createdBy);
 
   const permissionIds = permissions.flatMap((p) => p.id);
 
-  const updatedRole = await roleService.addPermissionsToRole(
+  const updatedRole = await roleService.addPermissionsToRole({
     permissionIds,
-    role.id,
-  );
+    roleId: role.id,
+  });
 
-  validateRoleWithPermissions(updatedRole, role);
+  validateRoleApiResponse({
+    roles: [updatedRole],
+    expectedAmount: 1,
+    names: [role.name],
+    expectedPermissionAmount: permissions.length,
+    permissionNames: permissions.map((p) => p.name),
+    permissionCodes: permissions.map((p) => p.code),
+    permissionIds: permissions.map((p) => p.id),
+  });
 
   return updatedRole;
 }
 
 export async function findRolesByIds(
   roleService: RoleService,
+  createdBy: UUID,
 ): Promise<Role[]> {
-  const newRole = await createRole(roleService);
+  const newRole = await createRole(roleService, createdBy);
 
-  const roles = await roleService.findByIds([newRole.id]);
+  const roles = await roleService.findByIds({
+    ids: [newRole.id],
+    pagination: { page: 1, limit: 1 },
+  });
 
-  expect(roles).toBeDefined();
-  expect(roles[0]).toBeDefined();
-  expect(roles[0]?.id).toBe(newRole.id);
-  expect(roles[0]?.name).toBe(newRole.name);
+  validateRoleApiResponse({
+    roles,
+    expectedAmount: 1,
+    names: [newRole.name],
+    ids: [newRole.id],
+  });
 
   return roles;
 }
 
 export async function searchForRoles(
   roleService: RoleService,
+  createdBy: UUID,
 ): Promise<RoleListResponseDto> {
-  return await roleService.searchFor({
-    value: faker.lorem.word(),
+  const role = await createRole(roleService, createdBy);
+
+  const res = await roleService.searchFor({
+    value: role.name,
     pagination: { limit: 10, page: 1 },
     sort: { sortField: 'name', sortOrder: 'ASC' },
   });
+
+  validateRoleApiResponse({ roles: res.roles as Role[] });
+
+  return res;
 }
 
-export async function updateRole(roleService: RoleService): Promise<Role> {
-  const role = await createRole(roleService);
+export async function updateRole(
+  roleService: RoleService,
+  createdBy: UUID,
+): Promise<Role> {
+  const role = await createRole(roleService, createdBy);
   const updateDto: UpdateRoleDto = {
     name: `${role.name}-updated`,
   };
 
-  const updatedRole = await roleService.update(role.id, updateDto);
+  const updatedRole = await roleService.update({
+    id: role.id,
+    role: updateDto,
+  });
 
-  expect(updatedRole).toBeDefined();
-  expect(updatedRole.id).toBeDefined();
-  expect(updatedRole.id).toBe(role.id);
-  expect(updatedRole.name).toBe(updateDto.name);
+  validateRoleApiResponse({
+    roles: [updatedRole],
+    expectedAmount: 1,
+    ids: [role.id],
+    ...(updateDto.name != undefined && { names: [updateDto.name] }),
+  });
 
   return updatedRole;
 }
 
 export async function deleteRolesByIds(
   roleService: RoleService,
+  createdBy: UUID,
 ): Promise<void> {
-  const role = await createRole(roleService);
+  const role = await createRole(roleService, createdBy);
 
   const result = await roleService.deleteByIds([role.id]);
 
-  expect(result).toEqual({ deleted: 1 });
+  validateDeleteRoleResponse(result, 1);
 
-  await expect(roleService.findByIds([role.id])).rejects.toThrow(
-    EntityNotFoundError,
-  );
-}
-
-function validateRoleWithPermissions(
-  role: Role,
-  dto: CreateRoleDto | Role,
-): void {
-  expect(role).toBeDefined();
-  expect(role.id).toBeDefined();
-  expect(role.name).toBe(dto.name);
-
-  expect(role.permissions).toHaveLength(2);
-
-  const [firstPermission, secondPermission] = role.permissions;
-
-  if (firstPermission === undefined || secondPermission === undefined) {
-    throw new Error('Permissino should be defined');
-  }
-
-  expect(role.permissions.some((p) => p.code === firstPermission.code)).toBe(
-    true,
-  );
-  expect(role.permissions.some((p) => p.code === secondPermission.code)).toBe(
-    true,
-  );
-  expect(role.permissions.some((p) => p.name === firstPermission.name)).toBe(
-    true,
-  );
-  expect(role.permissions.some((p) => p.name === secondPermission.name)).toBe(
-    true,
-  );
+  await expect(
+    roleService.findByIds({
+      ids: [role.id],
+      pagination: { page: 1, limit: 1 },
+    }),
+  ).rejects.toThrow(EntityNotFoundError);
 }

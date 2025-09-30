@@ -59,7 +59,7 @@ async function bootstrap(): Promise<void> {
 
   SwaggerModule.setup('api', app, document, swaggerSetupOptions);
 
-  const port = Number(process.env.API_PORT) || 3000;
+  const port = Number(process.env.USER_API_PORT) || 3000;
   await app.listen(port);
 }
 

@@ -153,7 +153,7 @@ export class CreateUserDto extends UserBaseDto {
     isArray: true,
     format: 'uuid',
   })
-  @IsUUID(undefined, { each: true })
+  @IsUUID(4, { each: true })
   departmentIds: UUID[];
 
   @ApiProperty({
@@ -163,7 +163,7 @@ export class CreateUserDto extends UserBaseDto {
     isArray: true,
     required: false,
   })
-  @IsUUID(undefined, { each: true })
+  @IsUUID(4, { each: true })
   roleIds: UUID[];
 
   constructor(
@@ -283,7 +283,7 @@ export class UserResponseDto extends UserBaseDto {
   })
   @Type(() => DepartmentResponseDto)
   @ValidateNested({ each: true })
-  departments: DepartmentResponseDto[];
+  department: DepartmentResponseDto[];
 
   @ApiProperty({
     description: 'List of roles assigned to the user',
@@ -305,7 +305,7 @@ export class UserResponseDto extends UserBaseDto {
     passwordResetExpires: Date,
     emailVerificationToken: string,
     passwordResetToken: string,
-    departments: DepartmentResponseDto[],
+    department: DepartmentResponseDto[],
     isTwoFactorEnabled: boolean,
     createdAt: Date,
     updatedAt: Date,
@@ -319,7 +319,7 @@ export class UserResponseDto extends UserBaseDto {
     this.emailVerificationToken = emailVerificationToken;
     this.passwordResetToken = passwordResetToken;
     this.passwordResetExpires = passwordResetExpires;
-    this.departments = departments;
+    this.department = department;
     this.userRoles = userRoles;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;

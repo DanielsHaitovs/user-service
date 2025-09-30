@@ -1,6 +1,16 @@
 import { QueryService } from '@/base/service/query.service';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
+import {
+  ASSIGNED_USER_QUERY_ALIAS,
+  USER_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
+} from '@/lib/const/user.const';
 import { Role } from '@/role/entities/role.entity';
-import { CreateUserRoleDto } from '@/user/dto/userRole.dto';
+import {
+  AssignRoleIdsDto,
+  CreateUserRoleDto,
+  UnassignRoleIdsDto,
+} from '@/user/dto/userRole.dto';
 import { User } from '@/user/entities/user.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { batch } from '@/utils/batch.util';
@@ -27,17 +37,28 @@ export class UserRoleService extends QueryService {
    * @returns Promise resolving to an array of created UserRole entities
    * @throws EntityNotFoundError if user or roles are not found
    */
-  async create(createUserRoleDto: CreateUserRoleDto): Promise<UserRole[]> {
-    const { userId, roleIds, assignedById } = createUserRoleDto;
+  async create(
+    createUserRoleDto: CreateUserRoleDto,
+    assignedById: UUID,
+  ): Promise<UserRole[]> {
+    const { userId, roleIds } = createUserRoleDto;
 
-    const userQuery = this.queryManager
-      .createQueryBuilder(User, 'user')
-      .where('user.id = :userId', { userId })
-      .getOneOrFail();
+    if (assignedById === userId) {
+      throw new BadRequestException(
+        'assignedById cannot be the same as userId',
+      );
+    }
 
     const assignedByQuery = this.queryManager
-      .createQueryBuilder(User, 'user')
-      .where('user.id = :assignedById', { assignedById })
+      .createQueryBuilder(User, USER_QUERY_ALIAS)
+      .where(`${USER_QUERY_ALIAS}.id = :assignedById`, {
+        assignedById,
+      })
+      .getOneOrFail();
+
+    const userQuery = this.queryManager
+      .createQueryBuilder(User, USER_QUERY_ALIAS)
+      .where(`${USER_QUERY_ALIAS}.id = :userId`, { userId })
       .getOneOrFail();
 
     const [user, assignedBy] = await Promise.all([userQuery, assignedByQuery]);
@@ -99,32 +120,56 @@ export class UserRoleService extends QueryService {
   }): Promise<UserRole[]> {
     if (!userIds && !roleIds && !assignedByIds) {
       throw new BadRequestException(
-        'At least one of userIds, roleIds, or assignedByIds must be provided',
+        'At least one of userIds, roleIds, or assignedByIds search critireas must be provided',
       );
     }
 
-    const query = this.queryManager.createQueryBuilder(UserRole, 'userRole');
+    const query = this.queryManager
+      .createQueryBuilder(UserRole, USER_ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${USER_QUERY_ALIAS}`,
+        USER_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${ROLE_QUERY_ALIAS}`,
+        ROLE_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${ASSIGNED_USER_QUERY_ALIAS}`,
+        ASSIGNED_USER_QUERY_ALIAS,
+      );
 
     if (userIds && userIds.length > 0) {
-      query.leftJoinAndSelect('userRole.user', 'user');
-      query.andWhere('userRole.userId IN (:...userIds)', { userIds });
-    }
-
-    if (roleIds && roleIds.length > 0) {
-      query.leftJoinAndSelect('userRole.role', 'role');
-      query.andWhere('userRole.roleId IN (:...roleIds)', { roleIds });
-    }
-
-    if (assignedByIds && assignedByIds.length > 0) {
-      if (!this.isLeftJoinPresent(query, 'user')) {
-        query.leftJoinAndSelect('userRole.user', 'user');
-      }
-      query.andWhere('userRole.assignedById IN (:...assignedByIds)', {
-        assignedByIds,
+      query.andWhere(`${USER_ROLE_QUERY_ALIAS}.userId IN (:...userIds)`, {
+        userIds,
       });
     }
 
-    return await query.getMany();
+    if (roleIds && roleIds.length > 0) {
+      query.andWhere(`${USER_ROLE_QUERY_ALIAS}.roleId IN (:...roleIds)`, {
+        roleIds,
+      });
+    }
+
+    if (assignedByIds && assignedByIds.length > 0) {
+      query.andWhere(
+        `${USER_ROLE_QUERY_ALIAS}.assignedBy IN (:...assignedByIds)`,
+        {
+          assignedByIds,
+        },
+      );
+    }
+
+    const userRoles = await query.getMany();
+
+    this.validateUserRoleExists({
+      ...(userIds !== undefined && { userIds }),
+      ...(roleIds !== undefined && { roleIds }),
+      ...(assignedByIds !== undefined && { assignedByIds }),
+      userRoles,
+    });
+
+    return userRoles;
   }
 
   /**
@@ -135,13 +180,32 @@ export class UserRoleService extends QueryService {
    * @returns Promise resolving to the UserRole entity associated with the user
    * @throws EntityNotFoundError if no UserRole is found for the given email
    */
-  async findByUserEmail(email: string): Promise<UserRole> {
-    return await this.queryManager
-      .createQueryBuilder(UserRole, 'userRole')
-      .leftJoinAndSelect('userRole.user', 'user')
-      .where('user.email = :email', { email })
-      .orWhere('userRole.assignedBy = :email', { email })
-      .getOneOrFail();
+  async findByUserEmail(email: string): Promise<UserRole[]> {
+    const userRoles = await this.queryManager
+      .createQueryBuilder(UserRole, USER_ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${ROLE_QUERY_ALIAS}`,
+        ROLE_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${USER_QUERY_ALIAS}`,
+        USER_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${ASSIGNED_USER_QUERY_ALIAS}`,
+        ASSIGNED_USER_QUERY_ALIAS,
+      )
+      .where(`${USER_QUERY_ALIAS}.email = :email`, { email })
+      .getMany();
+
+    if (userRoles.length === 0) {
+      throw new EntityNotFoundError(
+        'User Role',
+        `No UserRole records found for user with email: ${email}`,
+      );
+    }
+
+    return userRoles;
   }
 
   /**
@@ -153,15 +217,30 @@ export class UserRoleService extends QueryService {
    * @returns Promise resolving to the created UserRole entity
    * @throws EntityNotFoundError if user or role is not found
    */
-  async assignRolesToUser(userId: UUID, roleIds: UUID[]): Promise<UserRole> {
+  async assignRolesToUser(
+    userId: UUID,
+    data: AssignRoleIdsDto,
+    assignedById: UUID,
+  ): Promise<UserRole[]> {
+    const { roleIds } = data;
+
+    if (roleIds.length === 0) {
+      throw new BadRequestException('roleIds array cannot be empty');
+    }
+
     const user = await this.queryManager
-      .createQueryBuilder(User, 'user')
-      .where('user.id = :userId', { userId })
+      .createQueryBuilder(User, USER_QUERY_ALIAS)
+      .where(`${USER_QUERY_ALIAS}.id = :userId`, { userId })
+      .getOneOrFail();
+
+    const assignedBy = await this.queryManager
+      .createQueryBuilder(User, USER_QUERY_ALIAS)
+      .where(`${USER_QUERY_ALIAS}.id = :assignedById`, { assignedById })
       .getOneOrFail();
 
     const roles = await this.queryManager
-      .createQueryBuilder(Role, 'role')
-      .where('role.id IN (:...roleIds)', { roleIds })
+      .createQueryBuilder(Role, ROLE_QUERY_ALIAS)
+      .where(`${ROLE_QUERY_ALIAS}.id IN (:...roleIds)`, { roleIds })
       .getMany();
 
     if (roles.length === 0) {
@@ -181,13 +260,49 @@ export class UserRoleService extends QueryService {
       );
     }
 
-    const userRole = this.queryManager.create(UserRole, {
-      user,
-      roles,
-      assignedBy: user,
-    });
+    const exidstingUserRoles = await this.queryManager
+      .createQueryBuilder(UserRole, USER_ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${ROLE_QUERY_ALIAS}`,
+        ROLE_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${USER_QUERY_ALIAS}`,
+        USER_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${ASSIGNED_USER_QUERY_ALIAS}`,
+        ASSIGNED_USER_QUERY_ALIAS,
+      )
+      .where(`${USER_ROLE_QUERY_ALIAS}.userId = :userId`, { userId })
+      .andWhere(`${USER_ROLE_QUERY_ALIAS}.roleId IN (:...roleIds)`, {
+        roleIds,
+      })
+      .getMany();
 
-    return await this.queryManager.save(userRole);
+    const userRoles = new Array<UserRole>();
+
+    for (const role of roles) {
+      if (exidstingUserRoles.find((ur) => ur.role.id === role.id)) {
+        continue;
+      }
+
+      userRoles.push(
+        this.queryManager.create(UserRole, {
+          user,
+          role,
+          assignedBy,
+        }),
+      );
+    }
+
+    if (userRoles.length === 0) {
+      return exidstingUserRoles;
+    }
+
+    const newUserRole = await this.queryManager.save(userRoles);
+
+    return [...exidstingUserRoles, ...newUserRole];
   }
 
   /**
@@ -199,20 +314,23 @@ export class UserRoleService extends QueryService {
    * @returns Promise resolving to an object indicating whether the unassignment was successful
    * @throws EntityNotFoundError if UserRole is not found for the given user and role IDs
    */
-  async unassignRoleFromUser(
-    userIds: UUID[],
-    roleIds: UUID[],
+  async unassignRolesFromUsers(
+    data: UnassignRoleIdsDto,
   ): Promise<{ unassigned: boolean }> {
+    const { userIds, roleIds } = data;
+
     if (userIds.length === 0 || roleIds.length === 0) {
       return { unassigned: false };
     }
+
+    await this.findByIds({ userIds, roleIds });
 
     const result = await this.queryManager
       .createQueryBuilder()
       .delete()
       .from(UserRole)
-      .where('userId IN (:...userIds)', { userIds })
-      .andWhere('roleId IN (:...roleIds)', { roleIds })
+      .where(`${USER_QUERY_ALIAS}.id IN (:...userIds)`, { userIds })
+      .andWhere(`${ROLE_QUERY_ALIAS}.id IN (:...roleIds)`, { roleIds })
       .execute();
 
     if (result.affected === 0) {
@@ -223,5 +341,56 @@ export class UserRoleService extends QueryService {
     }
 
     return { unassigned: true };
+  }
+
+  private validateUserRoleExists({
+    userIds,
+    roleIds,
+    assignedByIds,
+    userRoles,
+  }: {
+    userIds?: UUID[];
+    roleIds?: UUID[];
+    assignedByIds?: UUID[];
+    userRoles: UserRole[];
+  }): void {
+    if (userRoles.length === 0) {
+      throw new EntityNotFoundError(
+        'User Role',
+        `No UserRole records found for the provided criteria.`,
+      );
+    }
+
+    const missingUserIds = userIds?.filter(
+      (id) => !userRoles.some((ur) => ur.user.id === id),
+    );
+
+    const missingRoleIds = roleIds?.filter(
+      (id) => !userRoles.some((ur) => ur.role.id === id),
+    );
+
+    const missingAssignedByIds = assignedByIds?.filter(
+      (id) => !userRoles.some((ur) => ur.assignedBy.id === id),
+    );
+
+    if (
+      (missingUserIds && missingUserIds.length > 0) ||
+      (missingRoleIds && missingRoleIds.length > 0) ||
+      (missingAssignedByIds && missingAssignedByIds.length > 0)
+    ) {
+      let errorMessage = 'No UserRole records found for the following IDs:';
+
+      if (missingUserIds && missingUserIds.length > 0) {
+        errorMessage += ` userIds [${missingUserIds.join(', ')}];`;
+      }
+      if (missingRoleIds && missingRoleIds.length > 0) {
+        errorMessage += ` roleIds [${missingRoleIds.join(', ')}];`;
+      }
+      if (missingAssignedByIds && missingAssignedByIds.length > 0) {
+        errorMessage += ` assignedByIds [${missingAssignedByIds.join(', ')}];`;
+      }
+
+      throw new EntityNotFoundError('User Role', errorMessage);
+    }
   }
 }

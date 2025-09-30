@@ -46,14 +46,21 @@ export class QueryService {
     query: SelectQueryBuilder<T>,
     field: string,
     values: unknown[],
+    condition: 'OR' | 'AND',
     relationAlias?: string,
   ): void {
     const alias = relationAlias ?? query.alias;
     const fieldPath = `${alias}.${field}`;
 
-    query.andWhere(`${fieldPath} IN (:...${field}s)`, {
-      [`${field}s`]: values,
-    });
+    if (condition === 'OR') {
+      query.orWhere(`${fieldPath} IN (:...${alias}${field}s)`, {
+        [`${alias}${field}s`]: values,
+      });
+    } else {
+      query.andWhere(`${fieldPath} IN (:...${alias}${field}s)`, {
+        [`${alias}${field}s`]: values,
+      });
+    }
   }
 
   /**
@@ -155,6 +162,89 @@ export class QueryService {
     query.orderBy(`${query.alias}.${sortField}`, sortOrder);
   }
 
+  validateSelect<T extends ObjectLiteral>(
+    query: SelectQueryBuilder<T>,
+    select: string[],
+    fieldsToSelect: string[] | undefined,
+    relationAlias: string,
+    hasAccess: boolean,
+    isTargetEntity: boolean,
+  ): void {
+    if (isTargetEntity) {
+      if (
+        fieldsToSelect == undefined &&
+        select.length &&
+        !select.includes(`${relationAlias}.id`)
+      ) {
+        select.push(`${relationAlias}.id`);
+        return;
+      }
+    }
+
+    if (!hasAccess) return;
+
+    if (fieldsToSelect) {
+      select.push(...fieldsToSelect);
+    }
+
+    // if (!hasAccess) {
+    //   fieldsToSelect = fieldsToSelect?.filter(
+    //     (field) => !field.includes(`${relationAlias}.`),
+    //   );
+    // }
+
+    // if (
+    //   !hasAccess ||
+    //   fieldsToSelect === undefined ||
+    //   fieldsToSelect.length === 0
+    // )
+    //   return;
+
+    // if (!this.isLeftJoinPresent(query, relationAlias) && !isTargetEntity) {
+    //   this.joinRelation<T>(query, relationAlias);
+    // }
+
+    // if (
+    //   fieldsToSelect.some((field) => field.startsWith(`${relationAlias}.`)) &&
+    //   !select.includes(`${queryAlias}.id`) &&
+    //   !isTargetEntity
+    // ) {
+    //   select.push(`${queryAlias}.id`);
+
+    //   return;
+    // }
+
+    // select.push(...fieldsToSelect);
+
+    // if (isTargetEntity && !select.includes(`${relationAlias}.id`)) {
+    //   select.push(`${relationAlias}.id`);
+    // }
+  }
+
+  validateOrder<T extends ObjectLiteral>(
+    query: SelectQueryBuilder<T>,
+    checkWithAliases: string[],
+    hasAccess: boolean,
+    order?: SortDto,
+  ): void {
+    if (order?.sortField === undefined) return;
+
+    if (!checkWithAliases.some((alias) => order.sortField.includes(alias))) {
+      return;
+    }
+
+    if (hasAccess) {
+      checkWithAliases.forEach((alias) => {
+        if (
+          order.sortField.includes(alias) &&
+          !this.isLeftJoinPresent(query, alias)
+        ) {
+          this.joinRelation<T>(query, alias);
+        }
+      });
+    }
+  }
+
   /**
    * Applies comprehensive query optimizations including field selection, sorting, and pagination.
    *
@@ -227,26 +317,25 @@ export class QueryService {
   joinEntityRelation<T extends ObjectLiteral>(
     queryBuilder: SelectQueryBuilder<T>,
     targetAlias: string,
+    shouldJoin: boolean,
+    condition: 'OR' | 'AND',
     options?: {
-      include?: boolean | undefined;
       filters?: Record<string, unknown[] | undefined> | undefined;
-      selectFields: string[] | undefined;
     },
   ): void {
-    const include = options?.include ?? false;
     const filters = options?.filters ?? {};
-    const select = options?.selectFields ?? [];
 
-    const shouldJoin =
-      include ||
-      Object.values(filters).some(
-        (arr) => Array.isArray(arr) && arr.length > 0,
-      ) ||
-      select.length > 0;
+    if (!shouldJoin) return;
 
-    if (!this.isLeftJoinPresent(queryBuilder, targetAlias) && shouldJoin) {
+    if (!this.isLeftJoinPresent(queryBuilder, targetAlias)) {
       this.joinRelation(queryBuilder, targetAlias);
     }
+
+    Object.entries(filters).forEach(([field, values]) => {
+      if (Array.isArray(values) && values.length > 0) {
+        this.whereIn(queryBuilder, field, values, condition, targetAlias);
+      }
+    });
   }
 
   /**

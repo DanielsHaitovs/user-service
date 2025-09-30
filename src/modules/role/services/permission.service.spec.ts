@@ -4,7 +4,8 @@ import type {
 } from '@/role/dto/permission.dto';
 import { PermissionService } from '@/role/services/permission.service';
 import { RoleService } from '@/role/services/role.service';
-import { createTestModule } from '@/test/db.connection';
+import { getSystemUserId } from '@/test/api/auth-user-api';
+import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import {
   createPermissions,
   deletePermissionsByIds,
@@ -13,10 +14,11 @@ import {
   updatePermissions,
 } from '@/test/factories/permission.factory';
 import { faker } from '@faker-js/faker/.';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, type INestApplication } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 
 import type { UUID } from 'crypto';
+import type { App } from 'supertest/types';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -24,12 +26,15 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
   let module: TestingModule;
   let permissionService: PermissionService;
   let roleService: RoleService;
+  let systemUserId: UUID;
+  let app: INestApplication<App>;
 
   beforeAll(async () => {
-    const { module: testingModule } = await createTestModule();
-    module = testingModule;
+    ({ moduleFixture: module, app } = await bootstrapTestApp());
+
     permissionService = module.get<PermissionService>(PermissionService);
     roleService = module.get<RoleService>(RoleService);
+    systemUserId = await getSystemUserId(app);
   });
 
   afterAll(async () => {
@@ -38,13 +43,14 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
 
   describe('create()', () => {
     it('should create and persist permissions', async () => {
-      await createPermissions(roleService, permissionService);
+      await createPermissions(roleService, permissionService, systemUserId);
     });
 
     it('should should throw Conflict error beacuse at least 1 name of permissions already exists', async () => {
       const permissions = await createPermissions(
         roleService,
         permissionService,
+        systemUserId,
       );
 
       const conflictPermissinos = new Array<CreatePermissionDto>();
@@ -69,6 +75,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       const permissions = await createPermissions(
         roleService,
         permissionService,
+        systemUserId,
       );
 
       const conflictPermissinos = new Array<CreatePermissionDto>();
@@ -92,7 +99,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
 
   describe('findByIds()', () => {
     it('should find permissions by uuids', async () => {
-      await findPermissionsByIds(roleService, permissionService);
+      await findPermissionsByIds(roleService, permissionService, systemUserId);
     });
 
     it('should throw not found exception, because permission id(s) does not exist', async () => {
@@ -103,13 +110,17 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
   });
   describe('searchFor()', () => {
     it('should find permissions by value', async () => {
-      await findPermissionsByIds(roleService, permissionService);
+      await findPermissionsByIds(roleService, permissionService, systemUserId);
     });
   });
 
   describe('findByCodes()', () => {
     it('should find permissions by codes', async () => {
-      await findPermissionsByCodes(roleService, permissionService);
+      await findPermissionsByCodes(
+        roleService,
+        permissionService,
+        systemUserId,
+      );
     });
 
     it('should throw not found exception, because permission code(s) does not exist', async () => {
@@ -124,13 +135,14 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
 
   describe('update()', () => {
     it('should update and persist permissions', async () => {
-      await updatePermissions(roleService, permissionService);
+      await updatePermissions(roleService, permissionService, systemUserId);
     });
 
     it('should should throw Conflict error beacuse name of permissions already exists', async () => {
       const permissions = await createPermissions(
         roleService,
         permissionService,
+        systemUserId,
       );
 
       const [firstPermission, secondPermission] = permissions;
@@ -151,6 +163,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       const permissions = await createPermissions(
         roleService,
         permissionService,
+        systemUserId,
       );
 
       const [firstPermission, secondPermission] = permissions;
@@ -172,6 +185,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       const permissions = await createPermissions(
         roleService,
         permissionService,
+        systemUserId,
       );
 
       const [firstPermission, secondPermission] = permissions;
@@ -193,7 +207,11 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
 
   describe('deleteIds()', () => {
     it('should delete permissions by uuids', async () => {
-      await deletePermissionsByIds(roleService, permissionService);
+      await deletePermissionsByIds(
+        roleService,
+        permissionService,
+        systemUserId,
+      );
     });
 
     it('should throw not found exception, because permission id(s) does not exist', async () => {

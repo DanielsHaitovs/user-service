@@ -1,4 +1,3 @@
-import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import {
   CREATE_PERMISSION,
   CREATE_ROLE,
@@ -7,18 +6,17 @@ import {
   READ_ROLE,
   UPDATE_ROLE,
 } from '@/lib/const/role.const';
-import { createTestModule } from '@/test/db.connection';
-import { initTestUser } from '@/test/helper/auth-user-api';
-import { systemUserAuthToken } from '@/test/helper/create-api-user';
-import { generateNewPermissionsApi } from '@/test/helper/permissions-api';
+import type { CreateRoleDto, UpdateRoleDto } from '@/role/dto/role.dto';
+import { initTestUser, systemUserAuthToken } from '@/test/api/auth-user-api';
+import { generateNewPermissionsApi } from '@/test/api/permissions-api';
 import {
   createNewRoleApi,
   deleteRolesApi,
   findRolesByIdsApi,
   searchRolesByValueApi,
   updateRoleApi,
-  validateRoleApiResponse,
-} from '@/test/helper/role-api';
+} from '@/test/api/role-api';
+import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import {
   BadRequestException,
   ConflictException,
@@ -34,23 +32,14 @@ import type { App } from 'supertest/types';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import type { CreateRoleDto, UpdateRoleDto } from '../dto/role.dto';
-import type { Role } from '../entities/role.entity';
-
 describe('RoleController', () => {
   let app: INestApplication<App>;
   let systemToken: string;
   let httpServer: Server;
 
   beforeAll(async () => {
-    const { module } = await createTestModule();
-    app = module.createNestApplication();
-    app.useGlobalFilters(new EntityNotFoundFilter());
-
-    await app.init();
-
+    ({ app } = await bootstrapTestApp());
     httpServer = app.getHttpServer() as Server;
-
     systemToken = await systemUserAuthToken(app);
   });
 
@@ -60,15 +49,13 @@ describe('RoleController', () => {
 
   describe('/role (POST)', () => {
     it('/role (POST) - should allow user to create new role', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         READ_PERMISSION,
       ]);
 
-      const role = await createNewRoleApi(app, userToken, undefined);
-
-      validateRoleApiResponse([role]);
+      await createNewRoleApi(app, userToken, undefined);
     });
     it('/role (POST) - should not allow user to create new role because user access is forbiden', async () => {
       await expect(createNewRoleApi(app, '', undefined)).rejects.toThrow(
@@ -76,7 +63,7 @@ describe('RoleController', () => {
       );
     });
     it('/role (POST) - should not allow user to create new role because its missing permission read:role', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         CREATE_ROLE,
         READ_PERMISSION,
       ]);
@@ -86,7 +73,7 @@ describe('RoleController', () => {
       );
     });
     it('/role (POST) - should not allow user to create new role because its missing permission create:role', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         READ_PERMISSION,
       ]);
@@ -96,7 +83,7 @@ describe('RoleController', () => {
       );
     });
     it('/role (POST) - should not allow user to create new role because its missing permission create:permissions', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         CREATE_ROLE,
         READ_ROLE,
       ]);
@@ -106,14 +93,18 @@ describe('RoleController', () => {
       );
     });
     it('/role (POST) - should not allow user to create new role because its missing required permissions', async () => {
-      const userToken = await initTestUser(app, systemToken, []);
+      const { accessToken: userToken } = await initTestUser(
+        app,
+        systemToken,
+        [],
+      );
 
       await expect(createNewRoleApi(app, userToken, undefined)).rejects.toThrow(
         ForbiddenException,
       );
     });
     it('/role (POST) - should not allow user to create new role when body is missing', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         CREATE_ROLE,
         READ_ROLE,
         READ_PERMISSION,
@@ -124,7 +115,7 @@ describe('RoleController', () => {
       ).rejects.toThrow(BadRequestException);
     });
     it('/role (POST) - should not allow user to create new role when name is not unique', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         CREATE_ROLE,
         READ_ROLE,
         READ_PERMISSION,
@@ -139,7 +130,7 @@ describe('RoleController', () => {
   });
   describe('/role (POST with Permissions)', () => {
     it('/role (POST) - should allow user to create new role with Permissions', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         READ_PERMISSION,
@@ -149,12 +140,10 @@ describe('RoleController', () => {
 
       const permissions = await generateNewPermissionsApi(app, userToken);
 
-      const role = await createNewRoleApi(app, userToken, {
+      await createNewRoleApi(app, userToken, {
         name: `role-with-permissions-${uuid()}`,
         permissions: permissions.map((p) => p.code),
       });
-
-      validateRoleApiResponse([role]);
     });
     it('/role (POST) - should not allow user to create new role because user is not authorized', async () => {
       await expect(createNewRoleApi(app, '', undefined)).rejects.toThrow(
@@ -162,7 +151,7 @@ describe('RoleController', () => {
       );
     });
     it('/role (POST) - should not allow user to create new role because its missing permission to read role entity', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         CREATE_ROLE,
         READ_PERMISSION,
         UPDATE_ROLE,
@@ -178,7 +167,7 @@ describe('RoleController', () => {
       ).rejects.toThrow(ForbiddenException);
     });
     it('/role (POST) - should not allow user to create new role because its missing permission to create role entity', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         READ_PERMISSION,
         UPDATE_ROLE,
@@ -194,7 +183,7 @@ describe('RoleController', () => {
       ).rejects.toThrow(ForbiddenException);
     });
     it('/role (POST) - should not allow user to create new role because its missing permission to read permissions entity', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         UPDATE_ROLE,
@@ -210,7 +199,7 @@ describe('RoleController', () => {
       ).rejects.toThrow(ForbiddenException);
     });
     it('/role (POST) - should not allow user to create new role because its missing permission to update role entity', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         CREATE_PERMISSION,
@@ -226,14 +215,18 @@ describe('RoleController', () => {
       ).rejects.toThrow(ForbiddenException);
     });
     it('/role (POST) - should not allow user to create new role because its missing required permissions', async () => {
-      const userToken = await initTestUser(app, systemToken, []);
+      const { accessToken: userToken } = await initTestUser(
+        app,
+        systemToken,
+        [],
+      );
 
       await expect(createNewRoleApi(app, userToken, undefined)).rejects.toThrow(
         ForbiddenException,
       );
     });
     it('/role (POST) - should not allow user to create new role when body is missing', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         CREATE_ROLE,
         READ_ROLE,
         READ_PERMISSION,
@@ -244,7 +237,7 @@ describe('RoleController', () => {
       ).rejects.toThrow(BadRequestException);
     });
     it('/role (POST) - should not allow user to create new role when name is not unique', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         CREATE_ROLE,
         READ_ROLE,
         READ_PERMISSION,
@@ -263,7 +256,7 @@ describe('RoleController', () => {
   });
   describe('/role (GET) find by Ids', () => {
     it('/role (GET) - should retrieve permissions by ids', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         READ_PERMISSION,
@@ -271,16 +264,16 @@ describe('RoleController', () => {
 
       const role = await createNewRoleApi(app, userToken, undefined);
 
-      validateRoleApiResponse([role]);
+      const { accessToken: targetToken } = await initTestUser(
+        app,
+        systemToken,
+        [READ_ROLE],
+      );
 
-      const targetToken = await initTestUser(app, systemToken, [READ_ROLE]);
-
-      const foundRoles = await findRolesByIdsApi(app, targetToken, [role.id]);
-
-      validateRoleApiResponse(foundRoles);
+      await findRolesByIdsApi(app, targetToken, [role.id]);
     });
     it('/role (GET) - should not retrieve roles by ids because user does not have permission -> read role ', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         CREATE_PERMISSION,
@@ -288,10 +281,11 @@ describe('RoleController', () => {
       ]);
 
       const role = await createNewRoleApi(app, userToken, undefined);
-
-      validateRoleApiResponse([role]);
-
-      const targetToken = await initTestUser(app, systemToken, []);
+      const { accessToken: targetToken } = await initTestUser(
+        app,
+        systemToken,
+        [],
+      );
 
       await expect(
         findRolesByIdsApi(app, targetToken, [role.id]),
@@ -303,24 +297,28 @@ describe('RoleController', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
     it('/role (GET) - should not retrieve role by ids because ids are not found', async () => {
-      const userToken = await initTestUser(app, systemToken, [READ_ROLE]);
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
+        READ_ROLE,
+      ]);
 
       await expect(
         findRolesByIdsApi(app, userToken, [uuid() as UUID]),
       ).rejects.toThrow(EntityNotFoundError);
     });
     it('/role (GET) - should not retrieve role by ids because ids are not UUID', async () => {
-      const userToken = await initTestUser(app, systemToken, [READ_ROLE]);
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
+        READ_ROLE,
+      ]);
 
       await request(httpServer)
-        .get('/roles/ids?ids=aaaa')
+        .get('/roles/attributes/ids?ids=aaaa&page=1&limit=10')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(400);
     });
   });
   describe('/role (GET) search by value', () => {
     it('/role (GET) - should search permissions by value like name or id', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         READ_PERMISSION,
@@ -328,22 +326,18 @@ describe('RoleController', () => {
 
       const role = await createNewRoleApi(app, userToken, undefined);
 
-      validateRoleApiResponse([role]);
-
-      const targetToken = await initTestUser(app, systemToken, [READ_ROLE]);
+      const { accessToken: targetToken } = await initTestUser(
+        app,
+        systemToken,
+        [READ_ROLE],
+      );
 
       const partialValue = role.name.slice(0, 5);
 
-      const { roles: foundRoles } = await searchRolesByValueApi(
-        app,
-        targetToken,
-        partialValue,
-      );
-
-      validateRoleApiResponse(foundRoles as Role[]);
+      await searchRolesByValueApi(app, targetToken, partialValue);
     });
     it('/role (GET) - should not search roles by value because user does not have permission -> read role', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         CREATE_ROLE,
         READ_PERMISSION,
@@ -351,9 +345,11 @@ describe('RoleController', () => {
 
       const role = await createNewRoleApi(app, userToken, undefined);
 
-      validateRoleApiResponse([role]);
-
-      const targetToken = await initTestUser(app, systemToken, []);
+      const { accessToken: targetToken } = await initTestUser(
+        app,
+        systemToken,
+        [],
+      );
 
       const partialValue = role.name.slice(0, 5);
 
@@ -370,22 +366,17 @@ describe('RoleController', () => {
 
   describe('/role (PATCH)', () => {
     it('/role (PATCH) - should update role name', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         UPDATE_ROLE,
       ]);
 
       const role = await createNewRoleApi(app, systemToken, undefined);
-
-      validateRoleApiResponse([role]);
-
       const updateDto: UpdateRoleDto = {
         name: `${role.name}-updated`,
       };
 
-      const updated = await updateRoleApi(app, userToken, updateDto, role.id);
-
-      validateRoleApiResponse([updated]);
+      await updateRoleApi(app, userToken, updateDto, role.id);
     });
     it('/role (PATCH) - should not update role because is not authorized', async () => {
       await expect(
@@ -393,12 +384,11 @@ describe('RoleController', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
     it('/role (PATCH) - should not update role because is user does not have required permission -> role:update', async () => {
-      const userToken = await initTestUser(app, systemToken, [READ_ROLE]);
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
+        READ_ROLE,
+      ]);
 
       const role = await createNewRoleApi(app, systemToken, undefined);
-
-      validateRoleApiResponse([role]);
-
       const updateDto: UpdateRoleDto = {
         name: `${role.name}-updated`,
       };
@@ -408,15 +398,12 @@ describe('RoleController', () => {
       ).rejects.toThrow(ForbiddenException);
     });
     it('/role (PATCH) - should not update role because role id does not exist', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         UPDATE_ROLE,
       ]);
 
       const role = await createNewRoleApi(app, systemToken, undefined);
-
-      validateRoleApiResponse([role]);
-
       const updateDto: UpdateRoleDto = {
         name: `${role.name}-updated`,
       };
@@ -426,7 +413,7 @@ describe('RoleController', () => {
       ).rejects.toThrow(EntityNotFoundError);
     });
     it('/role (PATCH) - should not update role because role name already exists', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         UPDATE_ROLE,
       ]);
@@ -445,15 +432,12 @@ describe('RoleController', () => {
   });
   describe('/role (DELETE)', () => {
     it('/role (DELETE) - should delete role by ids', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         DELETE_ROLE,
       ]);
 
       const role = await createNewRoleApi(app, systemToken, undefined);
-
-      validateRoleApiResponse([role]);
-
       const deletedPermissions = await deleteRolesApi(app, userToken, [
         role.id,
       ]);
@@ -467,21 +451,25 @@ describe('RoleController', () => {
       );
     });
     it('/role (DELETE) - should not delete role because is user does not have required permission -> role:read', async () => {
-      const userToken = await initTestUser(app, systemToken, [DELETE_ROLE]);
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
+        DELETE_ROLE,
+      ]);
 
       await expect(
         deleteRolesApi(app, userToken, [uuid() as UUID]),
       ).rejects.toThrow(ForbiddenException);
     });
     it('/role (DELETE) - should not delete role because is user does not have required permission -> role:delete', async () => {
-      const userToken = await initTestUser(app, systemToken, [READ_ROLE]);
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
+        READ_ROLE,
+      ]);
 
       await expect(
         deleteRolesApi(app, userToken, [uuid() as UUID]),
       ).rejects.toThrow(ForbiddenException);
     });
     it('/role (DELETE) - should not delete role because is role ids are not found', async () => {
-      const userToken = await initTestUser(app, systemToken, [
+      const { accessToken: userToken } = await initTestUser(app, systemToken, [
         READ_ROLE,
         DELETE_ROLE,
       ]);

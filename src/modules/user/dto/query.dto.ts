@@ -228,13 +228,13 @@ export class UserQueryDto {
   @ApiProperty({
     description:
       'Specific user department fields to return - optimizes payload size and performance',
-    enum: getDepartmentSelectableFields(),
+    enum: getDepartmentSelectableFields({}),
     type: String,
     isArray: true,
     required: false,
-    example: getDepartmentSelectableFields(),
+    example: getDepartmentSelectableFields({}),
   })
-  @IsEnum(getDepartmentSelectableFields(), { each: true })
+  @IsEnum(getDepartmentSelectableFields({}), { each: true })
   selectDepartmentFields?: string[];
 
   @ApiProperty({

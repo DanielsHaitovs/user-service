@@ -1,5 +1,8 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
+import {
+  PERMISSION_QUERY_ALIAS,
+  ROLE_QUERY_ALIAS,
+} from '@/lib/const/role.const';
 import {
   CreateRoleDto,
   RoleListResponseDto,
@@ -8,6 +11,7 @@ import {
 import { Permission } from '@/role/entities/permissions.entity';
 import { Role } from '@/role/entities/role.entity';
 import { PermissionService } from '@/role/services/permission.service';
+import { User } from '@/user/entities/user.entity';
 import {
   BadRequestException,
   ConflictException,
@@ -17,6 +21,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
+
+import { CREATEDBY_USER_QUERY_ALIAS } from '../../../lib/const/user.const';
 
 @Injectable()
 export class RoleService {
@@ -32,7 +38,17 @@ export class RoleService {
    * If permissions are provided, they will be associated with the role.
    * @returns The created role entity.
    */
-  async create(roleDto: CreateRoleDto): Promise<Role> {
+  async create({
+    roleDto,
+    createdBy,
+  }: {
+    roleDto: CreateRoleDto;
+    createdBy: UUID;
+  }): Promise<Role> {
+    if (createdBy.length === 0) {
+      throw new BadRequestException('Creator user ID is required');
+    }
+
     if (!roleDto.name) {
       throw new BadRequestException('Role name is required');
     }
@@ -53,7 +69,10 @@ export class RoleService {
     }
 
     // Create a new role entity
-    const role = this.roleRepository.create(roleData);
+    const role = this.roleRepository.create({
+      ...roleData,
+      createdBy: { id: createdBy } as User,
+    });
 
     if (permissions != undefined && permissions.length > 0) {
       const permissionsToAssign = await this.permissionService.findByCodes(
@@ -73,10 +92,10 @@ export class RoleService {
     const newRole = await this.roleRepository.save(role);
 
     if (permissionsBuffer.length > 0) {
-      await this.addPermissionsToRole(
-        permissionsBuffer.flatMap((p) => p.id),
-        newRole.id,
-      );
+      await this.addPermissionsToRole({
+        permissionIds: permissionsBuffer.flatMap((p) => p.id),
+        roleId: newRole.id,
+      });
 
       newRole.permissions = permissionsBuffer;
     }
@@ -92,14 +111,20 @@ export class RoleService {
    * @returns The updated role entity with new permissions.
    * @throws EntityNotFoundError if the role or any of the permissions do not exist.
    */
-  async addPermissionsToRole(
-    permissionIds: UUID[],
-    roleId: UUID,
-  ): Promise<Role> {
+  async addPermissionsToRole({
+    permissionIds,
+    roleId,
+  }: {
+    permissionIds: UUID[];
+    roleId: UUID;
+  }): Promise<Role> {
     const role = await this.roleRepository
-      .createQueryBuilder('role')
-      .where('role.id = :roleId', { roleId })
-      .leftJoinAndSelect('role.permissions', 'permissions')
+      .createQueryBuilder(ROLE_QUERY_ALIAS)
+      .where(`${ROLE_QUERY_ALIAS}.id = :roleId`, { roleId })
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+        PERMISSION_QUERY_ALIAS,
+      )
       .getOneOrFail();
 
     const permissions = await this.permissionService.findByIds(permissionIds);
@@ -123,19 +148,123 @@ export class RoleService {
   }
 
   /**
-   * Retrieves roles by id from the database.
-   * @returns the role entities.
+   * Finds roles by their IDs with pagination.
+   * @param ids - The UUIDs of the roles to find.
+   * @param pagination - Pagination parameters to control result set size.
+   * @returns Promise resolving to an array of role entities.
+   * @throws EntityNotFoundError if no roles with the given IDs exist.
+   * @throws BadRequestException if pagination parameters are invalid or no IDs are provided.
    */
-  async findByIds(ids: UUID[]): Promise<Role[]> {
-    const roles = await this.roleRepository
-      .createQueryBuilder('role')
-      .whereInIds(ids)
+  async findByIds({
+    ids,
+    pagination,
+    sort,
+  }: {
+    ids: UUID[];
+    pagination: PaginationDto;
+    sort?: SortDto;
+  }): Promise<Role[]> {
+    const { page, limit } = pagination;
+
+    if (ids.length === 0) {
+      throw new BadRequestException('No role IDs provided');
+    }
+
+    if (page < 1 || limit < 1) {
+      throw new BadRequestException(
+        'Pagination parameters must be greater than 0',
+      );
+    }
+    const query = this.roleRepository
+      .createQueryBuilder(ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+        PERMISSION_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${CREATEDBY_USER_QUERY_ALIAS}`,
+        CREATEDBY_USER_QUERY_ALIAS,
+      )
+      .where(`${ROLE_QUERY_ALIAS}.id IN (:...ids)`, { ids });
+
+    if (sort != undefined) {
+      query.orderBy(`${ROLE_QUERY_ALIAS}.${sort.sortField}`, sort.sortOrder);
+    }
+
+    const roles = await query
+      .skip((page - 1) * limit)
+      .take(limit)
       .getMany();
 
     if (roles.length === 0) {
       throw new EntityNotFoundError(
         'Role',
         `Roles not found: ${ids.join(', ')}`,
+      );
+    }
+
+    return roles;
+  }
+
+  /**
+   * Finds roles created by specific users with pagination.
+   * @param createdByUserIds - The UUIDs of the users who created the roles.
+   * @param pagination - Pagination parameters to control result set size.
+   * @returns Promise resolving to an array of role entities.
+   * @throws EntityNotFoundError if no roles created by the given users exist.
+   * @throws BadRequestException if pagination parameters are invalid or no user IDs are provided.
+   */
+  async findCreatedByUserWithId({
+    createdByUserIds,
+    pagination,
+    sort,
+  }: {
+    createdByUserIds: UUID[];
+    pagination: PaginationDto;
+    sort?: SortDto;
+  }): Promise<Role[]> {
+    const { page, limit } = pagination;
+
+    if (createdByUserIds.length === 0) {
+      throw new BadRequestException('No role IDs provided');
+    }
+
+    if (page < 1 || limit < 1) {
+      throw new BadRequestException(
+        'Pagination parameters must be greater than 0',
+      );
+    }
+
+    const query = this.roleRepository
+      .createQueryBuilder(ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${CREATEDBY_USER_QUERY_ALIAS}`,
+        CREATEDBY_USER_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+        PERMISSION_QUERY_ALIAS,
+      )
+      .where(
+        `${ROLE_QUERY_ALIAS}.${CREATEDBY_USER_QUERY_ALIAS} IN (:...createdByUserIds)`,
+        {
+          createdByUserIds,
+        },
+      );
+
+    if (sort != undefined) {
+      query.orderBy(`${ROLE_QUERY_ALIAS}.${sort.sortField}`, sort.sortOrder);
+    }
+
+    const roles = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    if (roles.length === 0) {
+      throw new EntityNotFoundError(
+        'Role',
+        `Roles not found: ${createdByUserIds.join(', ')}`,
       );
     }
 
@@ -157,7 +286,7 @@ export class RoleService {
   }: {
     value: string;
     pagination: PaginationDto;
-    sort: SortDto;
+    sort?: SortDto;
   }): Promise<RoleListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
       throw new BadRequestException(
@@ -176,7 +305,7 @@ export class RoleService {
         value: `%${value}%`,
       });
 
-    if (sort.sortField) {
+    if (sort != undefined) {
       query.orderBy(`${ROLE_QUERY_ALIAS}.${sort.sortField}`, sort.sortOrder);
     }
 
@@ -207,8 +336,8 @@ export class RoleService {
    * @throws BadRequestException if the name is not provided
    * @throws ConflictException if the new name conflicts with existing roles
    */
-  async update(id: UUID, role: UpdateRoleDto): Promise<Role> {
-    await this.findByIds([id]);
+  async update({ id, role }: { id: UUID; role: UpdateRoleDto }): Promise<Role> {
+    await this.findByIds({ ids: [id], pagination: { page: 1, limit: 1 } });
 
     if (role.name === undefined) {
       throw new BadRequestException(
@@ -238,6 +367,14 @@ export class RoleService {
     return this.roleRepository
       .createQueryBuilder(ROLE_QUERY_ALIAS)
       .where(`${ROLE_QUERY_ALIAS}.id = :id`, { id })
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+        PERMISSION_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${CREATEDBY_USER_QUERY_ALIAS}`,
+        CREATEDBY_USER_QUERY_ALIAS,
+      )
       .getOneOrFail();
   }
 

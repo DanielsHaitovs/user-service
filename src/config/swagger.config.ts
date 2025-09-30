@@ -366,12 +366,13 @@ html, body {
  */
 export const swaggerSetupOptions = {
   swaggerOptions: {
+    url: '/users/api-json',
     persistAuthorization: true,
     docExpansion: 'none',
     filter: true,
     showRequestDuration: true,
   },
-  customSiteTitle: 'MakeEasyCommerce API Docs',
+  customSiteTitle: 'MEC • User API',
   customfavIcon: '/favicon.ico',
   customCss: SWAGGER_DARK_THEME_CSS,
 };

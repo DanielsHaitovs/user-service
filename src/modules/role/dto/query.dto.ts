@@ -9,6 +9,7 @@ import {
   getPermissionsSelectableFields,
   getRoleSelectableFields,
 } from '@/role/helper/role-fields.util';
+import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -66,9 +67,22 @@ export class RoleQueryParametersDto {
   @IsArray()
   names?: string[];
 
-  constructor(ids?: UUID[], names?: string[]) {
+  @ApiPropertyOptional({
+    description: 'Filter by IDs of users who created the roles',
+    type: String,
+    isArray: true,
+    example: [EXAMPLE_ROLE_ID],
+    format: 'uuid',
+    uniqueItems: true,
+  })
+  @IsArray()
+  @IsUUID('4', { each: true })
+  createdByIds?: UUID[];
+
+  constructor(ids?: UUID[], names?: string[], createdByIds?: UUID[]) {
     this.ids = ids ?? [];
     this.names = names ?? [];
+    this.createdByIds = createdByIds ?? [];
   }
 }
 
@@ -147,6 +161,15 @@ export class RolesQueryDto {
   @IsBoolean()
   includePermissions?: boolean;
 
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: 'Include created by user in the response',
+    default: false,
+    required: false,
+  })
+  @IsBoolean()
+  includeCreatedBy?: boolean;
+
   @ApiProperty({
     description: 'Search criteria and filters for matching roles',
     type: PermissionQueryParametersDto,
@@ -175,7 +198,7 @@ export class RolesQueryDto {
 
   @ApiProperty({
     description:
-      'Specific user fields to return - optimizes payload size and performance',
+      'Specific role fields to return - optimizes payload size and performance',
     enum: getRoleSelectableFields(),
     type: String,
     isArray: true,
@@ -187,7 +210,7 @@ export class RolesQueryDto {
 
   @ApiProperty({
     description:
-      'Specific user fields to return - optimizes payload size and performance',
+      'Specific permission fields to return - optimizes payload size and performance',
     enum: getPermissionsSelectableFields(),
     type: String,
     isArray: true,
@@ -197,21 +220,37 @@ export class RolesQueryDto {
   @IsEnum(getPermissionsSelectableFields(), { each: true })
   selectPermissions?: string[];
 
+  @ApiProperty({
+    description:
+      'Specific user fields to return - optimizes payload size and performance',
+    enum: getUserSelectableFields(),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getUserSelectableFields(),
+  })
+  @IsEnum(getUserSelectableFields(), { each: true })
+  selectCreatedBy?: string[];
+
   constructor(
     rolesQuery: RoleQueryParametersDto,
     permissionsQuery: PermissionQueryParametersDto,
     pagination: PaginationDto,
     includePermissions: boolean,
+    includeCreatedBy: boolean,
     sort: SortDto,
     selectRoles: string[],
     selectPermissions: string[],
+    selectCreatedBy: string[],
   ) {
     this.rolesQuery = rolesQuery;
     this.permissionsQuery = permissionsQuery;
     this.includePermissions = includePermissions;
+    this.includeCreatedBy = includeCreatedBy;
     this.pagination = pagination;
     this.sort = sort;
     this.selectRoles = selectRoles;
     this.selectPermissions = selectPermissions;
+    this.selectCreatedBy = selectCreatedBy;
   }
 }

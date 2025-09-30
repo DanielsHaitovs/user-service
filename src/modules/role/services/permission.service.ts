@@ -6,6 +6,7 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
+import { Role } from '@/role/entities/role.entity';
 import {
   BadRequestException,
   ConflictException,
@@ -15,8 +16,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { Brackets, EntityNotFoundError, Repository } from 'typeorm';
-
-import { Role } from '../entities/role.entity';
 
 @Injectable()
 export class PermissionService {

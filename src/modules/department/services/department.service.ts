@@ -1,4 +1,6 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import { PostgresQueryFailedError } from '@/base/interface/query.error';
+import { QueryService } from '@/base/service/query.service';
 import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
@@ -6,6 +8,8 @@ import {
 } from '@/department/dto/department.dto';
 import { Department } from '@/department/entities/department.entity';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
+import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
+import { User } from '@/user/entities/user.entity';
 import {
   BadRequestException,
   ConflictException,
@@ -21,7 +25,9 @@ export class DepartmentService {
   constructor(
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
+    private readonly queryService: QueryService,
   ) {}
+
   /**
    * Creates a new department with name uniqueness validation.
    *
@@ -33,23 +39,42 @@ export class DepartmentService {
    * @returns Promise resolving to the created department entity
    * @throws ConflictException when department name already exists
    */
-  async create(createDepartmentDto: CreateDepartmentDto): Promise<Department> {
-    const existingDepartmentName = await this.departmentRepository
-      .createQueryBuilder(DEPARTMENT_QUERY_ALIAS)
-      .where(`${DEPARTMENT_QUERY_ALIAS}.name = :name`, {
-        name: createDepartmentDto.name,
-      })
-      .select([`${DEPARTMENT_QUERY_ALIAS}.name`])
-      .getOne();
-
-    if (existingDepartmentName != undefined) {
-      throw new ConflictException('Department with this name already exists');
-    }
+  async create({
+    createDepartmentDto,
+    createdBy,
+    hasUserPermission,
+  }: {
+    createDepartmentDto: CreateDepartmentDto;
+    createdBy: UUID;
+    hasUserPermission: boolean;
+  }): Promise<Department> {
+    const { name, country } = createDepartmentDto;
 
     // Entity creation with automatic field mapping and validation
-    const department = this.departmentRepository.create(createDepartmentDto);
+    const department = this.departmentRepository.create({
+      name,
+      country,
+      createdBy: { id: createdBy } as User,
+    });
 
-    return await this.departmentRepository.save(department);
+    const res = await this.departmentRepository
+      .save(department)
+      .catch((e: unknown) => {
+        const error = e as PostgresQueryFailedError;
+
+        if (error.code === '23505') {
+          throw new ConflictException(
+            `Department with this name ${name} already exists`,
+          );
+        }
+        throw error;
+      });
+
+    if (!hasUserPermission) {
+      delete res.createdBy;
+    }
+
+    return res;
   }
 
   /**
@@ -59,10 +84,54 @@ export class DepartmentService {
    * @returns Promise resolving to the department entity
    * @throws NotFoundException when department IDs doesn't exist
    */
-  async findByIds(ids: UUID[]): Promise<Department[]> {
-    const departments = await this.departmentRepository
-      .createQueryBuilder(DEPARTMENT_QUERY_ALIAS)
-      .where(`${DEPARTMENT_QUERY_ALIAS}.id IN (:...ids)`, { ids })
+  async findByIds({
+    ids,
+    pagination,
+    hasUserPermission,
+    select,
+    sort,
+  }: {
+    ids: UUID[];
+    pagination: PaginationDto;
+    hasUserPermission?: boolean;
+    select?: string[];
+    sort?: SortDto;
+  }): Promise<Department[]> {
+    if (ids.length === 0) {
+      throw new BadRequestException('At least one ID must be provided');
+    }
+
+    const { page, limit } = pagination;
+
+    const query = this.departmentRepository.createQueryBuilder(
+      DEPARTMENT_QUERY_ALIAS,
+    );
+
+    if (ids.length > 0) {
+      this.queryService.whereIn(
+        query,
+        'id',
+        ids,
+        'AND',
+        DEPARTMENT_QUERY_ALIAS,
+      );
+    }
+
+    if (hasUserPermission !== undefined && hasUserPermission) {
+      this.queryService.joinRelation(query, CREATEDBY_USER_QUERY_ALIAS);
+    }
+
+    if (select !== undefined && select.length > 0) {
+      query.select(select);
+    }
+
+    if (sort?.sortField !== undefined) {
+      query.orderBy(sort.sortField, sort.sortOrder);
+    }
+
+    const departments = await query
+      .skip((page - 1) * limit)
+      .take(limit)
       .getMany();
 
     if (departments.length === 0) {
@@ -90,10 +159,14 @@ export class DepartmentService {
     value,
     pagination,
     sort,
+    select,
+    hasUserPermission,
   }: {
     value: string;
     pagination: PaginationDto;
     sort: SortDto;
+    select?: string[];
+    hasUserPermission?: boolean;
   }): Promise<DepartmentListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
       throw new BadRequestException(
@@ -103,7 +176,7 @@ export class DepartmentService {
 
     const { page, limit } = pagination;
 
-    const departments = await this.departmentRepository
+    const query = this.departmentRepository
       .createQueryBuilder(DEPARTMENT_QUERY_ALIAS)
       .where(`${DEPARTMENT_QUERY_ALIAS}.name like :value`, {
         value: `%${value}%`,
@@ -113,8 +186,21 @@ export class DepartmentService {
       })
       .orWhere(`${DEPARTMENT_QUERY_ALIAS}.id::text ILIKE :value`, {
         value: `%${value}%`,
-      })
-      .orderBy(`${DEPARTMENT_QUERY_ALIAS}.${sort.sortField}`, sort.sortOrder)
+      });
+
+    if (hasUserPermission !== undefined && hasUserPermission) {
+      this.queryService.joinRelation(query, CREATEDBY_USER_QUERY_ALIAS);
+    }
+
+    if (sort.sortField !== '') {
+      query.orderBy(sort.sortField, sort.sortOrder);
+    }
+
+    if (select !== undefined && select.length > 0) {
+      query.select(select);
+    }
+
+    const departments = await query
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
@@ -146,7 +232,10 @@ export class DepartmentService {
     id: UUID,
     updateDepartmentDto: UpdateDepartmentDto,
   ): Promise<Department> {
-    await this.findByIds([id]);
+    await this.findByIds({
+      ids: [id],
+      pagination: { page: 1, limit: 1 },
+    });
 
     if (updateDepartmentDto.name !== undefined) {
       const nameExists = await this.departmentRepository
@@ -195,7 +284,10 @@ export class DepartmentService {
     }
 
     // Comprehensive existence validation before any deletion
-    const existingDepartments = await this.findByIds(ids);
+    const existingDepartments = await this.findByIds({
+      ids,
+      pagination: { page: 1, limit: ids.length },
+    });
 
     // Fail-fast validation with detailed error reporting
     if (existingDepartments.length !== ids.length) {

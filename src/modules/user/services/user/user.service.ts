@@ -50,7 +50,10 @@ export class UserService {
     await this.findById(createdBy);
 
     const { departmentIds, roleIds } = createUserDto;
-    const department = await this.departmentService.findByIds(departmentIds);
+    const department = await this.departmentService.findByIds({
+      ids: departmentIds,
+      pagination: { page: 1, limit: departmentIds.length },
+    });
 
     if (department.length === 0) {
       throw new EntityNotFoundError(
@@ -78,17 +81,19 @@ export class UserService {
       passwordResetToken: generatePasswordResetToken(),
     });
 
-    user.departments = department;
+    user.department = department;
 
     const newUser = await this.userRepository.save(user);
 
     try {
       if (roleIds.length > 0) {
-        const userRoles = await this.roleService.create({
-          userId: newUser.id,
-          roleIds,
-          assignedById: createdBy,
-        });
+        const userRoles = await this.roleService.create(
+          {
+            userId: newUser.id,
+            roleIds,
+          },
+          createdBy,
+        );
 
         newUser.userRoles = userRoles;
 
@@ -329,9 +334,8 @@ export class UserService {
       user.userRoles.map((userRole) => userRole.role.id),
     );
 
-    await this.roleService.unassignRoleFromUser(ids, roleIds);
+    await this.roleService.unassignRolesFromUsers({ userIds: ids, roleIds });
 
-    // Atomic bulk deletion with affected row tracking
     const result = await this.userRepository
       .createQueryBuilder()
       .delete()

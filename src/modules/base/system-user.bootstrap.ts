@@ -1,5 +1,4 @@
-import { Department } from '@/department/entities/department.entity';
-import { COUNTRIES } from '@/lib/const/countries.const';
+import { ROOT_ADMIN_PERMISSION } from '@/lib/const/role.const';
 import {
   SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,
@@ -11,6 +10,7 @@ import { UserRole } from '@/user/entities/userRoles.entity';
 import type { INestApplication } from '@nestjs/common';
 
 import * as bcrypt from 'bcrypt';
+import type { UUID } from 'crypto';
 import { DataSource } from 'typeorm';
 
 export async function ensureSystemUser(app: INestApplication): Promise<void> {
@@ -25,49 +25,26 @@ export async function ensureSystemUser(app: INestApplication): Promise<void> {
     return;
   }
 
-  const systemDepartment = await createSystemDepartment(dataSource);
-  await createSystemRole(dataSource);
-
   const newUser = userRepo.create({
     email: SYSTEM_USER_EMAIL,
     firstName: 'System',
     lastName: 'User',
 
     password: await bcrypt.hash(SYSTEM_USER_PASSWORD, 10),
-    departments: [systemDepartment],
     isActive: true,
     isEmailVerified: true,
     isTwoFactorEnabled: false,
   });
 
   await userRepo.save(newUser);
-
+  await createSystemRole(dataSource, newUser.id);
   await createUserRole(dataSource);
 }
 
-async function createSystemDepartment(
+async function createSystemRole(
   dataSource: DataSource,
-): Promise<Department> {
-  // Implement department creation logic here
-  const departmentRepo = dataSource.getRepository(Department);
-
-  const existingDepartment = await departmentRepo.findOne({
-    where: { name: 'System' },
-  });
-
-  if (existingDepartment) {
-    return existingDepartment;
-  }
-
-  const systemDepartment = departmentRepo.create({
-    name: 'System',
-    country: COUNTRIES.US,
-  });
-
-  return await departmentRepo.save(systemDepartment);
-}
-
-async function createSystemRole(dataSource: DataSource): Promise<void> {
+  createdBy: UUID,
+): Promise<void> {
   const roleRepo = dataSource.getRepository(Role);
 
   const existingRole = await roleRepo.findOne({
@@ -81,6 +58,7 @@ async function createSystemRole(dataSource: DataSource): Promise<void> {
 
   const newRole = roleRepo.create({
     name: 'System',
+    createdBy: { id: createdBy } as User,
   });
 
   const systemRole = await roleRepo.save(newRole);
@@ -88,7 +66,7 @@ async function createSystemRole(dataSource: DataSource): Promise<void> {
 
   const newPermissions = permissionRepo.create({
     name: 'System Permissions',
-    code: 'root_all',
+    code: ROOT_ADMIN_PERMISSION,
     roles: [{ id: systemRole.id }],
   });
 
@@ -115,7 +93,7 @@ async function createUserRole(dataSource: DataSource): Promise<UserRole> {
   const userRole = userRoleRepo.create({
     user: existingUser,
     role: existingRole,
-    assignedBy: existingUser, // Assuming the user is assigned by themselves
+    assignedBy: existingUser,
   });
 
   return await userRoleRepo.save(userRole);

@@ -1,24 +1,27 @@
-import { ensureSystemUser } from '@/base/system-user.bootstrap';
 import type { INestApplication } from '@nestjs/common';
-import { Test, type TestingModule } from '@nestjs/testing';
 
 import * as request from 'supertest';
 import type { App } from 'supertest/types';
+import type { DataSource } from 'typeorm';
 
-import { AppModule } from '../src/app.module';
+import { ensureSystemUser } from '../src/modules/base/system-user.bootstrap';
+
+import { bootstrapTestApp } from './bootstrap-e2e';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
+  let dataSource: DataSource;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
+    ({ app, dataSource } = await bootstrapTestApp());
     await ensureSystemUser(app);
+  });
+
+  afterAll(async () => {
+    if (dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
+    await app.close();
   });
 
   it('/health (GET)', () => {

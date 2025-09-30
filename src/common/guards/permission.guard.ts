@@ -1,5 +1,7 @@
 import { RequestWithUserPermissions } from '@/auth/interfaces/req.interface';
 import { PERMISSIONS_KEY } from '@/common/decorators/permission.decorator';
+import { ROOT_ADMIN_PERMISSION } from '@/lib/const/role.const';
+import { User } from '@/user/entities/user.entity';
 import {
   CanActivate,
   ExecutionContext,
@@ -7,12 +9,19 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { InjectRepository } from '@nestjs/typeorm';
+
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
       PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
@@ -26,9 +35,13 @@ export class PermissionsGuard implements CanActivate {
       .switchToHttp()
       .getRequest<RequestWithUserPermissions>();
 
-    const { permissions } = request.user;
+    const { permissions, id } = request.user;
 
-    if (permissions.includes('root_all')) return true;
+    if ((await this.userRepository.findOne({ where: { id } })) == undefined) {
+      throw new ForbiddenException('User not found');
+    }
+
+    if (permissions.includes(ROOT_ADMIN_PERMISSION)) return true;
 
     const hasAllPermissions = requiredPermissions.every((perm) =>
       permissions.includes(perm),

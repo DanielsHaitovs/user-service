@@ -7,6 +7,39 @@ import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsUUID, ValidateNested } from 'class-validator';
 import { UUID } from 'crypto';
 
+export class AssignRoleIdsDto {
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    description: 'List of role IDs to assign to the user',
+  })
+  @IsUUID(4, { each: true })
+  @IsNotEmpty()
+  roleIds: UUID[];
+
+  constructor(roleIds: UUID[]) {
+    this.roleIds = roleIds;
+  }
+}
+
+export class UnassignRoleIdsDto extends AssignRoleIdsDto {
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    description: 'List of user IDs from which role will be unassigned',
+  })
+  @IsUUID(4, { each: true })
+  @IsNotEmpty()
+  userIds: UUID[];
+
+  constructor(userIds: UUID[], roleIds: UUID[]) {
+    super(roleIds);
+    this.userIds = userIds;
+  }
+}
+
 export class CreateUserRoleDto {
   @ApiProperty({
     type: String,
@@ -27,21 +60,9 @@ export class CreateUserRoleDto {
   @IsNotEmpty()
   roleIds: string[];
 
-  @ApiProperty({
-    type: String,
-    format: 'uuid',
-    description: 'ID of the user who assigned the roles',
-    example: EXAMPLE_USER_ID,
-    required: true,
-  })
-  @IsUUID(4)
-  @IsNotEmpty()
-  assignedById: string;
-
-  constructor(userId: string, roleIds: string[], assignedById: string) {
+  constructor(userId: string, roleIds: string[]) {
     this.userId = userId;
     this.roleIds = roleIds;
-    this.assignedById = assignedById;
   }
 }
 

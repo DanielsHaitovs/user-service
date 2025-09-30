@@ -1,10 +1,19 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { Permission } from '@/role/entities/permissions.entity';
+import { User } from '@/user/entities/user.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
-import { Column, Entity, JoinTable, ManyToMany, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 
 @Entity('role')
 export class Role extends MecBaseEntity {
@@ -24,6 +33,10 @@ export class Role extends MecBaseEntity {
   })
   permissions: Permission[];
 
+  @ManyToOne(() => User, { nullable: false })
+  @JoinColumn({ name: 'createdBy' })
+  createdBy: User;
+
   constructor(
     id: UUID,
     name: string,
@@ -31,6 +44,7 @@ export class Role extends MecBaseEntity {
     updatedAt: Date,
     permissions: Permission[],
     userRoles: UserRole[],
+    createdBy: User,
   ) {
     super(id, createdAd, updatedAt);
     this.name = name;
@@ -38,5 +52,6 @@ export class Role extends MecBaseEntity {
     this.updatedAt = updatedAt;
     this.permissions = permissions;
     this.userRoles = userRoles;
+    this.createdBy = createdBy;
   }
 }

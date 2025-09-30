@@ -3,20 +3,26 @@ import type {
   PermissionListResponseDto,
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
-import { Permission } from '@/role/entities/permissions.entity';
+import type { Permission } from '@/role/entities/permissions.entity';
 import type { PermissionService } from '@/role/services/permission.service';
 import type { RoleService } from '@/role/services/role.service';
 import { createRole } from '@/test/factories/role.factory';
+import {
+  validateDeletePermissionResponse,
+  validatePermissionResponse,
+} from '@/test/validation/permissions';
 import { faker } from '@faker-js/faker/.';
 
+import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 export async function createPermissions(
   roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<Permission[]> {
-  const role = await createRole(roleService);
+  const role = await createRole(roleService, createdBy);
 
   const permissionDto: CreatePermissionDto[] = [
     {
@@ -33,11 +39,12 @@ export async function createPermissions(
 
   const permissions = await permissionService.create(permissionDto);
 
-  expect(permissions).toBeDefined();
-  expect(Array.isArray(permissions)).toBe(true);
-  expect(permissions).toHaveLength(2);
-
-  validatePermissionsArray(permissions, permissionDto);
+  validatePermissionResponse({
+    permissions,
+    amountExpected: 2,
+    names: permissionDto.map((p) => p.name),
+    codes: permissionDto.map((p) => p.code),
+  });
 
   return permissions;
 }
@@ -45,21 +52,23 @@ export async function createPermissions(
 export async function findPermissionsByIds(
   roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<Permission[]> {
   const newPermissions = await createPermissions(
     roleService,
     permissionService,
+    createdBy,
   );
 
   const permissions = await permissionService.findByIds(
     newPermissions.flatMap((permission) => permission.id),
   );
 
-  expect(permissions).toBeDefined();
-  expect(Array.isArray(permissions)).toBe(true);
-  expect(permissions).toHaveLength(2);
-
-  validatePermissionsArray(permissions, newPermissions);
+  validatePermissionResponse({
+    permissions,
+    amountExpected: newPermissions.length,
+    ids: newPermissions.map((p) => p.id),
+  });
 
   return permissions;
 }
@@ -67,40 +76,73 @@ export async function findPermissionsByIds(
 export async function findPermissionsByCodes(
   roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<Permission[]> {
   const newPermissions = await createPermissions(
     roleService,
     permissionService,
+    createdBy,
   );
 
   const permissions = await permissionService.findByCodes(
     newPermissions.flatMap((permission) => permission.code),
   );
 
-  expect(permissions).toBeDefined();
-  expect(Array.isArray(permissions)).toBe(true);
-  expect(permissions).toHaveLength(2);
-
-  validatePermissionsArray(permissions, newPermissions);
+  validatePermissionResponse({
+    permissions,
+    amountExpected: newPermissions.length,
+    codes: newPermissions.map((p) => p.code),
+  });
 
   return permissions;
 }
 
 export async function searchForPermission(
+  roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<PermissionListResponseDto> {
-  return await permissionService.searchFor({
-    value: faker.lorem.word(),
+  const newPermissions = await createPermissions(
+    roleService,
+    permissionService,
+    createdBy,
+  );
+
+  if (newPermissions[0] === undefined) {
+    throw new Error('Could not create permission');
+  }
+
+  const foundPermissions = await permissionService.searchFor({
+    value: newPermissions[0].name,
     pagination: { limit: 10, page: 1 },
     sort: { sortField: 'name', sortOrder: 'ASC' },
   });
+
+  const permissions = foundPermissions.permissions as Permission[];
+
+  if (permissions.length === 0) {
+    throw new Error('No permissions found');
+  }
+
+  validatePermissionResponse({
+    permissions,
+    amountExpected: 1,
+    names: [newPermissions[0].name],
+  });
+
+  return foundPermissions;
 }
 
 export async function updatePermissions(
   roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<Permission> {
-  const permissions = await createPermissions(roleService, permissionService);
+  const permissions = await createPermissions(
+    roleService,
+    permissionService,
+    createdBy,
+  );
 
   const updateDto: UpdatePermissionDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
@@ -116,10 +158,13 @@ export async function updatePermissions(
     updateDto,
   );
 
-  expect(updatedPermission).toBeDefined();
-  expect(updatedPermission.id).toBeDefined();
-  expect(updatedPermission.name).toBe(updateDto.name);
-  expect(updatedPermission.code).toBe(updateDto.code);
+  validatePermissionResponse({
+    permissions: [updatedPermission],
+    amountExpected: 1,
+    ids: [permissions[0].id],
+    ...(updateDto.name != undefined && { names: [updateDto.name] }),
+    ...(updateDto.code != undefined && { codes: [updateDto.code] }),
+  });
 
   return updatedPermission;
 }
@@ -127,49 +172,21 @@ export async function updatePermissions(
 export async function deletePermissionsByIds(
   roleService: RoleService,
   permissionService: PermissionService,
+  createdBy: UUID,
 ): Promise<void> {
-  const permissions = await createPermissions(roleService, permissionService);
+  const permissions = await createPermissions(
+    roleService,
+    permissionService,
+    createdBy,
+  );
 
   const result = await permissionService.deleteByIds(
     permissions.flatMap((p) => p.id),
   );
 
-  expect(result).toEqual({ deleted: 2 });
+  validateDeletePermissionResponse(result, permissions.length);
 
   await expect(
     permissionService.findByIds(permissions.flatMap((p) => p.id)),
   ).rejects.toThrow(EntityNotFoundError);
-}
-
-function validatePermissionsArray(
-  permissions: Permission[],
-  permissionDto: CreatePermissionDto[] | Permission[],
-): void {
-  const [firstPermission, secondPermission] = permissions;
-
-  if (
-    firstPermission?.roles[0] === undefined ||
-    secondPermission?.roles[0] === undefined
-  ) {
-    throw new Error('Permission should be defined');
-  }
-
-  if (
-    permissionDto[0] instanceof Permission &&
-    permissionDto[1] instanceof Permission &&
-    permissionDto[0].roles[0] !== undefined &&
-    permissionDto[1].roles[0] !== undefined
-  ) {
-    expect(firstPermission.roles[0].id).toBe(permissionDto[0].roles[0].id);
-    expect(secondPermission.roles[0].id).toBe(permissionDto[1].roles[0].id);
-  }
-
-  expect(permissionDto.some((p) => p.code === firstPermission.code)).toBe(true);
-  expect(permissionDto.some((p) => p.code === secondPermission.code)).toBe(
-    true,
-  );
-  expect(permissionDto.some((p) => p.name === firstPermission.name)).toBe(true);
-  expect(permissionDto.some((p) => p.name === secondPermission.name)).toBe(
-    true,
-  );
 }

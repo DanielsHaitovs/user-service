@@ -1,8 +1,9 @@
+import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
 import {
   EXAMPLE_DEPARTMENT_COUNTRY,
   EXAMPLE_DEPARTMENT_NAME,
 } from '@/lib/const/department.const';
-import { PaginatedResponseDto } from '@/modules/base/dto/pagination.dto';
+import { UserResponseDto } from '@/user/dto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -56,11 +57,37 @@ export class DepartmentResponseDto extends DepartmentBaseDto {
   })
   id: UUID;
 
-  constructor(id: UUID, name: string, country: string) {
+  @ApiProperty({
+    description: 'List of roles assigned to the user',
+    type: UserResponseDto,
+    isArray: false,
+  })
+  @Type(() => UserResponseDto)
+  @ValidateNested()
+  createdBy?: UserResponseDto;
+
+  @ApiProperty({
+    description: 'List of roles assigned to the user',
+    type: UserResponseDto,
+    isArray: false,
+  })
+  @Type(() => UserResponseDto)
+  @ValidateNested({ each: true })
+  user?: UserResponseDto[];
+
+  constructor(
+    id: UUID,
+    name: string,
+    country: string,
+    createdBy: UserResponseDto,
+    user: UserResponseDto[],
+  ) {
     super(name, country);
     this.id = id;
     this.name = name;
     this.country = country;
+    this.createdBy = createdBy;
+    this.user = user;
   }
 }
 

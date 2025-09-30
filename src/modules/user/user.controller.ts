@@ -92,7 +92,7 @@ import { EntityNotFoundError } from 'typeorm';
  */
 @ApiTags('Users')
 @TraceController()
-@Controller('users')
+@Controller('user')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class UserController {
@@ -246,7 +246,7 @@ export class UserController {
    * contexts, profile management, and administrative interfaces where the user ID
    * is already known from previous operations or JWT tokens.
    */
-  @Get(':id')
+  @Get('id/:id')
   @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -255,7 +255,7 @@ export class UserController {
   })
   @ApiParam({
     name: 'id',
-    type: 'string',
+    type: String,
     format: 'uuid',
     description: 'User unique identifier',
     example: EXAMPLE_USER_ID,
@@ -319,7 +319,7 @@ export class UserController {
    * Essential for login processes, password recovery, and scenarios where
    * email is the primary user identifier available to the client.
    */
-  @Get(':email')
+  @Get('email/:email')
   @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -328,7 +328,7 @@ export class UserController {
   })
   @ApiParam({
     name: 'email',
-    type: 'string',
+    type: String,
     format: 'email',
     description: 'User email address',
     example: EXAMPLE_USER_EMAIL,
@@ -385,7 +385,7 @@ export class UserController {
     return await this.userService.findByEmail(email);
   }
 
-  @Get(':value')
+  @Get('search/:value')
   @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -481,7 +481,7 @@ export class UserController {
    * complete profile data. Maintains email uniqueness constraints and supports
    * administrative status changes alongside user profile modifications.
    */
-  @Patch(':id')
+  @Patch('id/:id')
   @Permissions(UPDATE_USER, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -491,7 +491,7 @@ export class UserController {
   })
   @ApiParam({
     name: 'id',
-    type: 'string',
+    type: String,
     format: 'uuid',
     description: 'User unique identifier',
     example: EXAMPLE_USER_ID,
@@ -623,7 +623,7 @@ export class UserController {
    * readily available. Particularly useful for self-service profile updates
    * and external system integrations that identify users by email.
    */
-  @Patch(':email')
+  @Patch('email/:email')
   @Permissions(UPDATE_USER, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -633,7 +633,7 @@ export class UserController {
   })
   @ApiParam({
     name: 'email',
-    type: 'string',
+    type: String,
     format: 'email',
     description: 'User email address',
     example: EXAMPLE_USER_EMAIL,
@@ -747,7 +747,7 @@ export class UserController {
    * Ensures all target users exist before proceeding with deletions to maintain
    * data consistency and provide accurate operation feedback.
    */
-  @Delete('byIds')
+  @Delete()
   @Permissions(DELETE_USER, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -974,7 +974,7 @@ export class UserController {
     isArray: true,
     required: false,
     description: 'Select users department fields',
-    enum: getDepartmentSelectableFields(),
+    enum: getDepartmentSelectableFields({}),
   })
   @ApiQuery({
     name: 'selectRoleFields',

@@ -3,6 +3,7 @@ import {
   PERMISSION_QUERY_ALIAS,
   ROLE_QUERY_ALIAS,
 } from '@/lib/const/role.const';
+import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { RolesQueryDto } from '@/role/dto/query.dto';
 import { RoleListResponseDto } from '@/role/dto/role.dto';
 import { Role } from '@/role/entities/role.entity';
@@ -42,7 +43,7 @@ export class RoleQueryService extends QueryService {
    */
   async getRoles(filters: RolesQueryDto): Promise<RoleListResponseDto> {
     const {
-      rolesQuery: { ids, names },
+      rolesQuery: { ids, names, createdByIds },
       permissionsQuery: {
         ids: permissionIds,
         names: permissionNames,
@@ -51,20 +52,22 @@ export class RoleQueryService extends QueryService {
       sort: { sortField, sortOrder },
       pagination: { page, limit },
       includePermissions,
+      includeCreatedBy,
       selectRoles,
       selectPermissions,
+      selectCreatedBy,
     } = filters;
 
     const queryBuilder = this.initQuery(Role, ROLE_QUERY_ALIAS);
 
     // Initialize the query builder with the base role entity
     if (ids && ids.length > 0) {
-      this.whereIn(queryBuilder, 'id', ids);
+      this.whereIn(queryBuilder, 'id', ids, 'AND');
     }
 
     // Filter by last names - supports partial name-based searches
     if (names && names.length > 0) {
-      this.whereIn(queryBuilder, 'name', names);
+      this.whereIn(queryBuilder, 'name', names, 'AND');
     }
 
     // Join permissions relation if specified or if any permission filters are provided
@@ -77,28 +80,55 @@ export class RoleQueryService extends QueryService {
       selectPermissions,
     );
 
-    // Filter by last names - supports partial name-based searches
+    // Filter by permission IDs - supports bulk permission filtering
     if (permissionIds && permissionIds.length > 0) {
-      this.whereIn(queryBuilder, 'id', permissionIds, PERMISSION_QUERY_ALIAS);
+      this.whereIn(
+        queryBuilder,
+        'id',
+        permissionIds,
+        'AND',
+        PERMISSION_QUERY_ALIAS,
+      );
     }
 
-    // Filter by last names - supports partial name-based searches
+    // Filter by permission codes - supports partial code-based searches
     if (permissionCodes && permissionCodes.length > 0) {
       this.whereIn(
         queryBuilder,
         'code',
         permissionCodes,
+        'AND',
         PERMISSION_QUERY_ALIAS,
       );
     }
 
-    // Filter by last names - supports partial name-based searches
+    // Filter by permission names - supports partial name-based searches
     if (permissionNames && permissionNames.length > 0) {
       this.whereIn(
         queryBuilder,
         'name',
         permissionNames,
+        'AND',
         PERMISSION_QUERY_ALIAS,
+      );
+    }
+
+    // Join createdBy user relation if specified or if any createdBy user filters are provided
+    this.joinCreatedByUserRelation(
+      queryBuilder,
+      includeCreatedBy,
+      createdByIds,
+      selectCreatedBy,
+    );
+
+    // Filter by createdByIds - supports partial name-based searches
+    if (createdByIds && createdByIds.length > 0) {
+      this.whereIn(
+        queryBuilder,
+        'id',
+        createdByIds,
+        'AND',
+        CREATEDBY_USER_QUERY_ALIAS,
       );
     }
 
@@ -110,7 +140,9 @@ export class RoleQueryService extends QueryService {
       this.setQuerySelect(
         selectRoles,
         selectPermissions,
+        selectCreatedBy,
         includePermissions,
+        includeCreatedBy,
         permissionIds,
         permissionCodes,
         permissionNames,
@@ -164,10 +196,32 @@ export class RoleQueryService extends QueryService {
     }
   }
 
+  private joinCreatedByUserRelation<T extends ObjectLiteral>(
+    queryBuilder: SelectQueryBuilder<T>,
+    includeCreatedBy?: boolean,
+    createdByIds?: string[],
+    selectPermissions?: string[],
+  ): void {
+    if (this.isLeftJoinPresent(queryBuilder, CREATEDBY_USER_QUERY_ALIAS)) {
+      return;
+    }
+
+    if (
+      (createdByIds && createdByIds.length > 0) ||
+      (includeCreatedBy != undefined && includeCreatedBy) ||
+      (selectPermissions && selectPermissions.length > 0)
+    ) {
+      this.joinRelation(queryBuilder, CREATEDBY_USER_QUERY_ALIAS);
+    }
+  }
+
   private setQuerySelect(
     selectRoles?: string[],
     selectPermissions?: string[],
+    selectCreatedBy?: string[],
     includePermissions?: boolean,
+    includeCreatedBy?: boolean,
+    createdByIds?: string[],
     ids?: string[],
     codes?: string[],
     names?: string[],
@@ -187,6 +241,12 @@ export class RoleQueryService extends QueryService {
       ids,
       codes,
       names,
+    );
+    this.setCreatedByUserQuerySelect(
+      select,
+      selectCreatedBy,
+      includeCreatedBy,
+      createdByIds,
     );
 
     return select;
@@ -247,6 +307,39 @@ export class RoleQueryService extends QueryService {
         (ids && ids.length > 0) ||
         (codes && codes.length > 0) ||
         (names && names.length > 0)) &&
+      !select.includes(`${ROLE_QUERY_ALIAS}.id`)
+    ) {
+      select.push(`${ROLE_QUERY_ALIAS}.id`);
+    }
+  }
+
+  private setCreatedByUserQuerySelect(
+    select: string[],
+    selectCreatedBy?: string[],
+    includeCreatedBy?: boolean,
+    createdByIds?: string[],
+  ): void {
+    if (selectCreatedBy && selectCreatedBy.length > 0) {
+      select.push(
+        ...selectCreatedBy.flatMap(
+          (field) => `${CREATEDBY_USER_QUERY_ALIAS}.${field}`,
+        ),
+      );
+    } else if (
+      (includeCreatedBy != undefined && includeCreatedBy) ||
+      (createdByIds && createdByIds.length > 0)
+    ) {
+      select.push(
+        ...getPermissionsSelectableFields().flatMap(
+          (field) => `${CREATEDBY_USER_QUERY_ALIAS}.${field}`,
+        ),
+      );
+    }
+
+    if (
+      ((selectCreatedBy && selectCreatedBy.length > 0) ||
+        (includeCreatedBy != undefined && includeCreatedBy) ||
+        (createdByIds && createdByIds.length > 0)) &&
       !select.includes(`${ROLE_QUERY_ALIAS}.id`)
     ) {
       select.push(`${ROLE_QUERY_ALIAS}.id`);

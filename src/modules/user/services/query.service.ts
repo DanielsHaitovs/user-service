@@ -71,22 +71,22 @@ export class UserQueryService extends QueryService {
 
     // Apply ID-based filtering for bulk user operations
     if (ids && ids.length > 0) {
-      this.whereIn(queryBuilder, 'id', ids);
+      this.whereIn(queryBuilder, 'id', ids, 'AND');
     }
 
     // Filter by first names - useful for user search functionality
     if (firstNames && firstNames.length > 0) {
-      this.whereIn(queryBuilder, 'firstName', firstNames);
+      this.whereIn(queryBuilder, 'firstName', firstNames, 'AND');
     }
 
     // Filter by last names - supports partial name-based searches
     if (lastNames && lastNames.length > 0) {
-      this.whereIn(queryBuilder, 'lastName', lastNames);
+      this.whereIn(queryBuilder, 'lastName', lastNames, 'AND');
     }
 
     // Email-based filtering for user lookup and verification processes
     if (emails && emails.length > 0) {
-      this.whereIn(queryBuilder, 'email', emails);
+      this.whereIn(queryBuilder, 'email', emails, 'AND');
     }
 
     // Account status filtering - excludes deactivated users when false
@@ -107,18 +107,29 @@ export class UserQueryService extends QueryService {
     }
 
     // Join department relation if specified or if IDs are provided
-    this.joinEntityRelation(queryBuilder, DEPARTMENT_QUERY_ALIAS, {
-      include: includeDepartment,
-      filters: {
-        id: departmentIds,
-        country: departmentCountries,
+    this.joinEntityRelation(
+      queryBuilder,
+      DEPARTMENT_QUERY_ALIAS,
+      includeDepartment ?? true,
+      'OR',
+      {
+        filters: {
+          id: departmentIds,
+          country: departmentCountries,
+        },
+        // selectFields: selectDepartmentFields,
       },
-      selectFields: selectDepartmentFields,
-    });
+    );
 
     // Filter by department IDs if provided
     if (departmentIds && departmentIds.length > 0) {
-      this.whereIn(queryBuilder, 'id', departmentIds, DEPARTMENT_QUERY_ALIAS);
+      this.whereIn(
+        queryBuilder,
+        'id',
+        departmentIds,
+        'AND',
+        DEPARTMENT_QUERY_ALIAS,
+      );
     }
 
     if (departmentCountries && departmentCountries.length > 0) {
@@ -126,6 +137,7 @@ export class UserQueryService extends QueryService {
         queryBuilder,
         'country',
         departmentCountries,
+        'AND',
         DEPARTMENT_QUERY_ALIAS,
       );
     }
@@ -282,11 +294,7 @@ export class UserQueryService extends QueryService {
       (departmentCountries != undefined && departmentCountries.length > 0) ||
       (departmentIds != undefined && departmentIds.length > 0)
     ) {
-      select.push(
-        ...getDepartmentSelectableFields().flatMap(
-          (field) => `${DEPARTMENT_QUERY_ALIAS}.${field}`,
-        ),
-      );
+      select.push(...getDepartmentSelectableFields({}));
     }
   }
 

@@ -1,5 +1,7 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
+import { CurrentUserId } from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
+import { hasLoosePermission } from '@/common/helper/permission.helper';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
   CREATE_PERMISSION,
@@ -14,6 +16,7 @@ import {
   READ_ROLE,
   UPDATE_PERMISSION,
 } from '@/lib/const/role.const';
+import { READ_USER } from '@/lib/const/user.const';
 import { TraceController } from '@/lib/decorators/trace.decorator';
 import {
   CreatePermissionDto,
@@ -21,7 +24,7 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
-import { getPermissionsSelectableFields } from '@/role/helper/role-fields.util';
+import { getPermissionsGenericSelectableFields } from '@/role/helper/role-fields.util';
 import { PermissionService } from '@/role/services/permission.service';
 import {
   BadRequestException,
@@ -40,6 +43,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -60,6 +64,7 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+import { Request } from 'express';
 import { EntityNotFoundError } from 'typeorm';
 
 @ApiTags('Permissions')
@@ -104,7 +109,12 @@ export class PermissionController {
         message: {
           type: 'array',
           items: { type: 'string' },
-          example: ['name should not be empty', 'code should not be empty'],
+          example: [
+            'name should not be empty',
+            'code should not be empty',
+            'roleIds must contain at least 1 roleId',
+            'some of roleIds does not exist',
+          ],
         },
         error: { type: 'string', example: BadRequestException.name },
       },
@@ -137,17 +147,29 @@ export class PermissionController {
     },
   })
   async createPermission(
+    @Req() request: Request,
     @Body(new ParseArrayPipe({ items: CreatePermissionDto }))
     createPermissionDto: CreatePermissionDto[],
+    @CurrentUserId() createdBy: UUID,
   ): Promise<Permission[]> {
     if (createPermissionDto.length === 0) {
       throw new BadRequestException('Permission creation data is required');
     }
-    return await this.permissionService.create(createPermissionDto);
+
+    const hasUserPermission = hasLoosePermission({
+      request,
+      permissions: [READ_USER],
+    });
+
+    return await this.permissionService.create({
+      permissions: createPermissionDto,
+      createdBy,
+      hasUserPermission,
+    });
   }
 
-  @Get('ids')
-  @Permissions(READ_ROLE, READ_PERMISSION)
+  @Get('attribute/ids')
+  @Permissions(READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get permission by ID',
@@ -161,6 +183,45 @@ export class PermissionController {
     required: true,
     description: 'Permission unique identifiers',
     example: [EXAMPLE_PERMISSION_ID],
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter Permission by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter Permission by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: 'Sort Permission by sort field',
+    enum: getPermissionsGenericSelectableFields(),
+    example: 'name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: 'Order Permission by sort order',
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'select',
+    type: String,
+    required: false,
+    description: 'Selct Permission by fields',
+    isArray: true,
+    enum: getPermissionsGenericSelectableFields(),
+    example: ['permission.name'],
   })
   @ApiOkResponse({
     description: 'Permission found and returned successfully',
@@ -205,13 +266,48 @@ export class PermissionController {
       },
     },
   })
-  async getPermissionById(
+  async getPermissionByIds(
+    @Req() request: Request,
     @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('select') select: string[],
   ): Promise<Permission[]> {
-    return await this.permissionService.findByIds(ids);
+    if (page < 1 || limit < 1) {
+      throw new BadRequestException(
+        'Pagination parameters must be greater than 0',
+      );
+    }
+
+    const hasUserPermission = hasLoosePermission({
+      request,
+      permissions: [READ_USER],
+    });
+
+    const hasRolePermission = hasLoosePermission({
+      request,
+      permissions: [READ_ROLE],
+    });
+
+    return await this.permissionService.findByIds({
+      ids,
+      hasRolePermission,
+      hasUserPermission,
+      pagination: {
+        page,
+        limit,
+      },
+      sort: {
+        sortField,
+        sortOrder,
+      },
+      select,
+    });
   }
 
-  @Get('codes')
+  @Get('attribute/codes')
   @Permissions(READ_ROLE, READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -225,6 +321,45 @@ export class PermissionController {
     required: true,
     description: 'Permission unique identifiers',
     example: [EXAMPLE_PERMISSION_ID],
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter Permission by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter Permission by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: 'Sort Permission by sort field',
+    enum: getPermissionsGenericSelectableFields(),
+    example: 'name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: 'Order Permission by sort order',
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'select',
+    type: String,
+    required: false,
+    description: 'Selct Permission by fields',
+    isArray: true,
+    enum: getPermissionsGenericSelectableFields(),
+    example: ['permission.name'],
   })
   @ApiOkResponse({
     description: 'Permission found and returned successfully',
@@ -270,12 +405,47 @@ export class PermissionController {
     },
   })
   async getPermissionByCodes(
+    @Req() request: Request,
     @Query('codes', ParseArrayPipe) codes: string[],
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('select') select: string[],
   ): Promise<Permission[]> {
-    return await this.permissionService.findByCodes(codes);
+    if (page < 1 || limit < 1) {
+      throw new BadRequestException(
+        'Pagination parameters must be greater than 0',
+      );
+    }
+
+    const hasUserPermission = hasLoosePermission({
+      request,
+      permissions: [READ_USER],
+    });
+
+    const hasRolePermission = hasLoosePermission({
+      request,
+      permissions: [READ_ROLE],
+    });
+
+    return await this.permissionService.findByCodes({
+      codes,
+      hasRolePermission,
+      hasUserPermission,
+      pagination: {
+        page,
+        limit,
+      },
+      sort: {
+        sortField,
+        sortOrder,
+      },
+      select,
+    });
   }
 
-  @Get(':value')
+  @Get('search/:value')
   @Permissions(READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -308,7 +478,7 @@ export class PermissionController {
     type: String,
     required: false,
     description: 'Sort permissions by sort field',
-    enum: getPermissionsSelectableFields(),
+    enum: getPermissionsGenericSelectableFields(),
     example: 'name',
   })
   @ApiQuery({
@@ -317,6 +487,15 @@ export class PermissionController {
     required: false,
     description: 'sort order permissionss',
     enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'select',
+    type: String,
+    required: false,
+    description: 'Selct Permission by fields',
+    isArray: true,
+    enum: getPermissionsGenericSelectableFields(),
+    example: ['permission.name'],
   })
   @ApiOkResponse({
     description: 'Permission found and returned successfully',
@@ -340,18 +519,38 @@ export class PermissionController {
     },
   })
   async searchForPermissions(
+    @Req() request: Request,
     @Param('value') value: string,
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('select') select: string[],
   ): Promise<PermissionListResponseDto> {
+    if (page < 1 || limit < 1) {
+      throw new BadRequestException(
+        'Pagination parameters must be greater than 0',
+      );
+    }
+
     if (!sortField || sortField === '') {
       sortField = 'name';
     }
 
+    const hasUserPermission = hasLoosePermission({
+      request,
+      permissions: [READ_USER],
+    });
+
+    const hasRolePermission = hasLoosePermission({
+      request,
+      permissions: [READ_ROLE],
+    });
+
     return await this.permissionService.searchFor({
       value,
+      hasRolePermission,
+      hasUserPermission,
       pagination: {
         page,
         limit,
@@ -360,6 +559,7 @@ export class PermissionController {
         sortField,
         sortOrder,
       },
+      select,
     });
   }
 

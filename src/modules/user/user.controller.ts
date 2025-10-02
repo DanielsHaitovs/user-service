@@ -26,7 +26,7 @@ import {
   USER_NOT_FOUND_MSG,
 } from '@/lib/const/user.const';
 import { TraceController } from '@/lib/decorators/trace.decorator';
-import { getRoleSelectableFields } from '@/role/helper/role-fields.util';
+import { getRoleGenerucSelectableFields } from '@/role/helper/role-fields.util';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -982,7 +982,7 @@ export class UserController {
     isArray: true,
     required: false,
     description: 'Select users roles fields',
-    enum: getRoleSelectableFields(),
+    enum: getRoleGenerucSelectableFields(),
   })
   async filterUsers(
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],

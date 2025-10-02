@@ -6,8 +6,8 @@ import {
   EXAMPLE_ROLE_ID,
 } from '@/lib/const/role.const';
 import {
-  getPermissionsSelectableFields,
-  getRoleSelectableFields,
+  getPermissionsGenericSelectableFields,
+  getRoleGenerucSelectableFields,
 } from '@/role/helper/role-fields.util';
 import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -199,25 +199,25 @@ export class RolesQueryDto {
   @ApiProperty({
     description:
       'Specific role fields to return - optimizes payload size and performance',
-    enum: getRoleSelectableFields(),
+    enum: getRoleGenerucSelectableFields(),
     type: String,
     isArray: true,
     required: false,
-    example: getRoleSelectableFields(),
+    example: getRoleGenerucSelectableFields(),
   })
-  @IsEnum(getRoleSelectableFields(), { each: true })
+  @IsEnum(getRoleGenerucSelectableFields(), { each: true })
   selectRoles?: string[];
 
   @ApiProperty({
     description:
       'Specific permission fields to return - optimizes payload size and performance',
-    enum: getPermissionsSelectableFields(),
+    enum: getPermissionsGenericSelectableFields(),
     type: String,
     isArray: true,
     required: false,
-    example: getPermissionsSelectableFields(),
+    example: getPermissionsGenericSelectableFields(),
   })
-  @IsEnum(getPermissionsSelectableFields(), { each: true })
+  @IsEnum(getPermissionsGenericSelectableFields(), { each: true })
   selectPermissions?: string[];
 
   @ApiProperty({

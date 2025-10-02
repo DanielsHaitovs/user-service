@@ -8,8 +8,8 @@ import { RolesQueryDto } from '@/role/dto/query.dto';
 import { RoleListResponseDto } from '@/role/dto/role.dto';
 import { Role } from '@/role/entities/role.entity';
 import {
-  getPermissionsSelectableFields,
-  getRoleSelectableFields,
+  getPermissionsGenericSelectableFields,
+  getRoleGenerucSelectableFields,
 } from '@/role/helper/role-fields.util';
 import { Injectable } from '@nestjs/common';
 
@@ -267,7 +267,7 @@ export class RoleQueryService extends QueryService {
       (selectPermissions && selectPermissions.length > 0)
     ) {
       select.push(
-        ...getRoleSelectableFields().flatMap(
+        ...getRoleGenerucSelectableFields().flatMap(
           (field) => `${ROLE_QUERY_ALIAS}.${field}`,
         ),
       );
@@ -295,7 +295,7 @@ export class RoleQueryService extends QueryService {
       (names && names.length > 0)
     ) {
       select.push(
-        ...getPermissionsSelectableFields().flatMap(
+        ...getPermissionsGenericSelectableFields().flatMap(
           (field) => `${PERMISSION_QUERY_ALIAS}.${field}`,
         ),
       );
@@ -330,7 +330,7 @@ export class RoleQueryService extends QueryService {
       (createdByIds && createdByIds.length > 0)
     ) {
       select.push(
-        ...getPermissionsSelectableFields().flatMap(
+        ...getPermissionsGenericSelectableFields().flatMap(
           (field) => `${CREATEDBY_USER_QUERY_ALIAS}.${field}`,
         ),
       );

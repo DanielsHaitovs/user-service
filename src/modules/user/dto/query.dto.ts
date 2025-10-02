@@ -9,7 +9,7 @@ import {
   EXAMPLE_USER_ID,
   EXAMPLE_USER_LAST_NAME,
 } from '@/lib/const/user.const';
-import { getRoleSelectableFields } from '@/role/helper/role-fields.util';
+import { getRoleGenerucSelectableFields } from '@/role/helper/role-fields.util';
 import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -240,13 +240,13 @@ export class UserQueryDto {
   @ApiProperty({
     description:
       'Specific user roles fields to return - optimizes payload size and performance',
-    enum: getRoleSelectableFields(),
+    enum: getRoleGenerucSelectableFields(),
     type: String,
     isArray: true,
     required: false,
-    example: getRoleSelectableFields(),
+    example: getRoleGenerucSelectableFields(),
   })
-  @IsEnum(getRoleSelectableFields(), { each: true })
+  @IsEnum(getRoleGenerucSelectableFields(), { each: true })
   selectRoleFields?: string[];
 
   constructor(

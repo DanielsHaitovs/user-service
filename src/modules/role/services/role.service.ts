@@ -23,6 +23,7 @@ import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
 
 import { CREATEDBY_USER_QUERY_ALIAS } from '../../../lib/const/user.const';
+import { getPermissionsGenericSelectableFields } from '../helper/role-fields.util';
 
 @Injectable()
 export class RoleService {
@@ -75,9 +76,13 @@ export class RoleService {
     });
 
     if (permissions != undefined && permissions.length > 0) {
-      const permissionsToAssign = await this.permissionService.findByCodes(
-        permissions.flatMap((code) => code),
-      );
+      const permissionsToAssign = await this.permissionService.findByCodes({
+        codes: permissions.flatMap((code) => code),
+        hasUserPermission: false,
+        hasRolePermission: false,
+        pagination: { page: 1, limit: permissions.length },
+        select: getPermissionsGenericSelectableFields(['id']),
+      });
 
       if (permissionsToAssign.length !== permissions.length) {
         throw new EntityNotFoundError(
@@ -127,7 +132,13 @@ export class RoleService {
       )
       .getOneOrFail();
 
-    const permissions = await this.permissionService.findByIds(permissionIds);
+    const permissions = await this.permissionService.findByIds({
+      ids: permissionIds,
+      pagination: { page: 1, limit: permissionIds.length },
+      hasRolePermission: false,
+      hasUserPermission: false,
+      select: getPermissionsGenericSelectableFields(['id']),
+    });
 
     if (permissions.length === 0) {
       throw new EntityNotFoundError(

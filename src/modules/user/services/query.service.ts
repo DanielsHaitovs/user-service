@@ -9,7 +9,7 @@ import {
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/lib/const/user.const';
-import { getRoleSelectableFields } from '@/role/helper/role-fields.util';
+import { getRoleGenerucSelectableFields } from '@/role/helper/role-fields.util';
 import { UserQueryDto } from '@/user/dto/query.dto';
 import { UserListResponseDto } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
@@ -326,7 +326,7 @@ export class UserQueryService extends QueryService {
         `${USER_ROLE_QUERY_ALIAS}.id`,
         `${USER_ROLE_QUERY_ALIAS}.role`,
       );
-      const roleEntityFields = getRoleSelectableFields().filter(
+      const roleEntityFields = getRoleGenerucSelectableFields().filter(
         (field) =>
           field !== USER_ROLE_QUERY_ALIAS && field !== PERMISSION_QUERY_ALIAS,
       );

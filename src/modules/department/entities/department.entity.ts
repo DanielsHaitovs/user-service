@@ -30,7 +30,7 @@ export class Department extends MecBaseEntity {
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })
-  createdBy?: User;
+  createdBy: User;
 
   constructor(
     id: UUID,

@@ -41,6 +41,11 @@
       "@/department/*": ["src/modules/department/*"]
     }
   },
-  "include": ["src/**/*", "test/**/*", "*.config.ts"],
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "*.config.ts",
+    "../.project_plan/tmp/role.service.spec.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

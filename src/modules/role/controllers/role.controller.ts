@@ -21,8 +21,8 @@ import {
 } from '@/role/dto/role.dto';
 import { Role } from '@/role/entities/role.entity';
 import {
-  getPermissionsSelectableFields,
-  getRoleSelectableFields,
+  getPermissionsGenericSelectableFields,
+  getRoleGenerucSelectableFields,
 } from '@/role/helper/role-fields.util';
 import { RoleQueryService } from '@/role/services/query.service';
 import { RoleService } from '@/role/services/role.service';
@@ -172,7 +172,7 @@ export class RolesController {
     type: String,
     required: false,
     description: 'Sort roles by sort field',
-    enum: getRoleSelectableFields(),
+    enum: getRoleGenerucSelectableFields(),
     example: 'name',
   })
   @ApiQuery({
@@ -275,7 +275,7 @@ export class RolesController {
     type: String,
     required: false,
     description: 'Sort roles by sort field',
-    enum: getRoleSelectableFields(),
+    enum: getRoleGenerucSelectableFields(),
     example: 'name',
   })
   @ApiQuery({
@@ -375,7 +375,7 @@ export class RolesController {
     type: String,
     required: false,
     description: 'Sort roles by sort field',
-    enum: getRoleSelectableFields(),
+    enum: getRoleGenerucSelectableFields(),
     example: 'name',
   })
   @ApiQuery({
@@ -744,8 +744,8 @@ export class RolesController {
     required: false,
     description: 'Filter users by sort order',
     enum: [
-      ...getRoleSelectableFields(),
-      ...getPermissionsSelectableFields(),
+      ...getRoleGenerucSelectableFields(),
+      ...getPermissionsGenericSelectableFields(),
       ...getUserSelectableFields(),
     ],
     example: 'name',
@@ -763,7 +763,7 @@ export class RolesController {
     isArray: true,
     required: false,
     description: 'Set role fields to include in response',
-    enum: getRoleSelectableFields(),
+    enum: getRoleGenerucSelectableFields(),
   })
   @ApiQuery({
     name: 'selectPermissions',
@@ -771,7 +771,7 @@ export class RolesController {
     isArray: true,
     required: false,
     description: 'Set permissions fields to include in response',
-    enum: getPermissionsSelectableFields(),
+    enum: getPermissionsGenericSelectableFields(),
   })
   @ApiQuery({
     name: 'selectCreatedBy',
@@ -779,7 +779,7 @@ export class RolesController {
     isArray: true,
     required: false,
     description: 'Set created by user fields to include in response',
-    enum: getPermissionsSelectableFields(),
+    enum: getPermissionsGenericSelectableFields(),
   })
   async filterUsers(
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],

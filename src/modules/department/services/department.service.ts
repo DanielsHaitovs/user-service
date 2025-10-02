@@ -71,7 +71,7 @@ export class DepartmentService {
       });
 
     if (!hasUserPermission) {
-      delete res.createdBy;
+      res.createdBy = {} as User;
     }
 
     return res;

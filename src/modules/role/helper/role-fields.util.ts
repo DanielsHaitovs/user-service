@@ -11,7 +11,7 @@ import { getMetadataArgsStorage } from 'typeorm';
  * Dynamically extract all column names from the Role entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getRoleSelectableFields(fields?: string[]): string[] {
+export function getRoleGenerucSelectableFields(fields?: string[]): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
@@ -25,10 +25,10 @@ export function getRoleSelectableFields(fields?: string[]): string[] {
 
   // Extract column property names
   return [
-    'id',
-    'createdAt',
-    'updatedAt',
-    ...columns.map((column) => column.propertyName),
+    `${ROLE_QUERY_ALIAS}.id`,
+    `${ROLE_QUERY_ALIAS}.createdAt`,
+    `${ROLE_QUERY_ALIAS}.updatedAt`,
+    ...columns.map((column) => `${ROLE_QUERY_ALIAS}.${column.propertyName}`),
   ];
 }
 
@@ -36,7 +36,9 @@ export function getRoleSelectableFields(fields?: string[]): string[] {
  * Dynamically extract all column names from the Permission entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getPermissionsSelectableFields(fields?: string[]): string[] {
+export function getPermissionsGenericSelectableFields(
+  fields?: string[],
+): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
@@ -52,21 +54,24 @@ export function getPermissionsSelectableFields(fields?: string[]): string[] {
 
   // Extract column property names
   return [
-    'id',
-    'createdAt',
-    'updatedAt',
-    ...columns.map((column) => column.propertyName),
+    `${PERMISSION_QUERY_ALIAS}.id`,
+    `${PERMISSION_QUERY_ALIAS}.createdAt`,
+    `${PERMISSION_QUERY_ALIAS}.updatedAt`,
+    ...columns.map(
+      (column) => `${PERMISSION_QUERY_ALIAS}.${column.propertyName}`,
+    ),
   ];
 }
 
-export function getRoleSortableFields(): string[] {
-  return getRoleSelectableFields().flatMap((field) => {
-    return `${ROLE_QUERY_ALIAS}.${field}`;
-  });
-}
-
-export function getPermissionsSortableFields(): string[] {
-  return getPermissionsSelectableFields().flatMap((field) => {
-    return `${PERMISSION_QUERY_ALIAS}.${field}`;
-  });
+export function getRoleSelectableFields({
+  roleFields,
+  permissionFields,
+}: {
+  roleFields?: string[];
+  permissionFields?: string[];
+}): string[] {
+  return [
+    ...getRoleGenerucSelectableFields(roleFields),
+    ...getPermissionsGenericSelectableFields(permissionFields),
+  ];
 }

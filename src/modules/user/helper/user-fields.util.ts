@@ -17,9 +17,16 @@ export function getUserSelectableFields(fields?: string[]): string[] {
   const columns = metadata.columns.filter((column) => column.target === User);
 
   if (fields && fields.length > 0) {
-    return fields.filter((field) =>
-      columns.some((column) => column.propertyName === field),
-    );
+    return [
+      ...fields
+        .filter((field) =>
+          columns.some((column) => column.propertyName === field),
+        )
+        .flatMap((field) => `${USER_QUERY_ALIAS}.${field}`),
+      `${USER_QUERY_ALIAS}.id`,
+      `${USER_QUERY_ALIAS}.createdAt`,
+      `${USER_QUERY_ALIAS}.updatedAt`,
+    ];
   }
 
   // Extract column property names
@@ -42,9 +49,16 @@ export function getCreatedBySelectableFields(fields?: string[]): string[] {
   const columns = metadata.columns.filter((column) => column.target === User);
 
   if (fields && fields.length > 0) {
-    return fields.filter((field) =>
-      columns.some((column) => column.propertyName === field),
-    );
+    return [
+      ...fields
+        .filter((field) =>
+          columns.some((column) => column.propertyName === field),
+        )
+        .flatMap((field) => `${CREATEDBY_USER_QUERY_ALIAS}.${field}`),
+      `${CREATEDBY_USER_QUERY_ALIAS}.id`,
+      `${CREATEDBY_USER_QUERY_ALIAS}.createdAt`,
+      `${CREATEDBY_USER_QUERY_ALIAS}.updatedAt`,
+    ];
   }
 
   // Extract column property names

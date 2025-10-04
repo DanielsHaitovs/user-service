@@ -25,7 +25,7 @@ import {
   UPDATE_USER,
   USER_NOT_FOUND_MSG,
 } from '@/lib/const/user.const';
-import { TraceController } from '@/lib/decorators/trace.decorator';
+// import { TraceController } from '@/modules/base/service/trace.service';
 import { getRoleGenerucSelectableFields } from '@/role/helper/role-fields.util';
 import {
   CreateUserDto,
@@ -91,7 +91,7 @@ import { EntityNotFoundError } from 'typeorm';
  * for flexible client integration.
  */
 @ApiTags('Users')
-@TraceController()
+// @TraceController()
 @Controller('user')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)

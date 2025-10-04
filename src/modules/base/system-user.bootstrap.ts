@@ -68,6 +68,7 @@ async function createSystemRole(
     name: 'System Permissions',
     code: ROOT_ADMIN_PERMISSION,
     roles: [{ id: systemRole.id }],
+    createdBy: { id: createdBy } as User,
   });
 
   await permissionRepo.save(newPermissions);
@@ -92,7 +93,7 @@ async function createUserRole(dataSource: DataSource): Promise<UserRole> {
 
   const userRole = userRoleRepo.create({
     user: existingUser,
-    role: existingRole,
+    roles: existingRole,
     assignedBy: existingUser,
   });
 

@@ -11,6 +11,7 @@ import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './modules/app.controller';
+import { BaseModule } from './modules/base/base.module';
 
 @Module({
   controllers: [AppController],
@@ -64,6 +65,7 @@ import { AppController } from './modules/app.controller';
       }),
       inject: [ConfigService],
     }),
+    BaseModule,
     UserModule,
     RolesModule,
     DepartmentModule,

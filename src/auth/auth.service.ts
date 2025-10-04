@@ -1,102 +1,156 @@
 import { LoginDto } from '@/auth/dto/auth.dto';
-import { RoleQueryService } from '@/role/services/query.service';
+import { JWTPayload } from '@/auth/interfaces/req.interface';
+import {
+  PERMISSION_QUERY_ALIAS,
+  ROLE_QUERY_ALIAS,
+} from '@/lib/const/role.const';
+import {
+  USER_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
+} from '@/lib/const/user.const';
+import { User } from '@/user/entities/user.entity';
+import { UserRole } from '@/user/entities/userRoles.entity';
 import { getUserSelectableFields } from '@/user/helper/user-fields.util';
-import { UserQueryService } from '@/user/services/query.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectEntityManager } from '@nestjs/typeorm';
 
 import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly userService: UserQueryService,
-    private readonly roleService: RoleQueryService,
+    @InjectEntityManager()
+    private readonly entityManager: EntityManager,
     private readonly jwtService: JwtService,
   ) {}
 
   async login(data: LoginDto): Promise<{ access_token: string }> {
-    const { permissions, userId } = await this.validateUser(
-      data.email,
-      data.password,
-    );
+    const { permissions, id } = await this.validateUser({
+      email: data.email,
+      password: data.password,
+      checkPassword: true,
+    });
+
+    const access_token = this.jwtService.sign({
+      id,
+      permissions,
+    });
 
     return {
-      access_token: this.jwtService.sign({
-        id: userId,
-        permissions,
-      }),
+      access_token,
     };
   }
 
-  private async validateUser(
-    email: string,
-    pass: string,
-  ): Promise<{ userId: UUID; permissions: string[] }> {
-    const { users } = await this.userService.getUsers({
-      query: { emails: [email] },
-      includeDepartment: true,
-      includeRoles: true,
-      pagination: { limit: 1, page: 1 },
-      sort: { sortField: 'createdAt', sortOrder: 'DESC' },
-      selectUserFields: getUserSelectableFields([
-        'id',
-        'email',
-        'firstName',
-        'lastName',
-        'isActive',
-        'isTwoFactorEnabled',
-        'password',
-      ]),
-      selectDepartmentFields: ['id', 'name', 'country'],
-      selectRoleFields: ['id', 'name'],
-    });
+  async validateUser(data: {
+    email?: string;
+    id?: UUID;
+    password?: string;
+    checkPassword?: boolean;
+  }): Promise<JWTPayload> {
+    const { email, id, password, checkPassword } = data;
 
-    if (users[0] === undefined) {
-      throw new UnauthorizedException('Authentication failed');
+    if (email === undefined && id === undefined) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!users[0].isActive) {
+    const user = await this.getUserBy({ id, email });
+
+    if (!user.isActive) {
       throw new UnauthorizedException(
         'User is not active, if you think this is an mistake please contact support',
       );
     }
 
-    if (!(await bcrypt.compare(pass, users[0].password))) {
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException('User was not verified');
+    }
+
+    if (checkPassword !== undefined && checkPassword) {
+      if (password === undefined) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      if (!(await bcrypt.compare(password, user.password))) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    }
+
+    const permissions = await this.getUserPermissions(user.id);
+
+    return {
+      id: user.id,
+      permissions,
+    };
+  }
+
+  private async getUserBy(data: {
+    id?: UUID | undefined;
+    email?: string | undefined;
+  }): Promise<User> {
+    const { id, email } = data;
+
+    if (id == undefined && email == undefined) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const { userRoles } = users[0];
+    const query = this.entityManager.createQueryBuilder(User, USER_QUERY_ALIAS);
 
-    if (userRoles.length === 0) {
+    if (id !== undefined) {
+      query.where(`${USER_QUERY_ALIAS}.id = :id`, { id });
+    } else if (email !== undefined) {
+      query.where(`${USER_QUERY_ALIAS}.email = :email`, { email });
+    }
+    return await query
+      .select(
+        getUserSelectableFields([
+          'id',
+          'email',
+          'firstName',
+          'lastName',
+          'isActive',
+          'isEmailVerified',
+          'isTwoFactorEnabled',
+          'password',
+        ]),
+      )
+      .getOneOrFail();
+  }
+
+  private async getUserPermissions(userId: UUID): Promise<string[]> {
+    const userRoleWithPermissions = await this.entityManager
+      .createQueryBuilder(UserRole, USER_ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${USER_ROLE_QUERY_ALIAS}.${ROLE_QUERY_ALIAS}`,
+        ROLE_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+        PERMISSION_QUERY_ALIAS,
+      )
+      .where(`${USER_ROLE_QUERY_ALIAS}.userId = :userId`, { userId })
+      .getMany();
+
+    if (userRoleWithPermissions.length === 0) {
       throw new UnauthorizedException(
         'User has no roles assigned, please contact support',
       );
     }
 
-    const roleIds = userRoles.map((userRole) => userRole.role.id);
+    const userRoles = userRoleWithPermissions.map((ur) => ur.roles);
 
-    const assignedRoles = await this.roleService.getRoles({
-      rolesQuery: {
-        ids: roleIds,
-      },
-      includePermissions: true,
-      permissionsQuery: {},
-      pagination: { limit: 500, page: 1 },
-      sort: { sortField: 'createdAt', sortOrder: 'DESC' },
-    });
+    const permissions = userRoles.flatMap((role) =>
+      role.permissions.map((permission) => permission.code),
+    );
 
-    if (assignedRoles.roles.length === 0) {
+    if (permissions.length === 0) {
       throw new UnauthorizedException(
-        `User has no permissions assigned, please contact support, roles: ${roleIds.join(', ')}`,
+        'User has no permissions assigned, please contact support',
       );
     }
 
-    const userPermissions = assignedRoles.roles.flatMap((role) =>
-      (role.permissions ?? []).map((permission) => permission.code),
-    );
-
-    return { userId: users[0].id, permissions: userPermissions };
+    return permissions;
   }
 }

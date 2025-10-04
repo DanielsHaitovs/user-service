@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { safeStringify } from '@/utils/safeStringify';
 import { getTraceId } from '@/utils/trace.util';
 import {
@@ -11,14 +8,18 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 
+import { Request } from 'express';
 import { Observable, tap } from 'rxjs';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(LoggingInterceptor.name);
+  private readonly logger = new Logger();
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const req = context.switchToHttp().getRequest();
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const req = context
+      .switchToHttp()
+      .getRequest<Request<Record<string, unknown>, unknown, unknown>>();
+
     const traceId = getTraceId() ?? 'N/A';
     const { method, url, body } = req;
 
@@ -26,16 +27,16 @@ export class LoggingInterceptor implements NestInterceptor {
     const handlerName = context.getHandler().name;
     const start = Date.now();
 
-    this.logger.log(
+    this.logger.verbose(
       `[Trace: ${traceId}] ⇢ ${method} ${url} → ${controllerName}.${handlerName} | Body: ${safeStringify(body)}`,
     );
 
     return next.handle().pipe(
-      tap((data) => {
+      tap((data: unknown) => {
         const duration = Date.now() - start;
-        // You can also optionally combine these two lines:
-        this.logger.log(
-          `[Trace: ${traceId}] ⇠ ${method} ${url} | Duration: ${duration}ms | Response: ${safeStringify(data)}`,
+
+        this.logger.verbose(
+          `[Trace: ${traceId}] ⇠ ${method} ${url} | Duration: ${duration.toString()}ms | Response: ${safeStringify(data)}`,
         );
       }),
     );

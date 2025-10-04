@@ -19,7 +19,7 @@ export const EXAMPLE_PERMISSION_ID =
  * Standard example name used in API documentation and test fixtures.
  * Represents a role name that is commonly used for testing scenarios.
  */
-export const ROLE_QUERY_ALIAS = 'role' as string;
+export const ROLE_QUERY_ALIAS = 'roles' as string;
 
 /**
  * Standard example name used in API documentation and test fixtures.

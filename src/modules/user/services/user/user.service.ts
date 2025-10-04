@@ -301,7 +301,6 @@ export class UserService {
    * @example
    * ```typescript
    * const result = await userService.deleteByIds(['uuid1', 'uuid2']);
-   * console.log(`Deleted ${result.deleted} users`);
    * ```
    */
   async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
@@ -331,7 +330,7 @@ export class UserService {
     }
 
     const roleIds = existingUsers.flatMap((user) =>
-      user.userRoles.map((userRole) => userRole.role.id),
+      user.userRoles.map((userRole) => userRole.roles.id),
     );
 
     await this.roleService.unassignRolesFromUsers({ userIds: ids, roleIds });

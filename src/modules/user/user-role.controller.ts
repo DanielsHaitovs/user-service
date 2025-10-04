@@ -11,7 +11,7 @@ import {
   READ_USER,
   READ_USER_ROLE,
 } from '@/lib/const/user.const';
-import { TraceController } from '@/lib/decorators/trace.decorator';
+// import { TraceController } from '@/modules/base/service/trace.service';
 import {
   AssignRoleIdsDto,
   CreateUserRoleDto,
@@ -59,7 +59,7 @@ const MISSING_ENTITY_MSG = 'User or role(s) not found';
 
 @ApiTags('Users Roles')
 @Controller('user-roles')
-@TraceController()
+// @TraceController()
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class UserRoleController {

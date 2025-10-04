@@ -31,7 +31,7 @@ export class PermissionService {
   constructor(
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
-    @InjectRepository(Permission)
+    @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
     private readonly queryService: QueryService,
   ) {}
@@ -123,6 +123,7 @@ export class PermissionService {
     if (hasRolePermission) {
       this.queryService.joinRelation<Permission>(query, ROLE_QUERY_ALIAS);
     }
+    // query.leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.roles`, 'roles');
 
     if (hasUserPermission) {
       this.queryService.joinRelation<Permission>(

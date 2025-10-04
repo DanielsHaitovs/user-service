@@ -283,7 +283,7 @@ export class UserRoleService extends QueryService {
     const userRoles = new Array<UserRole>();
 
     for (const role of roles) {
-      if (exidstingUserRoles.find((ur) => ur.role.id === role.id)) {
+      if (exidstingUserRoles.find((ur) => ur.roles.id === role.id)) {
         continue;
       }
 
@@ -366,7 +366,7 @@ export class UserRoleService extends QueryService {
     );
 
     const missingRoleIds = roleIds?.filter(
-      (id) => !userRoles.some((ur) => ur.role.id === id),
+      (id) => !userRoles.some((ur) => ur.roles.id === id),
     );
 
     const missingAssignedByIds = assignedByIds?.filter(

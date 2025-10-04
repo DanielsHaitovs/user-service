@@ -17,7 +17,7 @@ import {
   UPDATE_PERMISSION,
 } from '@/lib/const/role.const';
 import { READ_USER } from '@/lib/const/user.const';
-import { TraceController } from '@/lib/decorators/trace.decorator';
+// import { TraceController } from '@/modules/base/service/trace.service';
 import {
   CreatePermissionDto,
   PermissionListResponseDto,
@@ -68,7 +68,7 @@ import { Request } from 'express';
 import { EntityNotFoundError } from 'typeorm';
 
 @ApiTags('Permissions')
-@TraceController()
+// @TraceController()
 @Controller('permission')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)

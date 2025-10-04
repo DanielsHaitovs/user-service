@@ -13,7 +13,7 @@ import {
   ROLE_NOT_FOUND_MSG,
   UPDATE_ROLE,
 } from '@/lib/const/role.const';
-import { TraceController } from '@/lib/decorators/trace.decorator';
+// import { TraceController } from '@/modules/base/service/trace.service';
 import {
   CreateRoleDto,
   RoleListResponseDto,
@@ -65,7 +65,7 @@ import {
 import { UUID } from 'crypto';
 
 @ApiTags('Roles')
-@TraceController()
+// @TraceController()
 @Controller('roles')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)

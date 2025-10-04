@@ -89,7 +89,7 @@ export class UserRoleResponseDto {
   })
   @Type(() => RoleResponseDto)
   @ValidateNested()
-  role: RoleResponseDto;
+  roles: RoleResponseDto;
 
   // @ApiProperty({
   //   title: 'User details',
@@ -137,12 +137,12 @@ export class UserRoleResponseDto {
     // assignedBy: UserResponseDto,
     createdAt: Date,
     updatedAt: Date,
-    role: RoleResponseDto,
+    roles: RoleResponseDto,
   ) {
     this.id = id;
     // this.user = user;
     // this.assignedBy = assignedBy;
-    this.role = role;
+    this.roles = roles;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }

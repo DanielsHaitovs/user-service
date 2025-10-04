@@ -8,7 +8,7 @@ import { Entity, ManyToOne } from 'typeorm';
 @Entity('userRole')
 export class UserRole extends MecBaseEntity {
   @ManyToOne(() => Role, (role) => role.userRoles)
-  role: Role;
+  roles: Role;
 
   @ManyToOne(() => User, (user) => user.userRoles)
   user: User;
@@ -29,7 +29,7 @@ export class UserRole extends MecBaseEntity {
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.assignedBy = assignedBy;
-    this.role = role;
+    this.roles = role;
     this.user = user;
   }
 }

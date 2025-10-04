@@ -5,6 +5,7 @@ export const sensitiveDataScreeningConfig = {
     'hash',
     'token',
     'secretKey',
+    'access_token',
   ],
   partiallyScreen: ['email'],
 };

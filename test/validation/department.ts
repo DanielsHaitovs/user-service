@@ -64,9 +64,9 @@ export function validateDepartmentsResponse(response: {
       hasUser
     ) {
       expect(department).toHaveProperty('user');
-      expect((department as Department).user).toBeInstanceOf(Array);
+      expect((department as Department).users).toBeInstanceOf(Array);
 
-      for (const user of (department as Department).user) {
+      for (const user of (department as Department).users) {
         expect(user).toHaveProperty('id');
         expect(user).toHaveProperty('email');
         expect(user).toHaveProperty('firstName');

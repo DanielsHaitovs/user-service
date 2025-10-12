@@ -199,37 +199,37 @@ export class RolesQueryDto {
   @ApiProperty({
     description:
       'Specific role fields to return - optimizes payload size and performance',
-    enum: getRoleGenerucSelectableFields(),
+    enum: getRoleGenerucSelectableFields({}),
     type: String,
     isArray: true,
     required: false,
-    example: getRoleGenerucSelectableFields(),
+    example: getRoleGenerucSelectableFields({}),
   })
-  @IsEnum(getRoleGenerucSelectableFields(), { each: true })
+  @IsEnum(getRoleGenerucSelectableFields({}), { each: true })
   selectRoles?: string[];
 
   @ApiProperty({
     description:
       'Specific permission fields to return - optimizes payload size and performance',
-    enum: getPermissionsGenericSelectableFields(),
+    enum: getPermissionsGenericSelectableFields({}),
     type: String,
     isArray: true,
     required: false,
-    example: getPermissionsGenericSelectableFields(),
+    example: getPermissionsGenericSelectableFields({}),
   })
-  @IsEnum(getPermissionsGenericSelectableFields(), { each: true })
+  @IsEnum(getPermissionsGenericSelectableFields({}), { each: true })
   selectPermissions?: string[];
 
   @ApiProperty({
     description:
       'Specific user fields to return - optimizes payload size and performance',
-    enum: getUserSelectableFields(),
+    enum: getUserSelectableFields({}),
     type: String,
     isArray: true,
     required: false,
-    example: getUserSelectableFields(),
+    example: getUserSelectableFields({}),
   })
-  @IsEnum(getUserSelectableFields(), { each: true })
+  @IsEnum(getUserSelectableFields({}), { each: true })
   selectCreatedBy?: string[];
 
   constructor(

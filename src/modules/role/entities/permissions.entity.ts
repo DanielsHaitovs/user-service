@@ -1,5 +1,6 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { Role } from '@/role/entities/role.entity';
+import { User } from '@/user/entities/user.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
@@ -11,18 +12,14 @@ import {
   ManyToOne,
   Unique,
 } from 'typeorm';
-
-import { User } from '../../user/entities/user.entity';
-
+ 
 @Entity('permissions')
-@Unique('UQ_PERMISSION', ['name', 'code'], {
-  deferrable: 'INITIALLY IMMEDIATE',
-})
+@Unique('UQ_PERMISSION', ['name', 'code'])
 export class Permission extends MecBaseEntity {
   @Column({ length: 100 })
   @IsNotEmpty()
   @IsString()
-  code: string;
+  code: string; 
 
   @Column({ length: 100 })
   @IsNotEmpty()

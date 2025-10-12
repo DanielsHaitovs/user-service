@@ -11,6 +11,7 @@ export default {
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>/',
   }),

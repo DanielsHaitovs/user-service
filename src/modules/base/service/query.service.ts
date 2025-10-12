@@ -45,10 +45,12 @@ export class QueryService {
   whereIn<T extends ObjectLiteral>(
     query: SelectQueryBuilder<T>,
     field: string,
-    values: unknown[],
+    values: unknown[] | undefined,
     condition: 'OR' | 'AND',
     relationAlias?: string,
   ): void {
+    if (!values || values.length === 0) return;
+
     const alias = relationAlias ?? query.alias;
     const fieldPath = `${alias}.${field}`;
 
@@ -159,77 +161,46 @@ export class QueryService {
     sortField: string,
     sortOrder: 'ASC' | 'DESC' = 'ASC',
   ): void {
-    query.orderBy(`${query.alias}.${sortField}`, sortOrder);
+    query.orderBy(sortField, sortOrder);
   }
 
   validateSelect<T extends ObjectLiteral>(
     query: SelectQueryBuilder<T>,
     select: string[],
     fieldsToSelect: string[] | undefined,
-    relationAlias: string,
     hasAccess: boolean,
-    isTargetEntity: boolean,
+    relationAlias?: string,
   ): void {
-    if (isTargetEntity) {
-      if (
-        fieldsToSelect == undefined &&
-        select.length &&
-        !select.includes(`${relationAlias}.id`)
-      ) {
-        select.push(`${relationAlias}.id`);
-        return;
+    if (fieldsToSelect == undefined || fieldsToSelect.length === 0) return;
+    if (!hasAccess && relationAlias == undefined) return;
+
+    const alias = relationAlias ?? query.alias;
+
+    if (hasAccess && relationAlias != undefined) {
+      if (!this.isLeftJoinPresent(query, alias)) {
+        this.joinRelation<T>(query, alias);
       }
     }
 
-    if (!hasAccess) return;
+    select.push(...fieldsToSelect);
 
-    if (fieldsToSelect) {
-      select.push(...fieldsToSelect);
+    if (select.length > 0 && !select.includes(`${alias}.id`)) {
+      select.push(`${alias}.id`);
     }
-
-    // if (!hasAccess) {
-    //   fieldsToSelect = fieldsToSelect?.filter(
-    //     (field) => !field.includes(`${relationAlias}.`),
-    //   );
-    // }
-
-    // if (
-    //   !hasAccess ||
-    //   fieldsToSelect === undefined ||
-    //   fieldsToSelect.length === 0
-    // )
-    //   return;
-
-    // if (!this.isLeftJoinPresent(query, relationAlias) && !isTargetEntity) {
-    //   this.joinRelation<T>(query, relationAlias);
-    // }
-
-    // if (
-    //   fieldsToSelect.some((field) => field.startsWith(`${relationAlias}.`)) &&
-    //   !select.includes(`${queryAlias}.id`) &&
-    //   !isTargetEntity
-    // ) {
-    //   select.push(`${queryAlias}.id`);
-
-    //   return;
-    // }
-
-    // select.push(...fieldsToSelect);
-
-    // if (isTargetEntity && !select.includes(`${relationAlias}.id`)) {
-    //   select.push(`${relationAlias}.id`);
-    // }
   }
 
   validateOrder<T extends ObjectLiteral>(
     query: SelectQueryBuilder<T>,
     checkWithAliases: string[],
     hasAccess: boolean,
+    select: string[],
     order?: SortDto,
   ): void {
     if (order?.sortField === undefined) return;
-
     if (!checkWithAliases.some((alias) => order.sortField.includes(alias))) {
+      if (!select.includes(order.sortField)) {
+        select.push(order.sortField);
+      }
       return;
     }
 
@@ -241,7 +212,13 @@ export class QueryService {
         ) {
           this.joinRelation<T>(query, alias);
         }
+
+        if (!select.includes(order.sortField)) {
+          select.push(order.sortField);
+        }
       });
+    } else if (!order.sortField.includes(query.alias)) {
+      order.sortField = '';
     }
   }
 
@@ -257,12 +234,17 @@ export class QueryService {
    * @param order - Sorting configuration (optional)
    * @param select - Specific fields to retrieve instead of full entities (optional)
    */
-  optimizeQuery<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    pagination?: PaginationDto,
-    order?: SortDto,
-    select?: string[],
-  ): void {
+  optimizeQuery<T extends ObjectLiteral>({
+    query,
+    pagination,
+    order,
+    select,
+  }: {
+    query: SelectQueryBuilder<T>;
+    pagination?: PaginationDto;
+    order?: SortDto | undefined;
+    select?: string[] | undefined;
+  }): void {
     // Apply field selection first to reduce data transfer overhead
     if (select && select.length > 0) {
       query.select(select);

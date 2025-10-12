@@ -1,6 +1,9 @@
 import { Department } from '@/department/entities/department.entity';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
-import { getCreatedBySelectableFields } from '@/user/helper/user-fields.util';
+import {
+  getCreatedBySelectableFields,
+  getUserSelectableFields,
+} from '@/user/helper/user-fields.util';
 
 import { getMetadataArgsStorage } from 'typeorm';
 
@@ -8,9 +11,13 @@ import { getMetadataArgsStorage } from 'typeorm';
  * Dynamically extract all column names from the Department entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getDepartmentGenericSelectableFields(
-  fields?: string[],
-): string[] {
+export function getDepartmentGenericSelectableFields({
+  fields,
+  alias,
+}: {
+  fields?: string[] | undefined;
+  alias?: string | undefined;
+}): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
@@ -18,20 +25,28 @@ export function getDepartmentGenericSelectableFields(
     (column) => column.target === Department,
   );
 
+  alias ??= DEPARTMENT_QUERY_ALIAS;
+
   if (fields && fields.length > 0) {
-    return fields.filter((field) =>
+    const specified = fields.filter((field) =>
       columns.some((column) => column.propertyName === field),
+    );
+
+    return Array.from(
+      new Set([
+        `${alias}.id`,
+        `${alias}.createdAt`,
+        `${alias}.updatedAt`,
+        ...specified,
+      ]),
     );
   }
 
-  // Extract column property names
   return [
-    `${DEPARTMENT_QUERY_ALIAS}.id`,
-    `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
-    `${DEPARTMENT_QUERY_ALIAS}.updatedAt`,
-    ...columns.map(
-      (column) => `${DEPARTMENT_QUERY_ALIAS}.${column.propertyName}`,
-    ),
+    `${alias}.id`,
+    `${alias}.createdAt`,
+    `${alias}.updatedAt`,
+    ...columns.map((column) => `${alias}.${column.propertyName}`),
   ];
 }
 
@@ -44,13 +59,23 @@ export function getDepartmentGenericSelectableFields(
  */
 export function getDepartmentSelectableFields({
   departmentFields,
+  departmentAlias,
   creartedByFields,
+  userFields,
+  userAlias,
 }: {
   departmentFields?: string[];
+  departmentAlias?: string | undefined;
   creartedByFields?: string[];
+  userFields?: string[] | undefined;
+  userAlias?: string | undefined;
 }): string[] {
   return [
-    ...getDepartmentGenericSelectableFields(departmentFields),
+    ...getDepartmentGenericSelectableFields({
+      fields: departmentFields,
+      alias: departmentAlias,
+    }),
     ...getCreatedBySelectableFields(creartedByFields),
+    ...getUserSelectableFields({ fields: userFields, alias: userAlias }),
   ];
 }

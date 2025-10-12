@@ -50,7 +50,6 @@ export class DepartmentService {
   }): Promise<Department> {
     const { name, country } = createDepartmentDto;
 
-    // Entity creation with automatic field mapping and validation
     const department = this.departmentRepository.create({
       name,
       country,
@@ -67,11 +66,13 @@ export class DepartmentService {
             `Department with this name ${name} already exists`,
           );
         }
+        console.log(error);
         throw error;
       });
 
     if (!hasUserPermission) {
       res.createdBy = {} as User;
+      res.users = [];
     }
 
     return res;
@@ -93,7 +94,7 @@ export class DepartmentService {
   }: {
     ids: UUID[];
     pagination: PaginationDto;
-    hasUserPermission?: boolean;
+    hasUserPermission: boolean;
     select?: string[];
     sort?: SortDto;
   }): Promise<Department[]> {
@@ -117,11 +118,15 @@ export class DepartmentService {
       );
     }
 
-    if (hasUserPermission !== undefined && hasUserPermission) {
+    if (hasUserPermission) {
       this.queryService.joinRelation(query, CREATEDBY_USER_QUERY_ALIAS);
     }
 
     if (select !== undefined && select.length > 0) {
+      if (!select.includes(`${DEPARTMENT_QUERY_ALIAS}.id`)) {
+        select.push(`${DEPARTMENT_QUERY_ALIAS}.id`);
+      }
+
       query.select(select);
     }
 
@@ -164,9 +169,9 @@ export class DepartmentService {
   }: {
     value: string;
     pagination: PaginationDto;
+    hasUserPermission: boolean;
     sort: SortDto;
     select?: string[];
-    hasUserPermission?: boolean;
   }): Promise<DepartmentListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
       throw new BadRequestException(
@@ -188,7 +193,7 @@ export class DepartmentService {
         value: `%${value}%`,
       });
 
-    if (hasUserPermission !== undefined && hasUserPermission) {
+    if (hasUserPermission) {
       this.queryService.joinRelation(query, CREATEDBY_USER_QUERY_ALIAS);
     }
 
@@ -197,6 +202,10 @@ export class DepartmentService {
     }
 
     if (select !== undefined && select.length > 0) {
+      if (!select.includes(`${DEPARTMENT_QUERY_ALIAS}.id`)) {
+        select.push(`${DEPARTMENT_QUERY_ALIAS}.id`);
+      }
+
       query.select(select);
     }
 
@@ -228,13 +237,17 @@ export class DepartmentService {
    * @throws NotFoundException when department ID doesn't exist
    * @throws ConflictException when department name already exists
    */
-  async update(
-    id: UUID,
-    updateDepartmentDto: UpdateDepartmentDto,
-  ): Promise<Department> {
+  async update({
+    id,
+    updateDepartmentDto,
+  }: {
+    id: UUID;
+    updateDepartmentDto: UpdateDepartmentDto;
+  }): Promise<Department> {
     await this.findByIds({
       ids: [id],
       pagination: { page: 1, limit: 1 },
+      hasUserPermission: false,
     });
 
     if (updateDepartmentDto.name !== undefined) {
@@ -283,13 +296,12 @@ export class DepartmentService {
       return { deleted: 0 };
     }
 
-    // Comprehensive existence validation before any deletion
     const existingDepartments = await this.findByIds({
       ids,
       pagination: { page: 1, limit: ids.length },
+      hasUserPermission: false,
     });
 
-    // Fail-fast validation with detailed error reporting
     if (existingDepartments.length !== ids.length) {
       const missingIds = ids.filter(
         (id) => !existingDepartments.find((department) => department.id === id),

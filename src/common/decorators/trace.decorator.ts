@@ -1,9 +1,9 @@
+import { classesToSkip } from '@/config/log.config';
+import { safeStringify } from '@/utils/safeStringify';
 import { getTraceId } from '@/utils/trace.util';
 import { Logger, type OnModuleInit } from '@nestjs/common';
 
 import 'reflect-metadata';
-
-import { safeStringify } from '../../utils/safeStringify';
 
 function wrapMethods(proto: object, logger: Logger): void {
   const dict = proto as Record<string, unknown>;
@@ -65,16 +65,7 @@ function isSkippable(obj: unknown): boolean {
   const { name } = ctor;
   if (name == undefined) return false;
 
-  const frameworkSkip = [
-    'Logger',
-    'DataSource',
-    'EntityManager',
-    'QueryRunner',
-    'Repository',
-    'ConfigService',
-    'JwtService',
-  ];
-  return frameworkSkip.includes(name);
+  return classesToSkip.includes(name);
 }
 
 const activeDepth = new WeakMap<object, Map<string, number>>();
@@ -102,21 +93,19 @@ function wrapInjectedServices(
 
     if (isSkippable(value)) {
       dict[prop] = new Proxy(value, {
-        get(target: object, key: string | symbol, receiver: unknown): unknown {
-          const original: unknown = Reflect.get(target, key, receiver);
+        get(target: object, key: string | symbol): unknown {
+          const original: unknown = Reflect.get(target, key);
           if (typeof original !== 'function') {
             return original;
           }
 
-          return function (this: unknown, ...args: unknown[]): unknown {
+          return function (...args: unknown[]): unknown {
             const traceId: string = getTraceId() ?? 'no-trace';
-
             let depthMap = activeDepth.get(target);
             if (!depthMap) {
               depthMap = new Map<string, number>();
               activeDepth.set(target, depthMap);
             }
-
             const depth = depthMap.get(traceId) ?? 0;
             depthMap.set(traceId, depth + 1);
 
@@ -126,17 +115,15 @@ function wrapInjectedServices(
                   `[Trace: ${traceId}] !! Skipped tracing ${className} -> ${String(key)}`,
                 );
               }
+              // ✅ Bind to original `target`
               return (original as (...a: unknown[]) => unknown).apply(
-                this,
+                target,
                 args,
               );
             } finally {
               const current = depthMap.get(traceId) ?? 1;
-              if (current <= 1) {
-                depthMap.delete(traceId);
-              } else {
-                depthMap.set(traceId, current - 1);
-              }
+              if (current <= 1) depthMap.delete(traceId);
+              else depthMap.set(traceId, current - 1);
             }
           };
         },

@@ -11,7 +11,7 @@ import {
   validateDeleteRoleResponse,
   validateRoleApiResponse,
 } from '@/test/validation/role';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 
 import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';

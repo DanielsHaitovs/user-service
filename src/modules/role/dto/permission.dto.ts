@@ -6,6 +6,7 @@ import {
   EXAMPLE_ROLE_ID,
 } from '@/lib/const/role.const';
 import { RoleResponseDto } from '@/role/dto/role.dto';
+import { GetUserDto } from '@/user/dto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 import { Trim } from 'class-sanitizer';
@@ -109,6 +110,15 @@ export class PermissionResponseDto extends PermissionBaseDto {
   createdAt: Date;
 
   @ApiProperty({
+    description: 'List of roles assigned to the user',
+    type: GetUserDto,
+    isArray: false,
+  })
+  @Type(() => GetUserDto)
+  @ValidateNested()
+  createdBy?: GetUserDto;
+
+  @ApiProperty({
     description: 'Last update timestamp of the permission',
     example: '2023-10-01T12:00:00Z',
     readOnly: true,
@@ -122,12 +132,14 @@ export class PermissionResponseDto extends PermissionBaseDto {
     name: string,
     code: string,
     roles: RoleResponseDto[],
+    createdBy: GetUserDto,
     createdAt: Date,
     updatedAt: Date,
   ) {
     super(name, code);
     this.id = id;
     this.roles = roles;
+    this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }

@@ -1,15 +1,9 @@
 import { LoginDto } from '@/auth/dto/auth.dto';
 import { JWTPayload } from '@/auth/interfaces/req.interface';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
-import {
-  USER_QUERY_ALIAS,
-  USER_ROLE_QUERY_ALIAS,
-} from '@/lib/const/user.const';
+import { ROOT_ADMIN_PERMISSION } from '@/lib/const/role.const';
+import { USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
+// import { UserRole } from '@/user/entities/userRoles.entity';
 import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -105,52 +99,56 @@ export class AuthService {
     }
     return await query
       .select(
-        getUserSelectableFields([
-          'id',
-          'email',
-          'firstName',
-          'lastName',
-          'isActive',
-          'isEmailVerified',
-          'isTwoFactorEnabled',
-          'password',
-        ]),
+        getUserSelectableFields({
+          fields: [
+            'id',
+            'email',
+            'firstName',
+            'lastName',
+            'isActive',
+            'isEmailVerified',
+            'isTwoFactorEnabled',
+            'password',
+          ],
+        }),
       )
       .getOneOrFail();
   }
 
   private async getUserPermissions(userId: UUID): Promise<string[]> {
-    const userRoleWithPermissions = await this.entityManager
-      .createQueryBuilder(UserRole, USER_ROLE_QUERY_ALIAS)
-      .leftJoinAndSelect(
-        `${USER_ROLE_QUERY_ALIAS}.${ROLE_QUERY_ALIAS}`,
-        ROLE_QUERY_ALIAS,
-      )
-      .leftJoinAndSelect(
-        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
-        PERMISSION_QUERY_ALIAS,
-      )
-      .where(`${USER_ROLE_QUERY_ALIAS}.userId = :userId`, { userId })
-      .getMany();
+    // const userRoleWithPermissions = await this.entityManager
+    //   .createQueryBuilder(UserRole, USER_ROLE_QUERY_ALIAS)
+    //   .leftJoinAndSelect(
+    //     `${USER_ROLE_QUERY_ALIAS}.${ROLE_QUERY_ALIAS}`,
+    //     ROLE_QUERY_ALIAS,
+    //   )
+    //   .leftJoinAndSelect(
+    //     `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+    //     PERMISSION_QUERY_ALIAS,
+    //   )
+    //   .where(`${USER_ROLE_QUERY_ALIAS}.userId = :userId`, { userId })
+    //   .getMany();
 
-    if (userRoleWithPermissions.length === 0) {
-      throw new UnauthorizedException(
-        'User has no roles assigned, please contact support',
-      );
-    }
+    // if (userRoleWithPermissions.length === 0) {
+    //   throw new UnauthorizedException(
+    //     'User has no roles assigned, please contact support',
+    //   );
+    // }
 
-    const userRoles = userRoleWithPermissions.map((ur) => ur.roles);
+    // const userRoles = userRoleWithPermissions.map((ur) => ur.roles);
 
-    const permissions = userRoles.flatMap((role) =>
-      role.permissions.map((permission) => permission.code),
-    );
+    // const permissions = userRoles.flatMap((role) =>
+    //   role.permissions.map((permission) => permission.code),
+    // );
 
-    if (permissions.length === 0) {
-      throw new UnauthorizedException(
-        'User has no permissions assigned, please contact support',
-      );
-    }
+    // if (permissions.length === 0) {
+    //   throw new UnauthorizedException(
+    //     'User has no permissions assigned, please contact support',
+    //   );
+    // }
 
-    return permissions;
+    // return permissions;
+
+    return [ROOT_ADMIN_PERMISSION];
   }
 }

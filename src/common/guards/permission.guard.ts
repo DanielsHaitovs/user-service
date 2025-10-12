@@ -41,6 +41,7 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('User not found');
     }
 
+
     if (permissions.includes(ROOT_ADMIN_PERMISSION)) return true;
 
     const hasAllPermissions = requiredPermissions.every((perm) =>

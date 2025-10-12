@@ -6,7 +6,7 @@ import type {
 import type { Role } from '@/role/entities/role.entity';
 import { validateResponse } from '@/test/validation/request';
 import { validateRoleApiResponse } from '@/test/validation/role';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 import type { INestApplication } from '@nestjs/common';
 
 import type { UUID } from 'crypto';

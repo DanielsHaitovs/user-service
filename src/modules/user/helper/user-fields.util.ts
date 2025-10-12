@@ -10,11 +10,18 @@ import { getMetadataArgsStorage } from 'typeorm';
  * Dynamically extract all column names from the User entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getUserSelectableFields(fields?: string[]): string[] {
+export function getUserSelectableFields({
+  fields,
+  alias,
+}: {
+  fields?: string[] | undefined;
+  alias?: string | undefined;
+}): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
   const columns = metadata.columns.filter((column) => column.target === User);
+  alias ??= USER_QUERY_ALIAS;
 
   if (fields && fields.length > 0) {
     return [
@@ -22,19 +29,19 @@ export function getUserSelectableFields(fields?: string[]): string[] {
         .filter((field) =>
           columns.some((column) => column.propertyName === field),
         )
-        .flatMap((field) => `${USER_QUERY_ALIAS}.${field}`),
-      `${USER_QUERY_ALIAS}.id`,
-      `${USER_QUERY_ALIAS}.createdAt`,
-      `${USER_QUERY_ALIAS}.updatedAt`,
+        .flatMap((field) => `${alias}.${field}`),
+      `${alias}.id`,
+      `${alias}.createdAt`,
+      `${alias}.updatedAt`,
     ];
   }
 
   // Extract column property names
   return [
-    `${USER_QUERY_ALIAS}.id`,
-    `${USER_QUERY_ALIAS}.createdAt`,
-    `${USER_QUERY_ALIAS}.updatedAt`,
-    ...columns.map((column) => `${USER_QUERY_ALIAS}.${column.propertyName}`),
+    `${alias}.id`,
+    `${alias}.createdAt`,
+    `${alias}.updatedAt`,
+    ...columns.map((column) => `${alias}.${column.propertyName}`),
   ];
 }
 

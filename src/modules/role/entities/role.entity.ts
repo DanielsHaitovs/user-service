@@ -1,7 +1,6 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { Permission } from '@/role/entities/permissions.entity';
 import { User } from '@/user/entities/user.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
@@ -12,7 +11,6 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne,
-  OneToMany,
 } from 'typeorm';
 
 @Entity('role')
@@ -22,8 +20,8 @@ export class Role extends MecBaseEntity {
   @IsString()
   name: string;
 
-  @OneToMany(() => UserRole, (userRole) => userRole.roles)
-  userRoles: UserRole[];
+  // @OneToMany(() => UserRole, (userRole) => userRole.roles)
+  // userRoles: UserRole[];
 
   @ManyToMany(() => Permission, (permission) => permission.roles)
   @JoinTable({
@@ -43,7 +41,7 @@ export class Role extends MecBaseEntity {
     createdAd: Date,
     updatedAt: Date,
     permissions: Permission[],
-    userRoles: UserRole[],
+    // userRoles: UserRole[],
     createdBy: User,
   ) {
     super(id, createdAd, updatedAt);
@@ -51,7 +49,7 @@ export class Role extends MecBaseEntity {
     this.createdAt = createdAd;
     this.updatedAt = updatedAt;
     this.permissions = permissions;
-    this.userRoles = userRoles;
+    // this.userRoles = userRoles;
     this.createdBy = createdBy;
   }
 }

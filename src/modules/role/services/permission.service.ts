@@ -22,12 +22,15 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { Brackets, EntityNotFoundError, Repository } from 'typeorm';
+import {
+  Brackets,
+  EntityNotFoundError,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 
 @Injectable()
 export class PermissionService {
-  private readonly batchSize = 100;
-
   constructor(
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
@@ -36,11 +39,6 @@ export class PermissionService {
     private readonly queryService: QueryService,
   ) {}
 
-  /**
-   * Creates a new permission in the database.
-   * @param role - The permission data to create.
-   * @returns The created permission entity.
-   */
   async create({
     permissions,
     createdBy,
@@ -91,23 +89,19 @@ export class PermissionService {
     return newPermissions;
   }
 
-  /**
-   * Retrieves permissions by id from the database.
-   * @returns the permission entities.
-   */
   async findByIds({
     ids,
     hasRolePermission,
     hasUserPermission,
     pagination,
-    select,
+    fieldsToSelect,
     sort,
   }: {
     ids: UUID[];
     hasRolePermission: boolean;
     hasUserPermission: boolean;
     pagination: PaginationDto;
-    select?: string[];
+    fieldsToSelect?: string[];
     sort?: SortDto;
   }): Promise<Permission[]> {
     if (ids.length === 0) {
@@ -123,7 +117,6 @@ export class PermissionService {
     if (hasRolePermission) {
       this.queryService.joinRelation<Permission>(query, ROLE_QUERY_ALIAS);
     }
-    // query.leftJoinAndSelect(`${PERMISSION_QUERY_ALIAS}.roles`, 'roles');
 
     if (hasUserPermission) {
       this.queryService.joinRelation<Permission>(
@@ -134,13 +127,20 @@ export class PermissionService {
 
     this.queryService.whereIn<Permission>(query, 'id', ids, 'AND');
 
-    if (select !== undefined && select.length > 0) {
-      query.select(select);
-    }
+    this.validatePermissionQuerySelect({
+      query,
+      hasRolePermission,
+      hasUserPermission,
+      fieldsToSelect,
+    });
 
-    if (sort?.sortField !== undefined) {
-      query.orderBy(sort.sortField, sort.sortOrder);
-    }
+    this.validatePermissionQueryOrder({
+      query,
+      sort,
+      fieldsToSelect,
+      hasUserPermission,
+      hasRolePermission,
+    });
 
     const permissions = await query
       .skip((page - 1) * limit)
@@ -168,14 +168,14 @@ export class PermissionService {
     hasRolePermission,
     hasUserPermission,
     pagination,
-    select,
+    fieldsToSelect,
     sort,
   }: {
     codes: string[];
     hasRolePermission: boolean;
     hasUserPermission: boolean;
     pagination: PaginationDto;
-    select?: string[];
+    fieldsToSelect?: string[];
     sort?: SortDto;
   }): Promise<Permission[]> {
     if (codes.length === 0) {
@@ -203,13 +203,20 @@ export class PermissionService {
 
     this.queryService.whereIn<Permission>(query, 'code', codes, 'AND');
 
-    if (select !== undefined && select.length > 0) {
-      query.select(select);
-    }
+    this.validatePermissionQuerySelect({
+      query,
+      hasRolePermission,
+      hasUserPermission,
+      fieldsToSelect,
+    });
 
-    if (sort?.sortField !== undefined) {
-      query.orderBy(sort.sortField, sort.sortOrder);
-    }
+    this.validatePermissionQueryOrder({
+      query,
+      sort,
+      fieldsToSelect,
+      hasUserPermission,
+      hasRolePermission,
+    });
 
     const permissions = await query
       .skip((page - 1) * limit)
@@ -230,14 +237,14 @@ export class PermissionService {
     value,
     pagination,
     sort,
-    select,
+    fieldsToSelect,
     hasRolePermission,
     hasUserPermission,
   }: {
     value: string;
     pagination: PaginationDto;
     sort: SortDto;
-    select?: string[];
+    fieldsToSelect?: string[];
     hasRolePermission: boolean;
     hasUserPermission: boolean;
   }): Promise<PermissionListResponseDto> {
@@ -272,13 +279,20 @@ export class PermissionService {
       );
     }
 
-    if (sort.sortField !== '') {
-      query.orderBy(sort.sortField, sort.sortOrder);
-    }
+    this.validatePermissionQuerySelect({
+      query,
+      hasRolePermission,
+      hasUserPermission,
+      fieldsToSelect,
+    });
 
-    if (select !== undefined && select.length > 0) {
-      query.select(select);
-    }
+    this.validatePermissionQueryOrder({
+      query,
+      sort,
+      fieldsToSelect,
+      hasUserPermission,
+      hasRolePermission,
+    });
 
     const permissions = await query
       .skip((page - 1) * limit)
@@ -418,6 +432,79 @@ export class PermissionService {
         'Roles',
         `Roles with IDs [${missingRoleIds.join(', ')}] not found. Cannot create permissions with non-existing roles.`,
       );
+    }
+  }
+
+  private validatePermissionQueryOrder({
+    query,
+    sort,
+    fieldsToSelect,
+    hasUserPermission,
+    hasRolePermission,
+  }: {
+    query: SelectQueryBuilder<Permission>;
+    sort?: SortDto | undefined;
+    fieldsToSelect?: string[] | undefined;
+    hasUserPermission: boolean;
+    hasRolePermission: boolean;
+  }): void {
+    if (sort?.sortField !== undefined) {
+      if (
+        sort.sortField.includes(CREATEDBY_USER_QUERY_ALIAS) &&
+        hasUserPermission
+      ) {
+        if (
+          fieldsToSelect !== undefined &&
+          !fieldsToSelect.includes(sort.sortField)
+        ) {
+          fieldsToSelect.push(sort.sortField);
+        }
+        query.orderBy(sort.sortField, sort.sortOrder);
+      }
+
+      if (sort.sortField.includes(ROLE_QUERY_ALIAS) && hasRolePermission) {
+        if (
+          fieldsToSelect !== undefined &&
+          !fieldsToSelect.includes(sort.sortField)
+        ) {
+          fieldsToSelect.push(sort.sortField);
+        }
+        query.orderBy(sort.sortField, sort.sortOrder);
+      }
+    }
+  }
+
+  private validatePermissionQuerySelect({
+    query,
+    hasRolePermission,
+    hasUserPermission,
+    fieldsToSelect,
+  }: {
+    query: SelectQueryBuilder<Permission>;
+    hasRolePermission: boolean;
+    hasUserPermission: boolean;
+    fieldsToSelect?: string[] | undefined;
+  }): void {
+    if (fieldsToSelect !== undefined && fieldsToSelect.length > 0) {
+      const select = new Array<string>();
+
+      this.queryService.validateSelect<Permission>(
+        query,
+        select,
+        fieldsToSelect,
+        hasRolePermission,
+        ROLE_QUERY_ALIAS,
+      );
+
+      this.queryService.validateSelect<Permission>(
+        query,
+        select,
+        fieldsToSelect,
+        hasUserPermission,
+        CREATEDBY_USER_QUERY_ALIAS,
+      );
+
+      query.select(select);
     }
   }
 }

@@ -3,11 +3,12 @@ import {
   EXAMPLE_DEPARTMENT_COUNTRY,
   EXAMPLE_DEPARTMENT_NAME,
 } from '@/lib/const/department.const';
-import { UserResponseDto } from '@/user/dto/user.dto';
+import { GetUserDto } from '@/user/dto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
 import {
+  IsDate,
   IsString,
   MaxLength,
   MinLength,
@@ -58,36 +59,58 @@ export class DepartmentResponseDto extends DepartmentBaseDto {
   id: UUID;
 
   @ApiProperty({
-    description: 'List of roles assigned to the user',
-    type: UserResponseDto,
+    description: 'User that created the department',
+    type: GetUserDto,
     isArray: false,
   })
-  @Type(() => UserResponseDto)
+  @Type(() => GetUserDto)
   @ValidateNested()
-  createdBy?: UserResponseDto;
+  createdBy?: GetUserDto;
 
   @ApiProperty({
-    description: 'List of roles assigned to the user',
-    type: UserResponseDto,
+    description: 'List of users assigned to the department',
+    type: GetUserDto,
     isArray: false,
   })
-  @Type(() => UserResponseDto)
+  @Type(() => GetUserDto)
   @ValidateNested({ each: true })
-  user?: UserResponseDto[];
+  users?: GetUserDto[];
+
+  @ApiProperty({
+    description: 'Date when the department was created',
+    example: '2023-01-01T12:00:00.000Z',
+    format: 'date-time',
+    type: Date,
+  })
+  @IsDate()
+  createdAt: Date;
+
+  @ApiProperty({
+    description: 'Date when the department was last updated',
+    example: '2023-01-02T12:00:00.000Z',
+    format: 'date-time',
+    type: Date,
+  })
+  @IsDate()
+  updatedAt: Date;
 
   constructor(
     id: UUID,
+    createdAt: Date,
+    updatedAt: Date,
     name: string,
     country: string,
-    createdBy: UserResponseDto,
-    user: UserResponseDto[],
+    createdBy: GetUserDto,
+    users: GetUserDto[],
   ) {
     super(name, country);
     this.id = id;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
     this.name = name;
     this.country = country;
     this.createdBy = createdBy;
-    this.user = user;
+    this.users = users;
   }
 }
 

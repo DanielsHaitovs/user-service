@@ -1,4 +1,5 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
+import { TraceController } from '@/common/decorators/trace.decorator';
 import { CurrentUserId } from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { hasLoosePermission } from '@/common/helper/permission.helper';
@@ -28,7 +29,7 @@ import {
   READ_DEPARTMENT,
   UPDATE_DEPARTMENT,
 } from '@/lib/const/department.const';
-import { READ_USER } from '@/lib/const/user.const';
+import { READ_USER, USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import {
   getCreatedBySelectableFields,
   getUserSelectableFields,
@@ -76,6 +77,7 @@ import { Request } from 'express';
 
 @ApiTags('Departments')
 @Controller('departments')
+@TraceController()
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class DepartmentController {
@@ -168,7 +170,6 @@ export class DepartmentController {
   @ApiQuery({
     name: 'ids',
     type: String,
-    format: 'uuid',
     isArray: true,
     required: true,
     description: 'Department unique identifier',
@@ -193,7 +194,7 @@ export class DepartmentController {
     type: String,
     required: false,
     description: 'Sort departments by sort field',
-    enum: getDepartmentGenericSelectableFields(),
+    enum: getDepartmentGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -209,7 +210,7 @@ export class DepartmentController {
     required: false,
     description: 'Sort departments by sort field',
     isArray: true,
-    enum: getDepartmentGenericSelectableFields(),
+    enum: getDepartmentSelectableFields({}),
     example: ['department.name'],
   })
   @ApiOkResponse({
@@ -235,12 +236,13 @@ export class DepartmentController {
     },
   })
   async getDepartmentById(
+    @Req() request: Request,
     @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('select') select: string[],
+    @Query('select', new ParseArrayPipe({ optional: true })) select: string[],
   ): Promise<Department[]> {
     if (page < 1 || limit < 1) {
       throw new BadRequestException(
@@ -248,11 +250,17 @@ export class DepartmentController {
       );
     }
 
+    const hasUserPermission = hasLoosePermission({
+      request,
+      permissions: [READ_USER],
+    });
+
     return await this.departmentService.findByIds({
       ids,
       pagination: { page, limit },
       select,
       sort: { sortField, sortOrder },
+      hasUserPermission,
     });
   }
 
@@ -289,7 +297,7 @@ export class DepartmentController {
     type: String,
     required: false,
     description: 'Sort departments by sort field',
-    enum: getDepartmentGenericSelectableFields(),
+    enum: getDepartmentGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -305,7 +313,7 @@ export class DepartmentController {
     required: false,
     description: 'Sort departments by sort field',
     isArray: true,
-    enum: getDepartmentGenericSelectableFields(),
+    enum: getDepartmentSelectableFields({}),
     example: ['department.name'],
   })
   @ApiOkResponse({
@@ -341,7 +349,7 @@ export class DepartmentController {
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('select') select: string[],
+    @Query('select', ParseArrayPipe) select: string[],
   ): Promise<DepartmentListResponseDto> {
     if (!sortField || sortField === '') {
       sortField = `${DEPARTMENT_QUERY_ALIAS}.name`;
@@ -398,7 +406,7 @@ export class DepartmentController {
     @Param('id') id: UUID,
     @Body() updateDepartmentDto: UpdateDepartmentDto,
   ): Promise<Department> {
-    return await this.departmentService.update(id, updateDepartmentDto);
+    return await this.departmentService.update({ id, updateDepartmentDto });
   }
 
   @Delete()
@@ -457,6 +465,14 @@ export class DepartmentController {
     description: 'Filter departments by name',
   })
   @ApiQuery({
+    name: 'countries',
+    type: String,
+    enum: COUNTRIES,
+    isArray: true,
+    required: false,
+    description: 'Filter departments by countries',
+  })
+  @ApiQuery({
     name: 'userIds',
     type: String,
     isArray: true,
@@ -469,14 +485,6 @@ export class DepartmentController {
     isArray: true,
     required: false,
     description: 'Filter by users id that created a departments',
-  })
-  @ApiQuery({
-    name: 'countries',
-    type: String,
-    enum: COUNTRIES,
-    isArray: true,
-    required: false,
-    description: 'Filter departments by countries',
   })
   @ApiQuery({
     name: 'includeUsers',
@@ -510,7 +518,7 @@ export class DepartmentController {
     type: String,
     required: false,
     description: 'Filter users by sort order',
-    enum: getDepartmentSelectableFields({}),
+    enum: getDepartmentSelectableFields({ userAlias: `${USER_QUERY_ALIAS}s` }),
   })
   @ApiQuery({
     name: 'sortOrder',
@@ -525,7 +533,7 @@ export class DepartmentController {
     isArray: true,
     required: false,
     description: 'Select users fields',
-    enum: getUserSelectableFields(),
+    enum: getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
   })
   @ApiQuery({
     name: 'selectDepartmentFields',
@@ -533,7 +541,7 @@ export class DepartmentController {
     isArray: true,
     required: false,
     description: 'Select department fields',
-    enum: getDepartmentGenericSelectableFields(),
+    enum: getDepartmentGenericSelectableFields({}),
   })
   @ApiQuery({
     name: 'selectUserCreatedByFields',
@@ -543,37 +551,36 @@ export class DepartmentController {
     description: 'Select users created by fields',
     enum: getCreatedBySelectableFields(),
   })
-  async filterUsers(
+  async filterDepartments(
     @Req() request: Request,
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
     @Query('names', new ParseArrayPipe({ optional: true })) names: string[],
-    @Query('userIds', new ParseArrayPipe({ optional: true }))
-    userIds: UUID[],
     @Query('countries', new ParseArrayPipe({ optional: true }))
     countries: string[],
+    @Query('selectDepartmentFields', new ParseArrayPipe({ optional: true }))
+    selectDepartmentFields: string[],
+    @Query('userIds', new ParseArrayPipe({ optional: true }))
+    userIds: UUID[],
     @Query('includeUsers', new ParseBoolPipe({ optional: true }))
     includeUsers: boolean,
+    @Query('selectUserFields', new ParseArrayPipe({ optional: true }))
+    selectUserFields: string[],
     @Query('createdByUserIds', new ParseArrayPipe({ optional: true }))
     createdByUserIds: UUID[],
     @Query('includeCreatedBy', new ParseBoolPipe({ optional: true }))
     includeCreatedBy: boolean,
+    @Query('selectUserCreatedByFields', new ParseArrayPipe({ optional: true }))
+    selectUserCreatedByFields: string[],
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('selectUserFields', new ParseArrayPipe({ optional: true }))
-    selectUserFields: string[],
-    @Query('selectDepartmentFields', new ParseArrayPipe({ optional: true }))
-    selectDepartmentFields: string[],
-    @Query('selectUserCreatedByFields', new ParseArrayPipe({ optional: true }))
-    selectUserCreatedByFields: string[],
   ): Promise<DepartmentListResponseDto> {
     const hasUserPermission = hasLoosePermission({
       request,
       permissions: [READ_USER],
     });
 
-    // Construct comprehensive query object from individual parameters
     return await this.queryService.getDepartements(
       {
         query: {

@@ -9,12 +9,16 @@ export function validatePermissionResponse({
   ids,
   names,
   codes,
+  hasUserPermission,
+  hasRolePermission,
 }: {
   permissions: Permission[] | PermissionResponseDto[];
   amountExpected?: number;
   ids?: UUID[];
   names?: string[];
   codes?: string[];
+  hasUserPermission?: boolean;
+  hasRolePermission?: boolean;
 }): void {
   if (permissions.length === 0) {
     throw new Error('No permissions created');
@@ -41,6 +45,20 @@ export function validatePermissionResponse({
 
     if (codes !== undefined && codes.length > 0) {
       expect(codes).toContain(permission.code);
+    }
+
+    if (hasUserPermission !== undefined && hasUserPermission) {
+      expect(permission).toHaveProperty('createdBy');
+      expect(permission.createdBy).toHaveProperty('id');
+    }
+
+    if (hasRolePermission !== undefined && hasRolePermission) {
+      expect(permission).toHaveProperty('roles');
+      expect(Array.isArray(permission.roles)).toBe(true);
+      permission.roles.forEach((role) => {
+        expect(role).toHaveProperty('id');
+        expect(role).toHaveProperty('name');
+      });
     }
   });
 }

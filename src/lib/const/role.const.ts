@@ -52,7 +52,7 @@ export const EXAMPLE_PERMISSION_NAME = 'View Users' as string;
  * Standard example code used in API documentation and test fixtures.
  * Represents a permission code that is commonly used for testing scenarios.
  */
-export const ROOT_ADMIN_PERMISSION = 'root_all' as string;
+export const ROOT_ADMIN_PERMISSION = 'root_admin' as string;
 
 /**
  * Standard example code used in API documentation and test fixtures.

@@ -12,7 +12,7 @@ import {
   validateDeleteDepartmentResponse,
   validateDepartmentsResponse,
 } from '@/test/validation/department';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 
 import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
@@ -123,7 +123,10 @@ export async function updateDepartmentName(
     name: `from-${department.id}-to-${faker.lorem.word()}`,
   };
 
-  const updatedDepartment = await service.update(department.id, updateDto);
+  const updatedDepartment = await service.update({
+    id: department.id,
+    updateDepartmentDto: updateDto,
+  });
 
   validateDepartmentsResponse({
     departments: [updatedDepartment],
@@ -146,7 +149,10 @@ export async function updateDepartmentCountry(
     country: getRandomCountryCode(),
   };
 
-  const updatedDepartment = await service.update(department.id, updateDto);
+  const updatedDepartment = await service.update({
+    id: department.id,
+    updateDepartmentDto: updateDto,
+  });
 
   validateDepartmentsResponse({
     departments: [updatedDepartment],
@@ -243,6 +249,7 @@ export async function deleteDepartments(
     service.findByIds({
       ids: [department.id],
       pagination: { page: 1, limit: 1 },
+      hasUserPermission: false,
     }),
   ).rejects.toThrow(EntityNotFoundError);
 }

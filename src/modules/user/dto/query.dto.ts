@@ -9,7 +9,6 @@ import {
   EXAMPLE_USER_ID,
   EXAMPLE_USER_LAST_NAME,
 } from '@/lib/const/user.const';
-import { getRoleGenerucSelectableFields } from '@/role/helper/role-fields.util';
 import { getUserSelectableFields } from '@/user/helper/user-fields.util';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -216,13 +215,13 @@ export class UserQueryDto {
   @ApiProperty({
     description:
       'Specific user fields to return - optimizes payload size and performance',
-    enum: getUserSelectableFields(),
+    enum: getUserSelectableFields({}),
     type: String,
     isArray: true,
     required: false,
-    example: getUserSelectableFields(),
+    example: getUserSelectableFields({}),
   })
-  @IsEnum(getUserSelectableFields(), { each: true })
+  @IsEnum(getUserSelectableFields({}), { each: true })
   selectUserFields?: string[];
 
   @ApiProperty({
@@ -237,17 +236,17 @@ export class UserQueryDto {
   @IsEnum(getDepartmentSelectableFields({}), { each: true })
   selectDepartmentFields?: string[];
 
-  @ApiProperty({
-    description:
-      'Specific user roles fields to return - optimizes payload size and performance',
-    enum: getRoleGenerucSelectableFields(),
-    type: String,
-    isArray: true,
-    required: false,
-    example: getRoleGenerucSelectableFields(),
-  })
-  @IsEnum(getRoleGenerucSelectableFields(), { each: true })
-  selectRoleFields?: string[];
+  // @ApiProperty({
+  //   description:
+  //     'Specific user roles fields to return - optimizes payload size and performance',
+  //   enum: getRoleGenerucSelectableFields({}),
+  //   type: String,
+  //   isArray: true,
+  //   required: false,
+  //   example: getRoleGenerucSelectableFields({}),
+  // })
+  // @IsEnum(getRoleGenerucSelectableFields({}), { each: true })
+  // selectRoleFields?: string[];
 
   constructor(
     query: UserQueryParametersDto,
@@ -264,7 +263,7 @@ export class UserQueryDto {
     this.sort = sort;
     this.selectUserFields = selectUserFields;
     this.selectDepartmentFields = selectDepartmentFields;
-    this.selectRoleFields = selectRoleFields;
+    // this.selectRoleFields = selectRoleFields;
     this.includeDepartment = includeDepartment;
     this.includeRoles = includeRoles;
   }

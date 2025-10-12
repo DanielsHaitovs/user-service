@@ -14,7 +14,8 @@ export interface BootstrappedApp {
 
 export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   process.env.USER_DATABASE_HOST = 'localhost';
-  // process.env.JWT_SECRET = 'your_jwt_secret';
+  process.env.JWT_SECRET = 'your_jwt_secret';
+  process.env.NODE_ENV = 'test';
 
   const moduleFixture = await Test.createTestingModule({
     imports: [AppModule],

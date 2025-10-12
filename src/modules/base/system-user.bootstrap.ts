@@ -1,16 +1,11 @@
-import { ROOT_ADMIN_PERMISSION } from '@/lib/const/role.const';
 import {
   SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,
 } from '@/lib/const/user.const';
-import { Permission } from '@/role/entities/permissions.entity';
-import { Role } from '@/role/entities/role.entity';
 import { User } from '@/user/entities/user.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
 import type { INestApplication } from '@nestjs/common';
 
 import * as bcrypt from 'bcrypt';
-import type { UUID } from 'crypto';
 import { DataSource } from 'typeorm';
 
 export async function ensureSystemUser(app: INestApplication): Promise<void> {
@@ -37,65 +32,65 @@ export async function ensureSystemUser(app: INestApplication): Promise<void> {
   });
 
   await userRepo.save(newUser);
-  await createSystemRole(dataSource, newUser.id);
-  await createUserRole(dataSource);
+  // await createSystemRole(dataSource, newUser.id);
+  // await createUserRole(dataSource);
 }
 
-async function createSystemRole(
-  dataSource: DataSource,
-  createdBy: UUID,
-): Promise<void> {
-  const roleRepo = dataSource.getRepository(Role);
+// async function createSystemRole(
+//   dataSource: DataSource,
+//   createdBy: UUID,
+// ): Promise<void> {
+//   const roleRepo = dataSource.getRepository(Role);
 
-  const existingRole = await roleRepo.findOne({
-    where: { name: 'System' },
-    relations: ['permissions'],
-  });
+//   const existingRole = await roleRepo.findOne({
+//     where: { name: 'System' },
+//     relations: ['permissions'],
+//   });
 
-  if (existingRole) {
-    return;
-  }
+//   if (existingRole) {
+//     return;
+//   }
 
-  const newRole = roleRepo.create({
-    name: 'System',
-    createdBy: { id: createdBy } as User,
-  });
+//   const newRole = roleRepo.create({
+//     name: 'System',
+//     createdBy: { id: createdBy } as User,
+//   });
 
-  const systemRole = await roleRepo.save(newRole);
-  const permissionRepo = dataSource.getRepository(Permission);
+//   const systemRole = await roleRepo.save(newRole);
+//   const permissionRepo = dataSource.getRepository(Permission);
 
-  const newPermissions = permissionRepo.create({
-    name: 'System Permissions',
-    code: ROOT_ADMIN_PERMISSION,
-    roles: [{ id: systemRole.id }],
-    createdBy: { id: createdBy } as User,
-  });
+//   const newPermissions = permissionRepo.create({
+//     name: 'System Permissions',
+//     code: ROOT_ADMIN_PERMISSION,
+//     roles: [{ id: systemRole.id }],
+//     createdBy: { id: createdBy } as User,
+//   });
 
-  await permissionRepo.save(newPermissions);
-}
+//   await permissionRepo.save(newPermissions);
+// }
 
-async function createUserRole(dataSource: DataSource): Promise<UserRole> {
-  const userRoleRepo = dataSource.getRepository(UserRole);
-  const userRepo = dataSource.getRepository(User);
-  const roleRepo = dataSource.getRepository(Role);
+// async function createUserRole(dataSource: DataSource): Promise<UserRole> {
+//   const userRoleRepo = dataSource.getRepository(UserRole);
+//   const userRepo = dataSource.getRepository(User);
+//   const roleRepo = dataSource.getRepository(Role);
 
-  const existingRole = await roleRepo.findOne({
-    where: { name: 'System' },
-  });
+//   const existingRole = await roleRepo.findOne({
+//     where: { name: 'System' },
+//   });
 
-  const existingUser = await userRepo.findOne({
-    where: { email: 'system@mecService.com' },
-  });
+//   const existingUser = await userRepo.findOne({
+//     where: { email: 'system@mecService.com' },
+//   });
 
-  if (existingUser == null || existingRole == null) {
-    throw new Error('System user or role not found');
-  }
+//   if (existingUser == null || existingRole == null) {
+//     throw new Error('System user or role not found');
+//   }
 
-  const userRole = userRoleRepo.create({
-    user: existingUser,
-    roles: existingRole,
-    assignedBy: existingUser,
-  });
+//   const userRole = userRoleRepo.create({
+//     user: existingUser,
+//     roles: existingRole,
+//     assignedBy: existingUser,
+//   });
 
-  return await userRoleRepo.save(userRole);
-}
+//   return await userRoleRepo.save(userRole);
+// }

@@ -25,8 +25,8 @@ export class Department extends MecBaseEntity {
   @IsString()
   country: string;
 
-  @ManyToMany(() => User, (user) => user.department)
-  user: User[];
+  @ManyToMany(() => User, (user) => user.departments)
+  users: User[];
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })
@@ -38,14 +38,14 @@ export class Department extends MecBaseEntity {
     updatedAt: Date,
     name: string,
     country: string,
-    user: User[],
+    users: User[],
     createdBy: User,
   ) {
     super(id, createdAt, updatedAt);
     this.id = id;
     this.name = name;
     this.country = country;
-    this.user = user;
+    this.users = users;
     this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;

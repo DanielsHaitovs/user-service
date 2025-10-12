@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { AuthModule } from '@/auth/auth.module';
+import { BaseModule } from '@/base/base.module';
 import { DepartmentModule } from '@/department/department.module';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
-import { RolesModule } from '@/role/role.module';
 import { UserModule } from '@/user/user.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -11,7 +11,6 @@ import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './modules/app.controller';
-import { BaseModule } from './modules/base/base.module';
 
 @Module({
   controllers: [AppController],
@@ -67,7 +66,7 @@ import { BaseModule } from './modules/base/base.module';
     }),
     BaseModule,
     UserModule,
-    RolesModule,
+    // RolesModule,
     DepartmentModule,
     AuthModule,
   ],

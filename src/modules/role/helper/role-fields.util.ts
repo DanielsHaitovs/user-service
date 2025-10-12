@@ -11,24 +11,44 @@ import { getMetadataArgsStorage } from 'typeorm';
  * Dynamically extract all column names from the Role entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getRoleGenerucSelectableFields(fields?: string[]): string[] {
+export function getRoleGenerucSelectableFields({
+  fields,
+  alias,
+}: {
+  fields?: string[] | undefined;
+  alias?: string | undefined;
+}): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
   const columns = metadata.columns.filter((column) => column.target === Role);
+  alias ??= ROLE_QUERY_ALIAS;
 
   if (fields && fields.length > 0) {
-    return fields.filter((field) =>
+    const specified = fields.filter((field) =>
       columns.some((column) => column.propertyName === field),
+    );
+
+    specified.push(`${alias}.id`);
+    specified.push(`${alias}.createdAt`);
+    specified.push(`${alias}.updatedAt`);
+
+    return Array.from(
+      new Set([
+        `${alias}.id`,
+        `${alias}.createdAt`,
+        `${alias}.updatedAt`,
+        ...specified,
+      ]),
     );
   }
 
   // Extract column property names
   return [
-    `${ROLE_QUERY_ALIAS}.id`,
-    `${ROLE_QUERY_ALIAS}.createdAt`,
-    `${ROLE_QUERY_ALIAS}.updatedAt`,
-    ...columns.map((column) => `${ROLE_QUERY_ALIAS}.${column.propertyName}`),
+    `${alias}.id`,
+    `${alias}.createdAt`,
+    `${alias}.updatedAt`,
+    ...columns.map((column) => `${alias}.${column.propertyName}`),
   ];
 }
 
@@ -36,9 +56,13 @@ export function getRoleGenerucSelectableFields(fields?: string[]): string[] {
  * Dynamically extract all column names from the Permission entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getPermissionsGenericSelectableFields(
-  fields?: string[],
-): string[] {
+export function getPermissionsGenericSelectableFields({
+  fields,
+  alias,
+}: {
+  fields?: string[] | undefined;
+  alias?: string | undefined;
+}): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
@@ -46,32 +70,52 @@ export function getPermissionsGenericSelectableFields(
     (column) => column.target === Permission,
   );
 
+  alias ??= PERMISSION_QUERY_ALIAS;
+
   if (fields && fields.length > 0) {
-    return fields.filter((field) =>
+    const specified = fields.filter((field) =>
       columns.some((column) => column.propertyName === field),
+    );
+
+    specified.push(`${alias}.id`);
+    specified.push(`${alias}.createdAt`);
+    specified.push(`${alias}.updatedAt`);
+
+    return Array.from(
+      new Set([
+        `${alias}.id`,
+        `${alias}.createdAt`,
+        `${alias}.updatedAt`,
+        ...specified,
+      ]),
     );
   }
 
   // Extract column property names
   return [
-    `${PERMISSION_QUERY_ALIAS}.id`,
-    `${PERMISSION_QUERY_ALIAS}.createdAt`,
-    `${PERMISSION_QUERY_ALIAS}.updatedAt`,
-    ...columns.map(
-      (column) => `${PERMISSION_QUERY_ALIAS}.${column.propertyName}`,
-    ),
+    `${alias}.id`,
+    `${alias}.createdAt`,
+    `${alias}.updatedAt`,
+    ...columns.map((column) => `${alias}.${column.propertyName}`),
   ];
 }
 
 export function getRoleSelectableFields({
   roleFields,
+  roleAlias,
   permissionFields,
+  permissionAlias,
 }: {
-  roleFields?: string[];
-  permissionFields?: string[];
+  roleFields?: string[] | undefined;
+  roleAlias?: string | undefined;
+  permissionFields?: string[] | undefined;
+  permissionAlias?: string | undefined;
 }): string[] {
   return [
-    ...getRoleGenerucSelectableFields(roleFields),
-    ...getPermissionsGenericSelectableFields(permissionFields),
+    ...getRoleGenerucSelectableFields({ fields: roleFields, alias: roleAlias }),
+    ...getPermissionsGenericSelectableFields({
+      fields: permissionFields,
+      alias: permissionAlias,
+    }),
   ];
 }

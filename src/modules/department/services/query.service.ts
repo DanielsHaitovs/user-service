@@ -10,13 +10,12 @@ import {
 } from '@/lib/const/user.const';
 import { Injectable } from '@nestjs/common';
 
-import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+import { SelectQueryBuilder } from 'typeorm';
 
 @Injectable()
 export class DepartmentQueryService extends QueryService {
   private readonly departmentAlias = DEPARTMENT_QUERY_ALIAS;
-  private readonly userAlias = USER_QUERY_ALIAS;
-  private readonly createdByAlias = CREATEDBY_USER_QUERY_ALIAS;
+  private readonly userAlias = `${USER_QUERY_ALIAS}s`;
 
   async getDepartements(
     filters: DepartmentQueryDto,
@@ -32,39 +31,18 @@ export class DepartmentQueryService extends QueryService {
     } = filters;
 
     let { includeUsers, includeCreatedBy } = filters;
-    includeUsers ??= true;
-    includeCreatedBy ??= true;
+    includeUsers ??= hasUserPermissions;
+    includeCreatedBy ??= hasUserPermissions;
 
     const queryBuilder = this.initQuery(Department, this.departmentAlias);
 
-    // Apply ID-based filtering for bulk user operations
     if (ids && ids.length > 0) {
       this.whereIn(queryBuilder, 'id', ids, 'AND');
     }
 
-    // Filter by first names - useful for user search functionality
-    if (names && names.length > 0) {
-      if (
-        selectDepartmentFields !== undefined &&
-        !selectDepartmentFields.includes(`${DEPARTMENT_QUERY_ALIAS}.name`)
-      ) {
-        selectDepartmentFields.push(`${DEPARTMENT_QUERY_ALIAS}.name`);
-      }
+    this.whereIn<Department>(queryBuilder, 'name', names, 'AND');
 
-      this.whereIn(queryBuilder, 'name', names, 'AND');
-    }
-
-    // Filter by last names - supports partial name-based searches
-    if (countries && countries.length > 0) {
-      if (
-        selectDepartmentFields !== undefined &&
-        !selectDepartmentFields.includes(`${DEPARTMENT_QUERY_ALIAS}.country`)
-      ) {
-        selectDepartmentFields.push(`${DEPARTMENT_QUERY_ALIAS}.country`);
-      }
-
-      this.whereIn(queryBuilder, 'country', countries, 'AND');
-    }
+    this.whereIn<Department>(queryBuilder, 'country', countries, 'AND');
 
     // Join user relation if specified or if IDs are provided
     this.joinEntityRelation(
@@ -82,7 +60,7 @@ export class DepartmentQueryService extends QueryService {
     // Join created by user relation if specified or if IDs are provided
     this.joinEntityRelation(
       queryBuilder,
-      this.createdByAlias,
+      CREATEDBY_USER_QUERY_ALIAS,
       includeCreatedBy && hasUserPermissions,
       'AND',
       {
@@ -92,16 +70,16 @@ export class DepartmentQueryService extends QueryService {
       },
     );
 
-    this.optimizeQuery<Department>(
+    this.optimize(
       queryBuilder,
       { page, limit },
-      sort,
-      selectDepartmentFields,
-      selectUserFields,
-      selectUserCreatedByFields,
       hasUserPermissions,
       includeCreatedBy,
       includeUsers,
+      selectDepartmentFields,
+      selectUserFields,
+      selectUserCreatedByFields,
+      sort,
     );
 
     const departments = await queryBuilder.getManyAndCount();
@@ -116,79 +94,54 @@ export class DepartmentQueryService extends QueryService {
     };
   }
 
-  override optimizeQuery<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    pagination?: PaginationDto,
-    order?: SortDto,
+  optimize(
+    query: SelectQueryBuilder<Department>,
+    pagination: PaginationDto,
+    hasUserPermissions: boolean,
+    includeCreatedBy: boolean,
+    includeUsers: boolean,
     selectDepartmentFields?: string[],
     selectUserFields?: string[],
     selectUserCreatedByFields?: string[],
-    hasUserPermissions?: boolean,
-    includeCreatedBy?: boolean,
-    includeUsers?: boolean,
+    order?: SortDto,
   ): void {
     const select = new Array<string>();
-    includeCreatedBy ??= true;
-    includeUsers ??= true;
 
-    if (includeCreatedBy) {
-      this.validateSelect<T>(
-        query,
-        select,
-        selectUserCreatedByFields,
-        this.createdByAlias,
-        hasUserPermissions ?? false,
-        false,
-      );
-    }
+    this.validateSelect<Department>(
+      query,
+      select,
+      selectUserCreatedByFields,
+      hasUserPermissions && includeCreatedBy,
+      CREATEDBY_USER_QUERY_ALIAS,
+    );
 
-    if (includeUsers) {
-      this.validateSelect<T>(
-        query,
-        select,
-        selectUserFields,
-        this.userAlias,
-        hasUserPermissions ?? false,
-        false,
-      );
-    }
+    this.validateSelect<Department>(
+      query,
+      select,
+      selectUserFields,
+      hasUserPermissions && includeUsers,
+      this.userAlias,
+    );
 
-    this.validateSelect<T>(
+    this.validateSelect<Department>(
       query,
       select,
       selectDepartmentFields,
-      this.departmentAlias,
-      true,
       true,
     );
 
-    if (select.length > 0 && !select.includes(`${DEPARTMENT_QUERY_ALIAS}.id`)) {
-      select.push(`${DEPARTMENT_QUERY_ALIAS}.id`);
-    }
-
-    if (select.length > 0) {
-      if (
-        this.isLeftJoinPresent(query, this.userAlias) &&
-        !select.includes(`${USER_QUERY_ALIAS}.id`)
-      ) {
-        select.push(`${USER_QUERY_ALIAS}.id`);
-      }
-
-      if (
-        this.isLeftJoinPresent(query, this.createdByAlias) &&
-        !select.includes(`${this.createdByAlias}.id`)
-      ) {
-        select.push(`${this.createdByAlias}.id`);
-      }
-    }
-
-    this.validateOrder<T>(
+    this.validateOrder<Department>(
       query,
-      [this.userAlias, this.createdByAlias],
-      hasUserPermissions ?? false,
+      [this.userAlias, CREATEDBY_USER_QUERY_ALIAS],
+      hasUserPermissions,
+      select,
       order,
     );
 
-    super.optimizeQuery(query, pagination, order, select);
+    if (select.length > 0 && !select.includes(`${query.alias}.id`)) {
+      select.push(`${query.alias}.id`);
+    }
+
+    this.optimizeQuery({ query, pagination, order, select });
   }
 }

@@ -1,17 +1,9 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { Department } from '@/department/entities/department.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { IsBoolean, IsDate, IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
-import {
-  Column,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  OneToMany,
-  Unique,
-} from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, Unique } from 'typeorm';
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })
@@ -77,16 +69,16 @@ export class User extends MecBaseEntity {
   @Column({ nullable: true })
   twoFactorSecret: string;
 
-  @ManyToMany(() => Department, (department) => department.user)
+  @ManyToMany(() => Department, (department) => department.users)
   @JoinTable({
     name: 'user_departments',
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'department_id', referencedColumnName: 'id' },
   })
-  department: Department[];
+  departments: Department[];
 
-  @OneToMany(() => UserRole, (userRole) => userRole.user)
-  userRoles: UserRole[];
+  // @OneToMany(() => UserRole, (userRole) => userRole.user)
+  // userRoles: UserRole[];
 
   constructor(
     id: UUID,
@@ -105,8 +97,8 @@ export class User extends MecBaseEntity {
     updatedAt: Date,
     isTwoFactorEnabled: boolean,
     twoFactorSecret: string,
-    department: Department[],
-    userRoles: UserRole[],
+    departments: Department[],
+    // userRoles: UserRole[],
   ) {
     super(id, createdAt, updatedAt);
     this.id = id;
@@ -121,9 +113,9 @@ export class User extends MecBaseEntity {
     this.emailVerificationToken = emailVerificationToken;
     this.passwordResetToken = passwordResetToken;
     this.passwordResetExpires = passwordResetExpires;
-    this.department = department;
+    this.departments = departments;
     this.isTwoFactorEnabled = isTwoFactorEnabled;
     this.twoFactorSecret = twoFactorSecret;
-    this.userRoles = userRoles;
+    // this.userRoles = userRoles;
   }
 }

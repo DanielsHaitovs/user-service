@@ -4,8 +4,12 @@ import {
   EXAMPLE_USER_FIRST_NAME,
   EXAMPLE_USER_ID,
   EXAMPLE_USER_LAST_NAME,
+  USER_QUERY_ALIAS,
 } from '@/lib/const/user.const';
-import { getUserSelectableFields } from '@/user/helper/user-fields.util';
+import {
+  getCreatedBySelectableFields,
+  getUserSelectableFields,
+} from '@/user/helper/user-fields.util';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -155,25 +159,27 @@ export class DepartmentQueryDto {
   @ApiProperty({
     description:
       'Specific user fields to return - optimizes payload size and performance',
-    enum: getUserSelectableFields(),
+    enum: getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
     type: String,
     isArray: true,
     required: false,
-    example: getUserSelectableFields(),
+    example: getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
   })
-  @IsEnum(getUserSelectableFields(), { each: true })
+  @IsEnum(getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }), {
+    each: true,
+  })
   selectUserFields?: string[];
 
   @ApiProperty({
     description:
       'Specific user created by fields to return - optimizes payload size and performance',
-    enum: getUserSelectableFields(),
+    enum: getCreatedBySelectableFields(),
     type: String,
     isArray: true,
     required: false,
-    example: getUserSelectableFields(),
+    example: getCreatedBySelectableFields(),
   })
-  @IsEnum(getUserSelectableFields(), { each: true })
+  @IsEnum(getCreatedBySelectableFields(), { each: true })
   selectUserCreatedByFields?: string[];
 
   constructor(

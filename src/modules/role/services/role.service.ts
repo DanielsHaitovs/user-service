@@ -3,6 +3,7 @@ import {
   PERMISSION_QUERY_ALIAS,
   ROLE_QUERY_ALIAS,
 } from '@/lib/const/role.const';
+import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import {
   CreateRoleDto,
   RoleListResponseDto,
@@ -10,6 +11,7 @@ import {
 } from '@/role/dto/role.dto';
 import { Permission } from '@/role/entities/permissions.entity';
 import { Role } from '@/role/entities/role.entity';
+import { getPermissionsGenericSelectableFields } from '@/role/helper/role-fields.util';
 import { PermissionService } from '@/role/services/permission.service';
 import { User } from '@/user/entities/user.entity';
 import {
@@ -21,9 +23,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
-
-import { CREATEDBY_USER_QUERY_ALIAS } from '../../../lib/const/user.const';
-import { getPermissionsGenericSelectableFields } from '../helper/role-fields.util';
 
 @Injectable()
 export class RoleService {
@@ -81,7 +80,9 @@ export class RoleService {
         hasUserPermission: false,
         hasRolePermission: false,
         pagination: { page: 1, limit: permissions.length },
-        select: getPermissionsGenericSelectableFields(['id']),
+        fieldsToSelect: getPermissionsGenericSelectableFields({
+          fields: ['id'],
+        }),
       });
 
       if (permissionsToAssign.length !== permissions.length) {
@@ -137,7 +138,7 @@ export class RoleService {
       pagination: { page: 1, limit: permissionIds.length },
       hasRolePermission: false,
       hasUserPermission: false,
-      select: getPermissionsGenericSelectableFields(['id']),
+      fieldsToSelect: getPermissionsGenericSelectableFields({ fields: ['id'] }),
     });
 
     if (permissions.length === 0) {

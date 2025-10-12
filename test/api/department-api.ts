@@ -11,7 +11,7 @@ import {
   validateDepartmentsResponse,
 } from '@/test/validation/department';
 import { validateResponse } from '@/test/validation/request';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 import type { INestApplication } from '@nestjs/common';
 
 import type { UUID } from 'crypto';

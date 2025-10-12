@@ -1,5 +1,6 @@
 import type { UpdateDepartmentDto } from '@/department/dto/department.dto';
 import { DepartmentService } from '@/department/services/department.service';
+import { DepartmentQueryService } from '@/department/services/query.service';
 import { getSystemUserId } from '@/test/api/auth-user-api';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import {
@@ -19,8 +20,6 @@ import type { App } from 'supertest/types';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { DepartmentQueryService } from './query.service';
-
 describe('DepartmentService (Integration - PostgreSQL)', () => {
   let app: INestApplication<App>;
   let module: TestingModule;
@@ -39,10 +38,12 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
   afterAll(async () => {
     await module.close();
   });
+
   describe('create()', () => {
     it('should create and persist a department', async () => {
       await createDepartment(service, systemUserId, false);
     });
+
     it('should create and persist a department with access to user', async () => {
       await createDepartment(service, systemUserId, true);
     });
@@ -77,6 +78,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
+          hasUserPermission: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
     });
@@ -105,6 +107,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
+          hasUserPermission: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
     });
@@ -126,9 +129,9 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         name: department1.name,
       };
 
-      await expect(service.update(department2.id, updateDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.update({ id: department2.id, updateDepartmentDto: updateDto }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

@@ -1,3 +1,4 @@
+import type { PaginationDto } from '@/base/dto/pagination.dto';
 import type {
   CreatePermissionDto,
   PermissionListResponseDto,
@@ -11,7 +12,7 @@ import {
   validateDeletePermissionResponse,
   validatePermissionResponse,
 } from '@/test/validation/permissions';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 
 import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
@@ -21,6 +22,7 @@ export async function createPermissions(
   roleService: RoleService,
   permissionService: PermissionService,
   createdBy: UUID,
+  hasUserPermission: boolean,
 ): Promise<Permission[]> {
   const role = await createRole(roleService, createdBy);
 
@@ -37,13 +39,18 @@ export async function createPermissions(
     },
   ];
 
-  const permissions = await permissionService.create(permissionDto);
+  const permissions = await permissionService.create({
+    permissions: permissionDto,
+    createdBy,
+    hasUserPermission,
+  });
 
   validatePermissionResponse({
     permissions,
     amountExpected: 2,
     names: permissionDto.map((p) => p.name),
     codes: permissionDto.map((p) => p.code),
+    hasUserPermission,
   });
 
   return permissions;
@@ -53,16 +60,23 @@ export async function findPermissionsByIds(
   roleService: RoleService,
   permissionService: PermissionService,
   createdBy: UUID,
+  hasUserPermission: boolean,
+  hasRolePermission: boolean,
+  pagination: PaginationDto,
 ): Promise<Permission[]> {
   const newPermissions = await createPermissions(
     roleService,
     permissionService,
     createdBy,
+    hasUserPermission,
   );
 
-  const permissions = await permissionService.findByIds(
-    newPermissions.flatMap((permission) => permission.id),
-  );
+  const permissions = await permissionService.findByIds({
+    ids: newPermissions.map((p) => p.id),
+    hasUserPermission,
+    hasRolePermission,
+    pagination,
+  });
 
   validatePermissionResponse({
     permissions,
@@ -77,16 +91,23 @@ export async function findPermissionsByCodes(
   roleService: RoleService,
   permissionService: PermissionService,
   createdBy: UUID,
+  hasUserPermission: boolean,
+  hasRolePermission: boolean,
+  pagination: PaginationDto,
 ): Promise<Permission[]> {
   const newPermissions = await createPermissions(
     roleService,
     permissionService,
     createdBy,
+    hasUserPermission,
   );
 
-  const permissions = await permissionService.findByCodes(
-    newPermissions.flatMap((permission) => permission.code),
-  );
+  const permissions = await permissionService.findByCodes({
+    codes: newPermissions.map((p) => p.code),
+    hasUserPermission,
+    hasRolePermission,
+    pagination,
+  });
 
   validatePermissionResponse({
     permissions,
@@ -101,11 +122,15 @@ export async function searchForPermission(
   roleService: RoleService,
   permissionService: PermissionService,
   createdBy: UUID,
+  hasUserPermission: boolean,
+  hasRolePermission: boolean,
+  pagination: PaginationDto,
 ): Promise<PermissionListResponseDto> {
   const newPermissions = await createPermissions(
     roleService,
     permissionService,
     createdBy,
+    hasUserPermission,
   );
 
   if (newPermissions[0] === undefined) {
@@ -114,7 +139,9 @@ export async function searchForPermission(
 
   const foundPermissions = await permissionService.searchFor({
     value: newPermissions[0].name,
-    pagination: { limit: 10, page: 1 },
+    pagination,
+    hasUserPermission,
+    hasRolePermission,
     sort: { sortField: 'name', sortOrder: 'ASC' },
   });
 
@@ -137,11 +164,13 @@ export async function updatePermissions(
   roleService: RoleService,
   permissionService: PermissionService,
   createdBy: UUID,
+  hasUserPermission: boolean,
 ): Promise<Permission> {
   const permissions = await createPermissions(
     roleService,
     permissionService,
     createdBy,
+    hasUserPermission,
   );
 
   const updateDto: UpdatePermissionDto = {
@@ -173,20 +202,27 @@ export async function deletePermissionsByIds(
   roleService: RoleService,
   permissionService: PermissionService,
   createdBy: UUID,
+  hasUserPermission: boolean,
 ): Promise<void> {
   const permissions = await createPermissions(
     roleService,
     permissionService,
     createdBy,
+    hasUserPermission,
   );
 
-  const result = await permissionService.deleteByIds(
-    permissions.flatMap((p) => p.id),
-  );
+  const permissionIds = permissions.map((p) => p.id);
+  const amountToDelete = permissionIds.length;
+  const result = await permissionService.deleteByIds(permissionIds);
 
   validateDeletePermissionResponse(result, permissions.length);
 
   await expect(
-    permissionService.findByIds(permissions.flatMap((p) => p.id)),
+    permissionService.findByIds({
+      ids: permissionIds,
+      hasUserPermission: false,
+      hasRolePermission: false,
+      pagination: { page: 1, limit: amountToDelete },
+    }),
   ).rejects.toThrow(EntityNotFoundError);
 }

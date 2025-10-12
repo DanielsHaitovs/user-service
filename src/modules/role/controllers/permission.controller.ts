@@ -1,4 +1,5 @@
 import { Permissions } from '@/common/decorators/permission.decorator';
+import { TraceController } from '@/common/decorators/trace.decorator';
 import { CurrentUserId } from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { hasLoosePermission } from '@/common/helper/permission.helper';
@@ -68,7 +69,7 @@ import { Request } from 'express';
 import { EntityNotFoundError } from 'typeorm';
 
 @ApiTags('Permissions')
-// @TraceController()
+@TraceController()
 @Controller('permission')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -204,7 +205,7 @@ export class PermissionController {
     type: String,
     required: false,
     description: 'Sort Permission by sort field',
-    enum: getPermissionsGenericSelectableFields(),
+    enum: getPermissionsGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -220,7 +221,7 @@ export class PermissionController {
     required: false,
     description: 'Selct Permission by fields',
     isArray: true,
-    enum: getPermissionsGenericSelectableFields(),
+    enum: getPermissionsGenericSelectableFields({}),
     example: ['permission.name'],
   })
   @ApiOkResponse({
@@ -303,7 +304,7 @@ export class PermissionController {
         sortField,
         sortOrder,
       },
-      select,
+      fieldsToSelect: select,
     });
   }
 
@@ -342,7 +343,7 @@ export class PermissionController {
     type: String,
     required: false,
     description: 'Sort Permission by sort field',
-    enum: getPermissionsGenericSelectableFields(),
+    enum: getPermissionsGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -358,7 +359,7 @@ export class PermissionController {
     required: false,
     description: 'Selct Permission by fields',
     isArray: true,
-    enum: getPermissionsGenericSelectableFields(),
+    enum: getPermissionsGenericSelectableFields({}),
     example: ['permission.name'],
   })
   @ApiOkResponse({
@@ -441,7 +442,7 @@ export class PermissionController {
         sortField,
         sortOrder,
       },
-      select,
+      fieldsToSelect: select,
     });
   }
 
@@ -478,7 +479,7 @@ export class PermissionController {
     type: String,
     required: false,
     description: 'Sort permissions by sort field',
-    enum: getPermissionsGenericSelectableFields(),
+    enum: getPermissionsGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -494,7 +495,7 @@ export class PermissionController {
     required: false,
     description: 'Selct Permission by fields',
     isArray: true,
-    enum: getPermissionsGenericSelectableFields(),
+    enum: getPermissionsGenericSelectableFields({}),
     example: ['permission.name'],
   })
   @ApiOkResponse({
@@ -559,7 +560,7 @@ export class PermissionController {
         sortField,
         sortOrder,
       },
-      select,
+      fieldsToSelect: select,
     });
   }
 

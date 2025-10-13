@@ -66,7 +66,7 @@ export class DepartmentService {
             `Department with this name ${name} already exists`,
           );
         }
-        console.log(error);
+
         throw error;
       });
 

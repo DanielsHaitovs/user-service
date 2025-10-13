@@ -12,14 +12,15 @@ import {
   ManyToOne,
   Unique,
 } from 'typeorm';
- 
+
 @Entity('permissions')
-@Unique('UQ_PERMISSION', ['name', 'code'])
+@Unique('UQ_PERMISSION_NAME', ['name'])
+@Unique('UQ_PERMISSION_CODE', ['code'])
 export class Permission extends MecBaseEntity {
   @Column({ length: 100 })
   @IsNotEmpty()
   @IsString()
-  code: string; 
+  code: string;
 
   @Column({ length: 100 })
   @IsNotEmpty()

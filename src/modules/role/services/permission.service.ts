@@ -321,7 +321,7 @@ export class PermissionService {
    * @throws ConflictException if the new name or code conflicts with existing permissions
    */
   async update(id: UUID, permission: UpdatePermissionDto): Promise<Permission> {
-    if (permission.code !== undefined || permission.name !== undefined) {
+    if (permission.code == undefined && permission.name == undefined) {
       throw new BadRequestException(
         'Permission code or name cannot be updated',
       );

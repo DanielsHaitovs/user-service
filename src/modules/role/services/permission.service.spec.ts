@@ -1,15 +1,26 @@
-import type { CreatePermissionDto } from '@/role/dto/permission.dto';
+import type {
+  CreatePermissionDto,
+  UpdatePermissionDto,
+} from '@/role/dto/permission.dto';
+import { PermissionService } from '@/role/services/permission.service';
 import { RoleService } from '@/role/services/role.service';
 import { getSystemUserId } from '@/test/api/auth-user-api';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
-import { createPermissions } from '@/test/factories/permission.factory';
+import {
+  createPermissions,
+  deletePermissionsByIds,
+  findPermissionsByCodes,
+  findPermissionsByIds,
+  searchForPermission,
+  updatePermissions,
+} from '@/test/factories/permission.factory';
 import { ConflictException, type INestApplication } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 
 import type { UUID } from 'crypto';
 import type { App } from 'supertest/types';
-
-import { PermissionService } from './permission.service';
+import { EntityNotFoundError } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 describe('PermissionService (Integration - PostgreSQL)', () => {
   let app: INestApplication<App>;
@@ -49,188 +60,241 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       );
     });
 
-    // it('should throw Conflict error beacuse at least 1 name of permissions already exists', async () => {
-    //   const permissions = await createPermissions(
-    //     roleService,
-    //     permissionService,
-    //     systemUserId,
-    //     true,
-    //   );
+    it('should throw Conflict error beacuse at least 1 name of permissions already exists', async () => {
+      const permissions = await createPermissions(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+      );
 
-    //   const conflictPermissinos = new Array<CreatePermissionDto>();
+      const conflictPermissinos = new Array<CreatePermissionDto>();
 
-    //   permissions.forEach((permission) => {
-    //     if (permission.roles[0] === undefined) {
-    //       throw new Error('Permission should have a role');
-    //     }
-    //     conflictPermissinos.push({
-    //       name: permission.name,
-    //       code: `${permission.code}-1`,
-    //       roleIds: [permission.roles[0].id],
-    //     });
-    //   });
+      permissions.forEach((permission) => {
+        if (permission.roles[0] === undefined) {
+          throw new Error('Permission should have a role');
+        }
+        conflictPermissinos.push({
+          name: permission.name,
+          code: `${permission.code}-1`,
+          roleIds: [permission.roles[0].id],
+        });
+      });
 
-    //   await expect(
-    //     permissionService.create({
-    //       permissions: conflictPermissinos,
-    //       createdBy: systemUserId,
-    //       hasUserPermission: true,
-    //     }),
-    //   ).rejects.toThrow(ConflictException);
-    // });
+      await expect(
+        permissionService.create({
+          permissions: conflictPermissinos,
+          createdBy: systemUserId,
+          hasUserPermission: true,
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
 
-    // it('should throw Conflict error beacuse at least 1 code of permissions already exists', async () => {
-    //   const permissions = await createPermissions(
-    //     roleService,
-    //     permissionService,
-    //     systemUserId,
-    //     true,
-    //   );
+    it('should throw Conflict error beacuse at least 1 code of permissions already exists', async () => {
+      const permissions = await createPermissions(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+      );
 
-    //   const conflictPermissinos = new Array<CreatePermissionDto>();
+      const conflictPermissinos = new Array<CreatePermissionDto>();
 
-    //   permissions.forEach((permission) => {
-    //     if (permission.roles[0] === undefined) {
-    //       throw new Error('Permission should have a role');
-    //     }
-    //     conflictPermissinos.push({
-    //       name: `${permission.name}-1`,
-    //       code: permission.code,
-    //       roleIds: [permission.roles[0].id],
-    //     });
-    //   });
+      permissions.forEach((permission) => {
+        if (permission.roles[0] === undefined) {
+          throw new Error('Permission should have a role');
+        }
+        conflictPermissinos.push({
+          name: `${permission.name}-1`,
+          code: permission.code,
+          roleIds: [permission.roles[0].id],
+        });
+      });
 
-    //   await expect(
-    //     permissionService.create({
-    //       permissions: conflictPermissinos,
-    //       createdBy: systemUserId,
-    //       hasUserPermission: true,
-    //     }),
-    //   ).rejects.toThrow(ConflictException);
-    // });
+      await expect(
+        permissionService.create({
+          permissions: conflictPermissinos,
+          createdBy: systemUserId,
+          hasUserPermission: true,
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
-  //   describe('findByIds()', () => {
-  //     it('should find permissions by uuids', async () => {
-  //       await findPermissionsByIds(roleService, permissionService, systemUserId);
-  //     });
+  describe('findByIds()', () => {
+    it('should find permissions by uuids', async () => {
+      await findPermissionsByIds(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+        true,
+        { page: 1, limit: 10 },
+      );
+    });
 
-  //     it('should throw not found exception, because permission id(s) does not exist', async () => {
-  //       await expect(
-  //         permissionService.findByIds([uuid() as UUID]),
-  //       ).rejects.toThrow(EntityNotFoundError);
-  //     });
-  //   });
-  //   describe('searchFor()', () => {
-  //     it('should find permissions by value', async () => {
-  //       await findPermissionsByIds(roleService, permissionService, systemUserId);
-  //     });
-  //   });
+    it('should throw not found exception, because permission id(s) does not exist', async () => {
+      await expect(
+        permissionService.findByIds({
+          ids: [uuid() as UUID],
+          hasUserPermission: true,
+          hasRolePermission: true,
+          pagination: { page: 1, limit: 10 },
+        }),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+  });
+  describe('searchFor()', () => {
+    it('should find permissions by value', async () => {
+      await searchForPermission(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+        true,
+        { page: 1, limit: 10 },
+      );
+    });
+  });
 
-  //   describe('findByCodes()', () => {
-  //     it('should find permissions by codes', async () => {
-  //       await findPermissionsByCodes(
-  //         roleService,
-  //         permissionService,
-  //         systemUserId,
-  //       );
-  //     });
+  describe('findByCodes()', () => {
+    it('should find permissions by codes with users and roles', async () => {
+      await findPermissionsByCodes(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+        true,
+        { page: 1, limit: 10 },
+      );
+    });
+    it('should find permissions by codes with users', async () => {
+      await findPermissionsByCodes(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+        false,
+        { page: 1, limit: 10 },
+      );
+    });
+    it('should find permissions by codes with roles', async () => {
+      await findPermissionsByCodes(
+        roleService,
+        permissionService,
+        systemUserId,
+        false,
+        true,
+        { page: 1, limit: 10 },
+      );
+    });
 
-  //     it('should throw not found exception, because permission code(s) does not exist', async () => {
-  //       await expect(
-  //         permissionService.findByCodes([
-  //           faker.string.alpha(8),
-  //           faker.string.alpha(8),
-  //         ]),
-  //       ).rejects.toThrow(EntityNotFoundError);
-  //     });
-  //   });
+    it('should throw not found exception, because permission code(s) does not exist', async () => {
+      await expect(
+        permissionService.findByCodes({
+          codes: ['non-existing-code'],
+          hasUserPermission: true,
+          hasRolePermission: true,
+          pagination: { page: 1, limit: 10 },
+        }),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+  });
 
-  //   describe('update()', () => {
-  //     it('should update and persist permissions', async () => {
-  //       await updatePermissions(roleService, permissionService, systemUserId);
-  //     });
+  describe('update()', () => {
+    it('should update and persist permissions', async () => {
+      await updatePermissions(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+      );
+    });
 
-  //     it('should throw Conflict error beacuse name of permissions already exists', async () => {
-  //       const permissions = await createPermissions(
-  //         roleService,
-  //         permissionService,
-  //         systemUserId,
-  //       );
+    it('should throw Conflict error beacuse name of permissions already exists', async () => {
+      const permissions = await createPermissions(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+      );
 
-  //       const [firstPermission, secondPermission] = permissions;
+      const [firstPermission, secondPermission] = permissions;
 
-  //       if (firstPermission === undefined || secondPermission === undefined) {
-  //         throw new Error('Permissino should be defined');
-  //       }
+      if (firstPermission === undefined || secondPermission === undefined) {
+        throw new Error('Permissino should be defined');
+      }
 
-  //       const faulsyPermissionDto: UpdatePermissionDto = {
-  //         name: secondPermission.name,
-  //       };
+      const faulsyPermissionDto: UpdatePermissionDto = {
+        name: secondPermission.name,
+      };
 
-  //       await expect(
-  //         permissionService.update(firstPermission.id, faulsyPermissionDto),
-  //       ).rejects.toThrow(ConflictException);
-  //     });
-  //     it('should throw Conflict error beacuse code of permissions already exists', async () => {
-  //       const permissions = await createPermissions(
-  //         roleService,
-  //         permissionService,
-  //         systemUserId,
-  //       );
+      await expect(
+        permissionService.update(firstPermission.id, faulsyPermissionDto),
+      ).rejects.toThrow(ConflictException);
+    });
+    it('should throw Conflict error beacuse code of permissions already exists', async () => {
+      const permissions = await createPermissions(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+      );
 
-  //       const [firstPermission, secondPermission] = permissions;
+      const [firstPermission, secondPermission] = permissions;
 
-  //       if (firstPermission === undefined || secondPermission === undefined) {
-  //         throw new Error('Permissino should be defined');
-  //       }
+      if (firstPermission === undefined || secondPermission === undefined) {
+        throw new Error('Permissino should be defined');
+      }
 
-  //       const faulsyPermissionDto: UpdatePermissionDto = {
-  //         code: secondPermission.code,
-  //       };
+      const faulsyPermissionDto: UpdatePermissionDto = {
+        code: secondPermission.code,
+      };
 
-  //       await expect(
-  //         permissionService.update(firstPermission.id, faulsyPermissionDto),
-  //       ).rejects.toThrow(ConflictException);
-  //     });
+      await expect(
+        permissionService.update(firstPermission.id, faulsyPermissionDto),
+      ).rejects.toThrow(ConflictException);
+    });
 
-  //     it('should throw Conflict error beacuse at least code or name of permissions already exists', async () => {
-  //       const permissions = await createPermissions(
-  //         roleService,
-  //         permissionService,
-  //         systemUserId,
-  //       );
+    it('should throw Conflict error beacuse at least code or name of permissions already exists', async () => {
+      const permissions = await createPermissions(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+      );
 
-  //       const [firstPermission, secondPermission] = permissions;
+      const [firstPermission, secondPermission] = permissions;
 
-  //       if (firstPermission === undefined || secondPermission === undefined) {
-  //         throw new Error('Permissino should be defined');
-  //       }
+      if (firstPermission === undefined || secondPermission === undefined) {
+        throw new Error('Permissino should be defined');
+      }
 
-  //       const faulsyPermissionDto: UpdatePermissionDto = {
-  //         name: secondPermission.name,
-  //         code: secondPermission.code,
-  //       };
+      const faulsyPermissionDto: UpdatePermissionDto = {
+        name: secondPermission.name,
+        code: secondPermission.code,
+      };
 
-  //       await expect(
-  //         permissionService.update(firstPermission.id, faulsyPermissionDto),
-  //       ).rejects.toThrow(ConflictException);
-  //     });
-  //   });
+      await expect(
+        permissionService.update(firstPermission.id, faulsyPermissionDto),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
 
-  //   describe('deleteIds()', () => {
-  //     it('should delete permissions by uuids', async () => {
-  //       await deletePermissionsByIds(
-  //         roleService,
-  //         permissionService,
-  //         systemUserId,
-  //       );
-  //     });
+  describe('deleteIds()', () => {
+    it('should delete permissions by uuids', async () => {
+      await deletePermissionsByIds(
+        roleService,
+        permissionService,
+        systemUserId,
+        true,
+      );
+    });
 
-  //     it('should throw not found exception, because permission id(s) does not exist', async () => {
-  //       await expect(
-  //         permissionService.deleteByIds([uuid() as UUID]),
-  //       ).rejects.toThrow(EntityNotFoundError);
-  //     });
-  //   });
+    it('should throw not found exception, because permission id(s) does not exist', async () => {
+      await expect(
+        permissionService.deleteByIds([uuid() as UUID]),
+      ).rejects.toThrow(EntityNotFoundError);
+    });
+  });
 });

@@ -18,7 +18,6 @@ import {
   UPDATE_PERMISSION,
 } from '@/lib/const/role.const';
 import { READ_USER } from '@/lib/const/user.const';
-// import { TraceController } from '@/modules/base/service/trace.service';
 import {
   CreatePermissionDto,
   PermissionListResponseDto,

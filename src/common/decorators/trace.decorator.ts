@@ -3,15 +3,17 @@ import { safeStringify } from '@/utils/safeStringify';
 import { getTraceId } from '@/utils/trace.util';
 import { Logger, type OnModuleInit } from '@nestjs/common';
 
+import { EntityManager, Repository } from 'typeorm';
+
 import 'reflect-metadata';
 
-function wrapMethods(proto: object, logger: Logger): void {
-  const dict = proto as Record<string, unknown>;
+type GenericObject = Record<string, unknown>;
 
+function wrapMethods(proto: GenericObject, logger: Logger): void {
   for (const key of Object.getOwnPropertyNames(proto)) {
     if (key === 'constructor') continue;
 
-    const original = dict[key];
+    const original = proto[key];
     if (typeof original !== 'function') continue;
 
     const fn = original as (...args: unknown[]) => unknown;
@@ -19,8 +21,8 @@ function wrapMethods(proto: object, logger: Logger): void {
 
     const wrapped = function (this: object, ...args: unknown[]): unknown {
       const traceId: string = getTraceId() ?? 'no-trace';
-      const ctor = (this as { constructor: { name: string } }).constructor;
-      const className: string = ctor.name || 'Unknown';
+      const ctor = (this as { constructor: { name?: string } }).constructor;
+      const className: string = ctor.name ?? 'Unknown';
 
       logger.log(
         `[Trace: ${traceId}] -> ${className} -> ${String(key)} args: ${safeStringify(args)}`,
@@ -43,28 +45,32 @@ function wrapMethods(proto: object, logger: Logger): void {
       return result;
     };
 
-    (wrapped as { __isTraced?: boolean }).__isTraced = true;
-
-    Reflect.getMetadataKeys(original as object).forEach((metaKey) => {
+    // Copy metadata and name for Swagger
+    for (const metaKey of Reflect.getMetadataKeys(original as object)) {
+      // ✅ Explicitly type as unknown to avoid unsafe assignment
       const meta: unknown = Reflect.getMetadata(metaKey, original as object);
       Reflect.defineMetadata(metaKey, meta, wrapped);
-    });
+    }
 
-    dict[key] = wrapped;
+    Object.defineProperty(wrapped, 'name', { value: fn.name, writable: false });
+    (wrapped as { __isTraced?: boolean }).__isTraced = true;
+
+    proto[key] = wrapped;
   }
 }
 
 function isSkippable(obj: unknown): boolean {
-  if (obj == undefined || typeof obj !== 'object') return true;
+  if (obj === null || typeof obj !== 'object') return true;
 
-  const ctor = (obj as { constructor: { name?: string } }).constructor;
+  const ctor = (obj as { constructor?: { name?: string } }).constructor;
+  if (!ctor) return true;
 
   const builtin = [Object, Array, Map, Set, Date, RegExp, WeakMap, WeakSet];
   if (builtin.includes(ctor as never)) return true;
 
-  const { name } = ctor;
-  if (name == undefined) return false;
+  if (obj instanceof Repository || obj instanceof EntityManager) return true;
 
+  const name = ctor.name ?? '';
   return classesToSkip.includes(name);
 }
 
@@ -77,27 +83,25 @@ function wrapInjectedServices(
   if (seen.has(instance)) return;
   seen.add(instance);
 
-  const dict = instance as Record<string, unknown>;
+  const dict = instance as GenericObject;
   for (const prop of Object.keys(dict)) {
     const value = dict[prop];
-    if (value === null || value === undefined) continue;
-    if (typeof value !== 'object') continue;
+    if (value === null || typeof value !== 'object') continue;
 
-    const proto = Object.getPrototypeOf(value) as {
-      constructor?: { name?: string };
-    } | null;
-    if (!proto) continue;
+    // ✅ Explicitly type prototype as object | null
+    const proto: object | null = Object.getPrototypeOf(value) as object | null;
+    if (proto === null) continue;
 
-    const className: string = proto.constructor?.name ?? 'Unknown Service';
+    const className: string =
+      (proto as { constructor?: { name?: string } }).constructor?.name ??
+      'UnknownService';
     const logger = new Logger(className);
 
     if (isSkippable(value)) {
       dict[prop] = new Proxy(value, {
-        get(target: object, key: string | symbol): unknown {
-          const original: unknown = Reflect.get(target, key);
-          if (typeof original !== 'function') {
-            return original;
-          }
+        get(target: object, key: string | symbol, receiver: unknown): unknown {
+          const original: unknown = Reflect.get(target, key, receiver);
+          if (typeof original !== 'function') return original;
 
           return function (...args: unknown[]): unknown {
             const traceId: string = getTraceId() ?? 'no-trace';
@@ -115,7 +119,7 @@ function wrapInjectedServices(
                   `[Trace: ${traceId}] !! Skipped tracing ${className} -> ${String(key)}`,
                 );
               }
-              // ✅ Bind to original `target`
+              // Safe call
               return (original as (...a: unknown[]) => unknown).apply(
                 target,
                 args,
@@ -131,7 +135,7 @@ function wrapInjectedServices(
       continue;
     }
 
-    wrapMethods(proto, logger);
+    wrapMethods(proto as GenericObject, logger);
     wrapInjectedServices(value, seen);
   }
 }
@@ -142,7 +146,7 @@ export function TraceController(): ClassDecorator {
       (target as { name?: string }).name ?? 'Controller',
     );
 
-    wrapMethods((target as { prototype: object }).prototype, logger);
+    wrapMethods((target as { prototype: GenericObject }).prototype, logger);
 
     const proto = (target as { prototype: Partial<OnModuleInit> }).prototype;
     const originalInit: (() => void) | undefined =

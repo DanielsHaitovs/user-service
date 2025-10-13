@@ -179,7 +179,7 @@ export async function updatePermissions(
   };
 
   if (permissions[0] === undefined) {
-    throw new Error('Could not create permissino');
+    throw new Error('Could not create permission');
   }
 
   const updatedPermission = await permissionService.update(

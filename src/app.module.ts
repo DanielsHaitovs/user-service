@@ -11,6 +11,7 @@ import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './modules/app.controller';
+import { RolesModule } from './modules/role/role.module';
 
 @Module({
   controllers: [AppController],
@@ -66,7 +67,7 @@ import { AppController } from './modules/app.controller';
     }),
     BaseModule,
     UserModule,
-    // RolesModule,
+    RolesModule,
     DepartmentModule,
     AuthModule,
   ],

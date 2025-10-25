@@ -1,8 +1,12 @@
+import { hasPermissions } from '@/auth/helper/permission.helper';
+import { JWTPayload } from '@/auth/interfaces/req.interface';
 import { Permissions } from '@/common/decorators/permission.decorator';
 import { TraceController } from '@/common/decorators/trace.decorator';
-import { CurrentUserId } from '@/common/decorators/user.decorator';
+import {
+  CurrentUser,
+  CurrentUserPermissions,
+} from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
-import { hasLoosePermission } from '@/common/helper/permission.helper';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
   CREATE_PERMISSION,
@@ -25,7 +29,7 @@ import {
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
 import { getPermissionsGenericSelectableFields } from '@/role/helper/role-fields.util';
-import { PermissionService } from '@/role/services/permission.service';
+import { PermissionService } from '@/role/services/permission/permission.service';
 import {
   BadRequestException,
   Body,
@@ -43,7 +47,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -64,7 +67,6 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-import { Request } from 'express';
 import { EntityNotFoundError } from 'typeorm';
 
 @ApiTags('Permissions')
@@ -147,24 +149,25 @@ export class PermissionController {
     },
   })
   async createPermission(
-    @Req() request: Request,
     @Body(new ParseArrayPipe({ items: CreatePermissionDto }))
     createPermissionDto: CreatePermissionDto[],
-    @CurrentUserId() createdBy: UUID,
+    @CurrentUser() reqUser: JWTPayload,
   ): Promise<Permission[]> {
     if (createPermissionDto.length === 0) {
       throw new BadRequestException('Permission creation data is required');
     }
 
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
+    const { permissions: userPermissions, id: createdBy } = reqUser;
+
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
     });
 
     return await this.permissionService.create({
       permissions: createPermissionDto,
       createdBy,
-      hasUserPermission,
+      hasAccessToUser,
     });
   }
 
@@ -267,13 +270,13 @@ export class PermissionController {
     },
   })
   async getPermissionByIds(
-    @Req() request: Request,
     @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select') select: string[],
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<Permission[]> {
     if (page < 1 || limit < 1) {
       throw new BadRequestException(
@@ -281,29 +284,29 @@ export class PermissionController {
       );
     }
 
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
     });
 
-    const hasRolePermission = hasLoosePermission({
-      request,
-      permissions: [READ_ROLE],
+    const hasAccessToRole = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_ROLE],
     });
 
     return await this.permissionService.findByIds({
       ids,
-      hasRolePermission,
-      hasUserPermission,
+      hasAccessToRole,
+      hasAccessToUser,
       pagination: {
         page,
         limit,
       },
-      sort: {
+      order: {
         sortField,
         sortOrder,
       },
-      fieldsToSelect: select,
+      select,
     });
   }
 
@@ -405,13 +408,13 @@ export class PermissionController {
     },
   })
   async getPermissionByCodes(
-    @Req() request: Request,
     @Query('codes', ParseArrayPipe) codes: string[],
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select') select: string[],
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<Permission[]> {
     if (page < 1 || limit < 1) {
       throw new BadRequestException(
@@ -419,29 +422,29 @@ export class PermissionController {
       );
     }
 
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
     });
 
-    const hasRolePermission = hasLoosePermission({
-      request,
-      permissions: [READ_ROLE],
+    const hasAccessToRole = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_ROLE],
     });
 
     return await this.permissionService.findByCodes({
       codes,
-      hasRolePermission,
-      hasUserPermission,
+      hasAccessToRole,
+      hasAccessToUser,
       pagination: {
         page,
         limit,
       },
-      sort: {
+      order: {
         sortField,
         sortOrder,
       },
-      fieldsToSelect: select,
+      select,
     });
   }
 
@@ -519,7 +522,6 @@ export class PermissionController {
     },
   })
   async searchForPermissions(
-    @Req() request: Request,
     @Param('value') value: string,
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
@@ -537,29 +539,17 @@ export class PermissionController {
       sortField = 'name';
     }
 
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
-    });
-
-    const hasRolePermission = hasLoosePermission({
-      request,
-      permissions: [READ_ROLE],
-    });
-
     return await this.permissionService.searchFor({
       value,
-      hasRolePermission,
-      hasUserPermission,
       pagination: {
         page,
         limit,
       },
-      sort: {
+      order: {
         sortField,
         sortOrder,
       },
-      fieldsToSelect: select,
+      select,
     });
   }
 

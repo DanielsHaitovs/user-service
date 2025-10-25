@@ -11,7 +11,7 @@ import { getMetadataArgsStorage } from 'typeorm';
  * Dynamically extract all column names from the Role entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getRoleGenerucSelectableFields({
+export function getRoleGenericSelectableFields({
   fields,
   alias,
 }: {
@@ -112,7 +112,7 @@ export function getRoleSelectableFields({
   permissionAlias?: string | undefined;
 }): string[] {
   return [
-    ...getRoleGenerucSelectableFields({ fields: roleFields, alias: roleAlias }),
+    ...getRoleGenericSelectableFields({ fields: roleFields, alias: roleAlias }),
     ...getPermissionsGenericSelectableFields({
       fields: permissionFields,
       alias: permissionAlias,

@@ -1,10 +1,10 @@
+import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 
 import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
-import { EntityNotFoundFilter } from '../src/common/error/entity-not-found.filter';
 
 export interface BootstrappedApp {
   app: INestApplication;

@@ -1,12 +1,12 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
 import { PostgresQueryFailedError } from '@/base/interface/query.error';
-import { QueryService } from '@/base/service/query.service';
 import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
 import { Department } from '@/department/entities/department.entity';
+import { DepartmentQueryService } from '@/department/services/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
@@ -25,7 +25,7 @@ export class DepartmentService {
   constructor(
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
-    private readonly queryService: QueryService,
+    private readonly queryService: DepartmentQueryService,
   ) {}
 
   /**
@@ -42,11 +42,11 @@ export class DepartmentService {
   async create({
     createDepartmentDto,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   }: {
     createDepartmentDto: CreateDepartmentDto;
     createdBy: UUID;
-    hasUserPermission: boolean;
+    hasAccessToUser: boolean;
   }): Promise<Department> {
     const { name, country } = createDepartmentDto;
 
@@ -70,7 +70,7 @@ export class DepartmentService {
         throw error;
       });
 
-    if (!hasUserPermission) {
+    if (!hasAccessToUser) {
       res.createdBy = {} as User;
       res.users = [];
     }
@@ -88,56 +88,52 @@ export class DepartmentService {
   async findByIds({
     ids,
     pagination,
-    hasUserPermission,
+    hasAccessToUser,
     select,
-    sort,
+    order,
   }: {
     ids: UUID[];
     pagination: PaginationDto;
-    hasUserPermission: boolean;
+    hasAccessToUser: boolean;
     select?: string[];
-    sort?: SortDto;
+    order?: SortDto;
   }): Promise<Department[]> {
     if (ids.length === 0) {
       throw new BadRequestException('At least one ID must be provided');
     }
-
-    const { page, limit } = pagination;
 
     const query = this.departmentRepository.createQueryBuilder(
       DEPARTMENT_QUERY_ALIAS,
     );
 
     if (ids.length > 0) {
-      this.queryService.whereIn(
+      this.queryService.whereIn({
         query,
-        'id',
-        ids,
-        'AND',
-        DEPARTMENT_QUERY_ALIAS,
-      );
+        field: 'id',
+        values: ids,
+        condition: 'AND',
+        relationAlias: DEPARTMENT_QUERY_ALIAS,
+      });
     }
 
-    if (hasUserPermission) {
-      this.queryService.joinRelation(query, CREATEDBY_USER_QUERY_ALIAS);
+    if (hasAccessToUser) {
+      this.queryService.joinRelation({
+        query,
+        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+      });
     }
 
-    if (select !== undefined && select.length > 0) {
-      if (!select.includes(`${DEPARTMENT_QUERY_ALIAS}.id`)) {
-        select.push(`${DEPARTMENT_QUERY_ALIAS}.id`);
-      }
+    this.queryService.optimize({
+      query,
+      pagination,
+      hasAccessToUser,
+      includeCreatedBy: hasAccessToUser,
+      includeUsers: true,
+      select,
+      order,
+    });
 
-      query.select(select);
-    }
-
-    if (sort?.sortField !== undefined) {
-      query.orderBy(sort.sortField, sort.sortOrder);
-    }
-
-    const departments = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getMany();
+    const departments = await query.getMany();
 
     if (departments.length === 0) {
       throw new EntityNotFoundError(
@@ -163,14 +159,14 @@ export class DepartmentService {
   async searchFor({
     value,
     pagination,
-    sort,
+    order,
     select,
-    hasUserPermission,
+    hasAccessToUser,
   }: {
     value: string;
     pagination: PaginationDto;
-    hasUserPermission: boolean;
-    sort: SortDto;
+    hasAccessToUser: boolean;
+    order: SortDto;
     select?: string[];
   }): Promise<DepartmentListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
@@ -193,26 +189,24 @@ export class DepartmentService {
         value: `%${value}%`,
       });
 
-    if (hasUserPermission) {
-      this.queryService.joinRelation(query, CREATEDBY_USER_QUERY_ALIAS);
+    if (hasAccessToUser) {
+      this.queryService.joinRelation({
+        query,
+        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+      });
     }
 
-    if (sort.sortField !== '') {
-      query.orderBy(sort.sortField, sort.sortOrder);
-    }
+    this.queryService.optimize({
+      query,
+      pagination,
+      hasAccessToUser,
+      includeCreatedBy: hasAccessToUser,
+      includeUsers: true,
+      select,
+      order,
+    });
 
-    if (select !== undefined && select.length > 0) {
-      if (!select.includes(`${DEPARTMENT_QUERY_ALIAS}.id`)) {
-        select.push(`${DEPARTMENT_QUERY_ALIAS}.id`);
-      }
-
-      query.select(select);
-    }
-
-    const departments = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+    const departments = await query.getManyAndCount();
 
     const totalCount = departments[1];
 
@@ -247,7 +241,7 @@ export class DepartmentService {
     await this.findByIds({
       ids: [id],
       pagination: { page: 1, limit: 1 },
-      hasUserPermission: false,
+      hasAccessToUser: false,
     });
 
     if (updateDepartmentDto.name !== undefined) {
@@ -299,7 +293,7 @@ export class DepartmentService {
     const existingDepartments = await this.findByIds({
       ids,
       pagination: { page: 1, limit: ids.length },
-      hasUserPermission: false,
+      hasAccessToUser: false,
     });
 
     if (existingDepartments.length !== ids.length) {

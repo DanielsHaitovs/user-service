@@ -1,6 +1,5 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
 import { PostgresQueryFailedError } from '@/base/interface/query.error';
-import { QueryService } from '@/base/service/query.service';
 import {
   PERMISSION_QUERY_ALIAS,
   ROLE_QUERY_ALIAS,
@@ -13,6 +12,7 @@ import {
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
 import { Role } from '@/role/entities/role.entity';
+import { PermissionQueryService } from '@/role/services/permission/query.service';
 import { User } from '@/user/entities/user.entity';
 import {
   BadRequestException,
@@ -22,12 +22,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import {
-  Brackets,
-  EntityNotFoundError,
-  Repository,
-  SelectQueryBuilder,
-} from 'typeorm';
+import { Brackets, EntityNotFoundError, Repository } from 'typeorm';
 
 @Injectable()
 export class PermissionService {
@@ -36,17 +31,28 @@ export class PermissionService {
     private readonly permissionRepository: Repository<Permission>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
-    private readonly queryService: QueryService,
+    private readonly queryService: PermissionQueryService,
   ) {}
 
+  /**
+   * Creates new permissions with associated roles.
+   * Validates that all specified roles exist before creation.
+   *
+   * @param permissions - Array of permission data to create
+   * @param createdBy - UUID of the user creating the permissions
+   * @param hasAccessToUser - Whether the requesting user has permission to view user details
+   * @returns Array of created permission entities
+   * @throws NotFoundException if any specified role ID does not exist
+   * @throws ConflictException if a permission name or code already exists
+   */
   async create({
     permissions,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   }: {
     permissions: CreatePermissionDto[];
     createdBy: UUID;
-    hasUserPermission: boolean;
+    hasAccessToUser: boolean;
   }): Promise<Permission[]> {
     const rolesIds = Array.from(
       new Set(permissions.flatMap((permission) => permission.roleIds)),
@@ -80,7 +86,7 @@ export class PermissionService {
         throw e;
       });
 
-    if (!hasUserPermission) {
+    if (!hasAccessToUser) {
       newPermissions.forEach((permission) => {
         permission.createdBy = {} as User;
       });
@@ -89,63 +95,70 @@ export class PermissionService {
     return newPermissions;
   }
 
+  /**
+   * Retrieves permissions by their IDs.
+   * @param ids - The permission IDs to search for.
+   * @returns The permission entities matching the provided IDs.
+   * @throws NotFoundException if no permissions are found with the given IDs.
+   */
   async findByIds({
     ids,
-    hasRolePermission,
-    hasUserPermission,
+    hasAccessToRole,
+    hasAccessToUser,
     pagination,
-    fieldsToSelect,
-    sort,
+    select,
+    order,
   }: {
     ids: UUID[];
-    hasRolePermission: boolean;
-    hasUserPermission: boolean;
+    hasAccessToRole: boolean;
+    hasAccessToUser: boolean;
     pagination: PaginationDto;
-    fieldsToSelect?: string[];
-    sort?: SortDto;
+    select?: string[];
+    order?: SortDto;
   }): Promise<Permission[]> {
     if (ids.length === 0) {
-      throw new BadRequestException('At least one ID must be provided');
+      throw new BadRequestException(
+        'At least one permission ID must be provided',
+      );
     }
-
-    const { page, limit } = pagination;
 
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
     );
 
-    if (hasRolePermission) {
-      this.queryService.joinRelation<Permission>(query, ROLE_QUERY_ALIAS);
-    }
-
-    if (hasUserPermission) {
-      this.queryService.joinRelation<Permission>(
+    if (hasAccessToRole) {
+      this.queryService.joinRelation<Permission>({
         query,
-        CREATEDBY_USER_QUERY_ALIAS,
-      );
+        relationAlias: ROLE_QUERY_ALIAS,
+      });
     }
 
-    this.queryService.whereIn<Permission>(query, 'id', ids, 'AND');
+    if (hasAccessToUser) {
+      this.queryService.joinRelation<Permission>({
+        query,
+        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+      });
+    }
 
-    this.validatePermissionQuerySelect({
+    this.queryService.whereIn<Permission>({
       query,
-      hasRolePermission,
-      hasUserPermission,
-      fieldsToSelect,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
     });
 
-    this.validatePermissionQueryOrder({
+    this.queryService.optimize({
       query,
-      sort,
-      fieldsToSelect,
-      hasUserPermission,
-      hasRolePermission,
+      pagination,
+      hasAccessToUser,
+      hasAccessToRole,
+      includeCreatedBy: true,
+      includeRole: true,
+      select,
+      order,
     });
 
-    const permissions = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getMany();
+    const permissions = await query.getMany();
 
     if (permissions.length === 0) {
       throw new EntityNotFoundError(
@@ -165,18 +178,18 @@ export class PermissionService {
    */
   async findByCodes({
     codes,
-    hasRolePermission,
-    hasUserPermission,
+    hasAccessToRole,
+    hasAccessToUser,
     pagination,
-    fieldsToSelect,
-    sort,
+    select,
+    order,
   }: {
     codes: string[];
-    hasRolePermission: boolean;
-    hasUserPermission: boolean;
+    hasAccessToRole: boolean;
+    hasAccessToUser: boolean;
     pagination: PaginationDto;
-    fieldsToSelect?: string[];
-    sort?: SortDto;
+    select?: string[];
+    order?: SortDto;
   }): Promise<Permission[]> {
     if (codes.length === 0) {
       throw new BadRequestException(
@@ -184,44 +197,43 @@ export class PermissionService {
       );
     }
 
-    const { page, limit } = pagination;
-
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
     );
 
-    if (hasRolePermission) {
-      this.queryService.joinRelation<Permission>(query, ROLE_QUERY_ALIAS);
-    }
-
-    if (hasUserPermission) {
-      this.queryService.joinRelation<Permission>(
+    if (hasAccessToRole) {
+      this.queryService.joinRelation<Permission>({
         query,
-        CREATEDBY_USER_QUERY_ALIAS,
-      );
+        relationAlias: ROLE_QUERY_ALIAS,
+      });
     }
 
-    this.queryService.whereIn<Permission>(query, 'code', codes, 'AND');
+    if (hasAccessToUser) {
+      this.queryService.joinRelation<Permission>({
+        query,
+        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+      });
+    }
 
-    this.validatePermissionQuerySelect({
+    this.queryService.whereIn<Permission>({
       query,
-      hasRolePermission,
-      hasUserPermission,
-      fieldsToSelect,
+      field: 'code',
+      values: codes,
+      condition: 'AND',
     });
 
-    this.validatePermissionQueryOrder({
+    this.queryService.optimize({
       query,
-      sort,
-      fieldsToSelect,
-      hasUserPermission,
-      hasRolePermission,
+      pagination,
+      hasAccessToUser,
+      hasAccessToRole,
+      includeCreatedBy: true,
+      includeRole: true,
+      select,
+      order,
     });
 
-    const permissions = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getMany();
+    const permissions = await query.getMany();
 
     if (permissions.length === 0) {
       throw new EntityNotFoundError(
@@ -233,20 +245,29 @@ export class PermissionService {
     return permissions;
   }
 
+  /**
+   * Searches for permissions matching a given value in their name, code, or ID.
+   * Supports pagination, sorting, and conditional inclusion of related entities.
+   *
+   * @param value - The search term to match against permission name, code, or ID
+   * @param pagination - Pagination parameters (page number and limit)
+   * @param order - Sorting parameters
+   * @param select - Optional list of fields to select
+   * @param hasAccessToRole - Whether to include role details in the results
+   * @param hasAccessToUser - Whether to include createdBy user details in the results
+   * @returns A paginated response containing matching permissions and metadata
+   * @throws BadRequestException if pagination parameters are invalid
+   */
   async searchFor({
     value,
     pagination,
-    sort,
-    fieldsToSelect,
-    hasRolePermission,
-    hasUserPermission,
+    order,
+    select,
   }: {
     value: string;
     pagination: PaginationDto;
-    sort: SortDto;
-    fieldsToSelect?: string[];
-    hasRolePermission: boolean;
-    hasUserPermission: boolean;
+    order: SortDto;
+    select?: string[];
   }): Promise<PermissionListResponseDto> {
     if (pagination.page < 1 || pagination.limit < 1) {
       throw new BadRequestException(
@@ -268,36 +289,18 @@ export class PermissionService {
         value: `%${value}%`,
       });
 
-    if (hasRolePermission) {
-      this.queryService.joinRelation<Permission>(query, ROLE_QUERY_ALIAS);
-    }
-
-    if (hasUserPermission) {
-      this.queryService.joinRelation<Permission>(
-        query,
-        CREATEDBY_USER_QUERY_ALIAS,
-      );
-    }
-
-    this.validatePermissionQuerySelect({
+    this.queryService.optimize({
       query,
-      hasRolePermission,
-      hasUserPermission,
-      fieldsToSelect,
+      pagination,
+      hasAccessToUser: false,
+      hasAccessToRole: false,
+      includeCreatedBy: false,
+      includeRole: false,
+      select,
+      order,
     });
 
-    this.validatePermissionQueryOrder({
-      query,
-      sort,
-      fieldsToSelect,
-      hasUserPermission,
-      hasRolePermission,
-    });
-
-    const permissions = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+    const permissions = await query.getManyAndCount();
 
     const totalCount = permissions[1];
 
@@ -329,8 +332,8 @@ export class PermissionService {
 
     await this.findByIds({
       ids: [id],
-      hasRolePermission: false,
-      hasUserPermission: false,
+      hasAccessToRole: false,
+      hasAccessToUser: false,
       pagination: { page: 1, limit: 1 },
     });
 
@@ -397,7 +400,7 @@ export class PermissionService {
       );
       throw new EntityNotFoundError(
         'Permissions',
-        `Could not delete permissinos, because IDs [${missingIds.join(', ')}] not found`,
+        `Could not delete permissions, because IDs [${missingIds.join(', ')}] not found`,
       );
     }
 
@@ -417,6 +420,14 @@ export class PermissionService {
     return { deleted: result.affected ?? 0 };
   }
 
+  /**
+   * Validates the existence of roles by their IDs.
+   * Throws an EntityNotFoundError if any role ID does not exist.
+   *
+   * @param roleIds - Array of role UUIDs to validate
+   * @returns Promise resolving to void
+   * @throws EntityNotFoundError when any specified role ID doesn't exist
+   */
   private async validateRolesExist(roleIds: UUID[]): Promise<void> {
     const existingRoles = await this.roleRepository
       .createQueryBuilder(ROLE_QUERY_ALIAS)
@@ -432,79 +443,6 @@ export class PermissionService {
         'Roles',
         `Roles with IDs [${missingRoleIds.join(', ')}] not found. Cannot create permissions with non-existing roles.`,
       );
-    }
-  }
-
-  private validatePermissionQueryOrder({
-    query,
-    sort,
-    fieldsToSelect,
-    hasUserPermission,
-    hasRolePermission,
-  }: {
-    query: SelectQueryBuilder<Permission>;
-    sort?: SortDto | undefined;
-    fieldsToSelect?: string[] | undefined;
-    hasUserPermission: boolean;
-    hasRolePermission: boolean;
-  }): void {
-    if (sort?.sortField !== undefined) {
-      if (
-        sort.sortField.includes(CREATEDBY_USER_QUERY_ALIAS) &&
-        hasUserPermission
-      ) {
-        if (
-          fieldsToSelect !== undefined &&
-          !fieldsToSelect.includes(sort.sortField)
-        ) {
-          fieldsToSelect.push(sort.sortField);
-        }
-        query.orderBy(sort.sortField, sort.sortOrder);
-      }
-
-      if (sort.sortField.includes(ROLE_QUERY_ALIAS) && hasRolePermission) {
-        if (
-          fieldsToSelect !== undefined &&
-          !fieldsToSelect.includes(sort.sortField)
-        ) {
-          fieldsToSelect.push(sort.sortField);
-        }
-        query.orderBy(sort.sortField, sort.sortOrder);
-      }
-    }
-  }
-
-  private validatePermissionQuerySelect({
-    query,
-    hasRolePermission,
-    hasUserPermission,
-    fieldsToSelect,
-  }: {
-    query: SelectQueryBuilder<Permission>;
-    hasRolePermission: boolean;
-    hasUserPermission: boolean;
-    fieldsToSelect?: string[] | undefined;
-  }): void {
-    if (fieldsToSelect !== undefined && fieldsToSelect.length > 0) {
-      const select = new Array<string>();
-
-      this.queryService.validateSelect<Permission>(
-        query,
-        select,
-        fieldsToSelect,
-        hasRolePermission,
-        ROLE_QUERY_ALIAS,
-      );
-
-      this.queryService.validateSelect<Permission>(
-        query,
-        select,
-        fieldsToSelect,
-        hasUserPermission,
-        CREATEDBY_USER_QUERY_ALIAS,
-      );
-
-      query.select(select);
     }
   }
 }

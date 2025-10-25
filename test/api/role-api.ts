@@ -37,7 +37,7 @@ export async function createNewRoleApi(
   validateRoleApiResponse({
     roles: [role],
     names: [dto.name],
-    expectedAmount: 1,
+    amountExpected: 1,
   });
 
   return role;
@@ -66,7 +66,7 @@ export async function addPermissionsToRoleApi(
   validateRoleApiResponse({
     roles: [role],
     ids: [roleId],
-    expectedAmount: 1,
+    amountExpected: 1,
     permissionIds,
   });
 
@@ -95,7 +95,7 @@ export async function findRolesByIdsApi(
   validateRoleApiResponse({
     roles,
     ids,
-    expectedAmount: ids.length,
+    amountExpected: ids.length,
   });
 
   return roles;
@@ -143,7 +143,7 @@ export async function updateRoleApi(
   validateRoleApiResponse({
     roles: [updatedRole],
     ids: [id],
-    expectedAmount: 1,
+    amountExpected: 1,
     ...(role.name !== undefined && { names: [role.name] }),
   });
 

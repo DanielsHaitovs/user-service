@@ -5,6 +5,7 @@ import {
   EXAMPLE_ROLE_NAME,
 } from '@/lib/const/role.const';
 import { PermissionResponseDto } from '@/role/dto/permission.dto';
+import { GetUserDto } from '@/user/dto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -57,6 +58,47 @@ export class CreateRoleDto extends RoleBaseDto {
 
 export class UpdateRoleDto extends PartialType(RoleBaseDto) {}
 
+export class AssignPermissionsToRoleDto {
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    description: 'Permission codes to associate with this role',
+    example: ['manage_users', 'create_order'],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  permissionCodes: string[];
+
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    description: 'Permission IDs to associate with this role',
+    example: [EXAMPLE_PERMISSION_ID],
+  })
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @Type(() => String)
+  @IsOptional()
+  permissionIds: UUID[];
+
+  @ApiProperty({
+    example: [EXAMPLE_ROLE_ID],
+    description: 'Unique identifier of the role',
+    type: String,
+    format: 'uuid',
+    readOnly: true,
+  })
+  @IsUUID()
+  roleId: UUID;
+
+  constructor(roleId: UUID, permissionIds: UUID[], permissionCodes: string[]) {
+    this.roleId = roleId;
+    this.permissionIds = permissionIds;
+    this.permissionCodes = permissionCodes;
+  }
+}
+
 export class RoleResponseDto extends RoleBaseDto {
   @ApiProperty({
     example: [EXAMPLE_ROLE_ID],
@@ -95,7 +137,16 @@ export class RoleResponseDto extends RoleBaseDto {
   @Type(() => PermissionResponseDto)
   @ValidateNested({ each: true })
   @IsOptional()
-  permissions?: PermissionResponseDto[];
+  permissions?: PermissionResponseDto[] | undefined;
+
+  @ApiProperty({
+    description: 'List of roles assigned to the user',
+    type: GetUserDto,
+    isArray: false,
+  })
+  @Type(() => GetUserDto)
+  @ValidateNested()
+  createdBy?: GetUserDto | undefined;
 
   constructor(
     id: UUID,
@@ -103,12 +154,14 @@ export class RoleResponseDto extends RoleBaseDto {
     createdAt: Date,
     updatedAt: Date,
     permissions?: PermissionResponseDto[],
+    createdBy?: GetUserDto,
   ) {
     super(name);
     this.id = id;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.permissions = permissions ?? [];
+    this.createdBy = createdBy ?? undefined;
   }
 }
 

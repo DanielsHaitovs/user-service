@@ -1,8 +1,11 @@
+import { hasPermissions } from '@/auth/helper/permission.helper';
 import { Permissions } from '@/common/decorators/permission.decorator';
 import { TraceController } from '@/common/decorators/trace.decorator';
-import { CurrentUserId } from '@/common/decorators/user.decorator';
+import {
+  CurrentUserId,
+  CurrentUserPermissions,
+} from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
-import { hasLoosePermission } from '@/common/helper/permission.helper';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
   CreateDepartmentDto,
@@ -52,7 +55,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -73,7 +75,6 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-import { Request } from 'express';
 
 @ApiTags('Departments')
 @Controller('departments')
@@ -144,19 +145,19 @@ export class DepartmentController {
     },
   })
   async createDepartment(
-    @Req() request: Request,
     @Body() createDepartmentDto: CreateDepartmentDto,
     @CurrentUserId() createdBy: UUID,
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<Department> {
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
     });
 
     return await this.departmentService.create({
       createDepartmentDto,
       createdBy,
-      hasUserPermission,
+      hasAccessToUser,
     });
   }
 
@@ -236,13 +237,13 @@ export class DepartmentController {
     },
   })
   async getDepartmentById(
-    @Req() request: Request,
     @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select', new ParseArrayPipe({ optional: true })) select: string[],
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<Department[]> {
     if (page < 1 || limit < 1) {
       throw new BadRequestException(
@@ -250,17 +251,17 @@ export class DepartmentController {
       );
     }
 
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
     });
 
     return await this.departmentService.findByIds({
       ids,
       pagination: { page, limit },
       select,
-      sort: { sortField, sortOrder },
-      hasUserPermission,
+      order: { sortField, sortOrder },
+      hasAccessToUser,
     });
   }
 
@@ -342,22 +343,22 @@ export class DepartmentController {
       },
     },
   })
-  async searchForRoles(
-    @Req() request: Request,
+  async searchForDepartments(
     @Param('value') value: string,
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select', ParseArrayPipe) select: string[],
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<DepartmentListResponseDto> {
     if (!sortField || sortField === '') {
       sortField = `${DEPARTMENT_QUERY_ALIAS}.name`;
     }
 
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
     });
 
     return await this.departmentService.searchFor({
@@ -366,12 +367,12 @@ export class DepartmentController {
         page,
         limit,
       },
-      sort: {
+      order: {
         sortField,
         sortOrder,
       },
       select,
-      hasUserPermission,
+      hasAccessToUser,
     });
   }
 
@@ -552,7 +553,6 @@ export class DepartmentController {
     enum: getCreatedBySelectableFields(),
   })
   async filterDepartments(
-    @Req() request: Request,
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
     @Query('names', new ParseArrayPipe({ optional: true })) names: string[],
     @Query('countries', new ParseArrayPipe({ optional: true }))
@@ -575,10 +575,11 @@ export class DepartmentController {
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<DepartmentListResponseDto> {
-    const hasUserPermission = hasLoosePermission({
-      request,
-      permissions: [READ_USER],
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
     });
 
     return await this.queryService.getDepartements(
@@ -604,7 +605,7 @@ export class DepartmentController {
         selectDepartmentFields,
         selectUserCreatedByFields,
       },
-      hasUserPermission,
+      hasAccessToUser,
     );
   }
 }

@@ -1,12 +1,13 @@
 import type { PaginationDto } from '@/base/dto/pagination.dto';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/role.const';
 import type {
   CreatePermissionDto,
   PermissionListResponseDto,
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import type { Permission } from '@/role/entities/permissions.entity';
-import type { PermissionService } from '@/role/services/permission.service';
-import type { RoleService } from '@/role/services/role.service';
+import type { PermissionService } from '@/role/services/permission/permission.service';
+import type { RoleService } from '@/role/services/role/role.service';
 import { createRole } from '@/test/factories/role.factory';
 import {
   validateDeletePermissionResponse,
@@ -18,13 +19,23 @@ import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-export async function createPermissions(
-  roleService: RoleService,
-  permissionService: PermissionService,
-  createdBy: UUID,
-  hasUserPermission: boolean,
-): Promise<Permission[]> {
-  const role = await createRole(roleService, createdBy);
+export async function createPermissions({
+  roleService,
+  permissionService,
+  createdBy,
+  hasAccessToUser,
+}: {
+  roleService: RoleService;
+  permissionService: PermissionService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+}): Promise<Permission[]> {
+  const role = await createRole({
+    roleService,
+    createdBy,
+    hasAccessToUser: false,
+    hasAccessToPermissions: false,
+  });
 
   const permissionDto: CreatePermissionDto[] = [
     {
@@ -42,7 +53,7 @@ export async function createPermissions(
   const permissions = await permissionService.create({
     permissions: permissionDto,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   validatePermissionResponse({
@@ -50,88 +61,121 @@ export async function createPermissions(
     amountExpected: 2,
     names: permissionDto.map((p) => p.name),
     codes: permissionDto.map((p) => p.code),
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   return permissions;
 }
 
-export async function findPermissionsByIds(
-  roleService: RoleService,
-  permissionService: PermissionService,
-  createdBy: UUID,
-  hasUserPermission: boolean,
-  hasRolePermission: boolean,
-  pagination: PaginationDto,
-): Promise<Permission[]> {
-  const newPermissions = await createPermissions(
+export async function findPermissionsByIds({
+  roleService,
+  permissionService,
+  createdBy,
+  hasAccessToUser,
+  hasAccessToRole,
+  pagination,
+}: {
+  roleService: RoleService;
+  permissionService: PermissionService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+  hasAccessToRole: boolean;
+  pagination: PaginationDto;
+}): Promise<Permission[]> {
+  const newPermissions = await createPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasUserPermission,
-  );
+    hasAccessToUser,
+  });
+
+  const ids = newPermissions.map((p) => p.id);
+  const names = newPermissions.map((p) => p.name);
+  const codes = newPermissions.map((p) => p.code);
 
   const permissions = await permissionService.findByIds({
-    ids: newPermissions.map((p) => p.id),
-    hasUserPermission,
-    hasRolePermission,
+    ids,
+    hasAccessToUser,
+    hasAccessToRole,
     pagination,
   });
 
   validatePermissionResponse({
     permissions,
     amountExpected: newPermissions.length,
-    ids: newPermissions.map((p) => p.id),
+    ids,
+    names,
+    codes,
+    hasAccessToUser,
+    hasAccessToRole,
   });
 
   return permissions;
 }
 
-export async function findPermissionsByCodes(
-  roleService: RoleService,
-  permissionService: PermissionService,
-  createdBy: UUID,
-  hasUserPermission: boolean,
-  hasRolePermission: boolean,
-  pagination: PaginationDto,
-): Promise<Permission[]> {
-  const newPermissions = await createPermissions(
+export async function findPermissionsByCodes({
+  roleService,
+  permissionService,
+  createdBy,
+  hasAccessToUser,
+  hasAccessToRole,
+  pagination,
+}: {
+  roleService: RoleService;
+  permissionService: PermissionService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+  hasAccessToRole: boolean;
+  pagination: PaginationDto;
+}): Promise<Permission[]> {
+  const newPermissions = await createPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasUserPermission,
-  );
+    hasAccessToUser,
+  });
+
+  const ids = newPermissions.map((p) => p.id);
+  const codes = newPermissions.map((p) => p.code);
+  const names = newPermissions.map((p) => p.name);
 
   const permissions = await permissionService.findByCodes({
-    codes: newPermissions.map((p) => p.code),
-    hasUserPermission,
-    hasRolePermission,
+    codes,
+    hasAccessToUser,
+    hasAccessToRole,
     pagination,
   });
 
   validatePermissionResponse({
     permissions,
     amountExpected: newPermissions.length,
-    codes: newPermissions.map((p) => p.code),
+    codes,
+    ids,
+    names,
+    hasAccessToRole,
+    hasAccessToUser,
   });
 
   return permissions;
 }
 
-export async function searchForPermission(
-  roleService: RoleService,
-  permissionService: PermissionService,
-  createdBy: UUID,
-  hasUserPermission: boolean,
-  hasRolePermission: boolean,
-  pagination: PaginationDto,
-): Promise<PermissionListResponseDto> {
-  const newPermissions = await createPermissions(
+export async function searchForPermission({
+  roleService,
+  permissionService,
+  createdBy,
+  pagination,
+}: {
+  roleService: RoleService;
+  permissionService: PermissionService;
+  createdBy: UUID;
+  pagination: PaginationDto;
+}): Promise<PermissionListResponseDto> {
+  const newPermissions = await createPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasUserPermission,
-  );
+    hasAccessToUser: false,
+  });
 
   if (newPermissions[0] === undefined) {
     throw new Error('Could not create permission');
@@ -140,38 +184,42 @@ export async function searchForPermission(
   const foundPermissions = await permissionService.searchFor({
     value: newPermissions[0].name,
     pagination,
-    hasUserPermission,
-    hasRolePermission,
-    sort: { sortField: 'name', sortOrder: 'ASC' },
+    order: {
+      sortField: `${PERMISSION_QUERY_ALIAS}.name`,
+      sortOrder: 'ASC',
+    },
   });
 
   const permissions = foundPermissions.permissions as Permission[];
-
-  if (permissions.length === 0) {
-    throw new Error('No permissions found');
-  }
 
   validatePermissionResponse({
     permissions,
     amountExpected: 1,
     names: [newPermissions[0].name],
+    codes: [newPermissions[0].code],
+    ids: [newPermissions[0].id],
+    hasAccessToRole: false,
+    hasAccessToUser: false,
   });
 
   return foundPermissions;
 }
 
-export async function updatePermissions(
-  roleService: RoleService,
-  permissionService: PermissionService,
-  createdBy: UUID,
-  hasUserPermission: boolean,
-): Promise<Permission> {
-  const permissions = await createPermissions(
+export async function updatePermissions({
+  roleService,
+  permissionService,
+  createdBy,
+}: {
+  roleService: RoleService;
+  permissionService: PermissionService;
+  createdBy: UUID;
+}): Promise<Permission> {
+  const permissions = await createPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasUserPermission,
-  );
+    hasAccessToUser: false,
+  });
 
   const updateDto: UpdatePermissionDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
@@ -198,18 +246,21 @@ export async function updatePermissions(
   return updatedPermission;
 }
 
-export async function deletePermissionsByIds(
-  roleService: RoleService,
-  permissionService: PermissionService,
-  createdBy: UUID,
-  hasUserPermission: boolean,
-): Promise<void> {
-  const permissions = await createPermissions(
+export async function deletePermissionsByIds({
+  roleService,
+  permissionService,
+  createdBy,
+}: {
+  roleService: RoleService;
+  permissionService: PermissionService;
+  createdBy: UUID;
+}): Promise<void> {
+  const permissions = await createPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasUserPermission,
-  );
+    hasAccessToUser: false,
+  });
 
   const permissionIds = permissions.map((p) => p.id);
   const amountToDelete = permissionIds.length;
@@ -220,8 +271,8 @@ export async function deletePermissionsByIds(
   await expect(
     permissionService.findByIds({
       ids: permissionIds,
-      hasUserPermission: false,
-      hasRolePermission: false,
+      hasAccessToUser: false,
+      hasAccessToRole: false,
       pagination: { page: 1, limit: amountToDelete },
     }),
   ).rejects.toThrow(EntityNotFoundError);

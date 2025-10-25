@@ -1,4 +1,5 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import { ForbiddenException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
 import {
@@ -42,25 +43,31 @@ export class QueryService {
    * @param field - Entity field name to filter on
    * @param values - Array of values to match against
    */
-  whereIn<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    field: string,
-    values: unknown[] | undefined,
-    condition: 'OR' | 'AND',
-    relationAlias?: string,
-  ): void {
+  whereIn<T extends ObjectLiteral>({
+    query,
+    field,
+    values,
+    condition,
+    relationAlias,
+  }: {
+    query: SelectQueryBuilder<T>;
+    field: string;
+    values: unknown[] | undefined;
+    condition: 'OR' | 'AND';
+    relationAlias?: string;
+  }): void {
     if (!values || values.length === 0) return;
 
     const alias = relationAlias ?? query.alias;
     const fieldPath = `${alias}.${field}`;
 
     if (condition === 'OR') {
-      query.orWhere(`${fieldPath} IN (:...${alias}${field}s)`, {
+      query.orWhere(`${fieldPath} IN (:...${alias}_${field}s)`, {
         [`${alias}${field}s`]: values,
       });
     } else {
-      query.andWhere(`${fieldPath} IN (:...${alias}${field}s)`, {
-        [`${alias}${field}s`]: values,
+      query.andWhere(`${fieldPath} IN (:...${alias}_${field}s)`, {
+        [`${alias}_${field}s`]: values,
       });
     }
   }
@@ -74,17 +81,22 @@ export class QueryService {
    * @param field - Date field name to compare
    * @param date - Minimum date threshold (exclusive)
    */
-  dateGreaterThan<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    field: string,
-    date: Date,
-    relationAlias?: string,
-  ): void {
+  dateGreaterThan<T extends ObjectLiteral>({
+    query,
+    field,
+    date,
+    relationAlias,
+  }: {
+    query: SelectQueryBuilder<T>;
+    field: string;
+    date: Date;
+    relationAlias?: string;
+  }): void {
     const alias = relationAlias ?? query.alias;
     const fieldPath = `${alias}.${field}`;
 
-    query.andWhere(`${fieldPath}.${field} > :${field}`, {
-      [field]: date,
+    query.andWhere(`${fieldPath} > :${alias}_${field}`, {
+      [`${alias}_${field}`]: date,
     });
   }
 
@@ -97,17 +109,22 @@ export class QueryService {
    * @param field - Date field name to compare
    * @param date - Maximum date threshold (exclusive)
    */
-  dateLessThan<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    field: string,
-    date: Date,
-    relationAlias?: string,
-  ): void {
+  dateLessThan<T extends ObjectLiteral>({
+    query,
+    field,
+    date,
+    relationAlias,
+  }: {
+    query: SelectQueryBuilder<T>;
+    field: string;
+    date: Date;
+    relationAlias?: string;
+  }): void {
     const alias = relationAlias ?? query.alias;
     const fieldPath = `${alias}.${field}`;
 
-    query.andWhere(`${fieldPath}.${field} < :${field}`, {
-      [field]: date,
+    query.andWhere(`${fieldPath} < :${alias}_${field}`, {
+      [`${alias}_${field}`]: date,
     });
   }
 
@@ -121,10 +138,13 @@ export class QueryService {
    * @param alias - Table alias for the query (used in WHERE clauses)
    * @returns Configured query builder ready for additional operations
    */
-  initQuery<T extends ObjectLiteral>(
-    entity: EntityTarget<T>,
-    alias: string,
-  ): SelectQueryBuilder<T> {
+  initQuery<T extends ObjectLiteral>({
+    entity,
+    alias,
+  }: {
+    entity: EntityTarget<T>;
+    alias: string;
+  }): SelectQueryBuilder<T> {
     return this.entityManager.createQueryBuilder(entity, alias);
   }
 
@@ -138,11 +158,16 @@ export class QueryService {
    * @param page - Page number (1-based indexing)
    * @param limit - Maximum number of records per page
    */
-  paginate<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    page: number,
-    limit: number,
-  ): void {
+  paginate<T extends ObjectLiteral>({
+    query,
+    pagination,
+  }: {
+    query: SelectQueryBuilder<T>;
+    pagination?: PaginationDto;
+  }): void {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 10;
+
     query.skip((page - 1) * limit).take(limit);
   }
 
@@ -156,116 +181,99 @@ export class QueryService {
    * @param sortField - Entity field name to sort by
    * @param sortOrder - Sort direction (defaults to ASC)
    */
-  sort<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    sortField: string,
-    sortOrder: 'ASC' | 'DESC' = 'ASC',
-  ): void {
+  sort<T extends ObjectLiteral>({
+    query,
+    order,
+  }: {
+    query: SelectQueryBuilder<T>;
+    order: SortDto | undefined;
+  }): void {
+    if (order?.sortField == undefined) return;
+
+    // order.sortOrder ??= 'ASC';
+
+    const { sortField, sortOrder } = order;
+
     query.orderBy(sortField, sortOrder);
   }
 
-  validateSelect<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    select: string[],
-    fieldsToSelect: string[] | undefined,
-    hasAccess: boolean,
-    relationAlias?: string,
-  ): void {
-    if (fieldsToSelect == undefined || fieldsToSelect.length === 0) return;
-    if (!hasAccess && relationAlias == undefined) return;
-
-    const alias = relationAlias ?? query.alias;
-
-    if (hasAccess && relationAlias != undefined) {
-      if (!this.isLeftJoinPresent(query, alias)) {
-        this.joinRelation<T>(query, alias);
-      }
-    }
-
-    select.push(...fieldsToSelect);
-
-    if (select.length > 0 && !select.includes(`${alias}.id`)) {
-      select.push(`${alias}.id`);
-    }
-  }
-
-  validateOrder<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    checkWithAliases: string[],
-    hasAccess: boolean,
-    select: string[],
-    order?: SortDto,
-  ): void {
-    if (order?.sortField === undefined) return;
-    if (!checkWithAliases.some((alias) => order.sortField.includes(alias))) {
-      if (!select.includes(order.sortField)) {
-        select.push(order.sortField);
-      }
-      return;
-    }
-
-    if (hasAccess) {
-      checkWithAliases.forEach((alias) => {
-        if (
-          order.sortField.includes(alias) &&
-          !this.isLeftJoinPresent(query, alias)
-        ) {
-          this.joinRelation<T>(query, alias);
-        }
-
-        if (!select.includes(order.sortField)) {
-          select.push(order.sortField);
-        }
-      });
-    } else if (!order.sortField.includes(query.alias)) {
-      order.sortField = '';
-    }
-  }
-
-  /**
-   * Applies comprehensive query optimizations including field selection, sorting, and pagination.
-   *
-   * Orchestrates multiple query modifications in the correct order to ensure optimal
-   * database performance. Field selection reduces network overhead, while proper
-   * ordering of operations prevents SQL syntax errors.
-   *
-   * @param query - The query builder to optimize
-   * @param pagination - Page and limit configuration (optional)
-   * @param order - Sorting configuration (optional)
-   * @param select - Specific fields to retrieve instead of full entities (optional)
-   */
-  optimizeQuery<T extends ObjectLiteral>({
+  validateRelationSelect<T extends ObjectLiteral>({
     query,
-    pagination,
-    order,
+    select,
+    hasAccess,
+    relationAlias,
+  }: {
+    query: SelectQueryBuilder<T>;
+    select: string[] | undefined;
+    hasAccess: boolean;
+    relationAlias?: string;
+  }): void {
+    if (select == undefined || select.length === 0) return;
+
+    if (relationAlias == undefined) return;
+
+    const hasFieldFromRelation = select.some((field) =>
+      field.startsWith(`${relationAlias}.`),
+    );
+
+    if (!hasAccess && hasFieldFromRelation) {
+      throw new ForbiddenException(
+        `Cannot select fields from ${query.alias} with relation ${relationAlias} without permission`,
+      );
+    }
+
+    if (hasAccess && hasFieldFromRelation) {
+      if (!this.isLeftJoinPresent({ query, relationAlias })) {
+        this.joinRelation<T>({ query, relationAlias });
+      }
+
+      if (!select.includes(`${relationAlias}.id`)) {
+        select.push(`${relationAlias}.id`);
+      }
+    }
+  }
+
+  validateSelect<T extends ObjectLiteral>({
+    query,
     select,
   }: {
     query: SelectQueryBuilder<T>;
-    pagination?: PaginationDto;
-    order?: SortDto | undefined;
-    select?: string[] | undefined;
+    select: string[] | undefined;
   }): void {
-    // Apply field selection first to reduce data transfer overhead
-    if (select && select.length > 0) {
-      query.select(select);
+    if (select == undefined || select.length === 0) return;
+
+    if (!select.includes(`${query.alias}.id`)) {
+      select.push(`${query.alias}.id`);
     }
+  }
 
-    // Apply sorting before pagination for consistent result ordering
-    if (order) {
-      const { sortField, sortOrder } = order;
+  validateOrder<T extends ObjectLiteral>({
+    query,
+    relations,
+    order,
+  }: {
+    query: SelectQueryBuilder<T>;
+    relations: Record<string, boolean>;
+    order: SortDto | undefined;
+  }): void {
+    if (order?.sortField === undefined) return;
 
-      if (sortField && sortField.length > 0) {
-        this.sort(query, sortField, sortOrder);
+    Object.keys(relations).forEach((relationAlias) => {
+      const hasAccess = relations[relationAlias];
+
+      if (order.sortField.includes(relationAlias) && hasAccess === false) {
+        throw new ForbiddenException(
+          `Cannot order by field ${order.sortField} without permission`,
+        );
+      } else if (
+        order.sortField.includes(relationAlias) &&
+        hasAccess === true
+      ) {
+        if (!this.isLeftJoinPresent({ query, relationAlias })) {
+          this.joinRelation<T>({ query, relationAlias });
+        }
       }
-    }
-
-    // Apply pagination last to limit the already-sorted dataset
-    if (pagination) {
-      const { page, limit } = pagination;
-      if (page && limit) {
-        this.paginate(query, page, limit);
-      }
-    }
+    });
   }
 
   /**
@@ -278,15 +286,15 @@ export class QueryService {
    * @param alias - Alias for the join relation
    * @param targetAlias - Target entity alias to join
    */
-  joinRelation<T extends ObjectLiteral>(
-    queryBuilder: SelectQueryBuilder<T>,
-    targetAlias: string,
-  ): void {
-    if (!this.isLeftJoinPresent(queryBuilder, queryBuilder.alias)) {
-      queryBuilder.leftJoinAndSelect(
-        `${queryBuilder.alias}.${targetAlias}`,
-        targetAlias,
-      );
+  joinRelation<T extends ObjectLiteral>({
+    query,
+    relationAlias,
+  }: {
+    query: SelectQueryBuilder<T>;
+    relationAlias: string;
+  }): void {
+    if (!this.isLeftJoinPresent({ query, relationAlias })) {
+      query.leftJoinAndSelect(`${query.alias}.${relationAlias}`, relationAlias);
     }
   }
 
@@ -296,26 +304,38 @@ export class QueryService {
    * @param targetAlias
    * @param options
    */
-  joinEntityRelation<T extends ObjectLiteral>(
-    queryBuilder: SelectQueryBuilder<T>,
-    targetAlias: string,
-    shouldJoin: boolean,
-    condition: 'OR' | 'AND',
+  joinEntityRelation<T extends ObjectLiteral>({
+    query,
+    relationAlias,
+    shouldJoin,
+    condition,
+    options,
+  }: {
+    query: SelectQueryBuilder<T>;
+    relationAlias: string;
+    shouldJoin: boolean;
+    condition: 'OR' | 'AND';
     options?: {
       filters?: Record<string, unknown[] | undefined> | undefined;
-    },
-  ): void {
+    };
+  }): void {
     const filters = options?.filters ?? {};
 
     if (!shouldJoin) return;
 
-    if (!this.isLeftJoinPresent(queryBuilder, targetAlias)) {
-      this.joinRelation(queryBuilder, targetAlias);
+    if (!this.isLeftJoinPresent({ query, relationAlias })) {
+      this.joinRelation({ query, relationAlias });
     }
 
     Object.entries(filters).forEach(([field, values]) => {
       if (Array.isArray(values) && values.length > 0) {
-        this.whereIn(queryBuilder, field, values, condition, targetAlias);
+        this.whereIn({
+          query,
+          field,
+          values,
+          condition,
+          relationAlias,
+        });
       }
     });
   }
@@ -330,12 +350,15 @@ export class QueryService {
    * @param alias - The alias of the join to check
    * @returns True if the leftJoin is present, false otherwise
    */
-  isLeftJoinPresent<T extends ObjectLiteral>(
-    query: SelectQueryBuilder<T>,
-    alias: string,
-  ): boolean {
+  isLeftJoinPresent<T extends ObjectLiteral>({
+    query,
+    relationAlias,
+  }: {
+    query: SelectQueryBuilder<T>;
+    relationAlias: string;
+  }): boolean {
     return query.expressionMap.joinAttributes.some(
-      (join) => join.alias.name === alias && join.alias.type === 'join',
+      (join) => join.alias.name === relationAlias && join.alias.type === 'join',
     );
   }
 }

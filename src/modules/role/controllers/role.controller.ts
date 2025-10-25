@@ -1,6 +1,11 @@
+import { hasPermissions } from '@/auth/helper/permission.helper';
+import { JWTPayload } from '@/auth/interfaces/req.interface';
 import { Permissions } from '@/common/decorators/permission.decorator';
 import { TraceController } from '@/common/decorators/trace.decorator';
-import { CurrentUserId } from '@/common/decorators/user.decorator';
+import {
+  CurrentUser,
+  CurrentUserPermissions,
+} from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
@@ -14,14 +19,16 @@ import {
   ROLE_NOT_FOUND_MSG,
   UPDATE_ROLE,
 } from '@/lib/const/role.const';
+import { READ_USER } from '@/lib/const/user.const';
 import {
+  AssignPermissionsToRoleDto,
   CreateRoleDto,
   RoleListResponseDto,
   UpdateRoleDto,
 } from '@/role/dto/role.dto';
 import { Role } from '@/role/entities/role.entity';
-import { getRoleGenerucSelectableFields } from '@/role/helper/role-fields.util';
-import { RoleService } from '@/role/services/role.service';
+import { getRoleGenericSelectableFields } from '@/role/helper/role-fields.util';
+import { RoleService } from '@/role/services/role/role.service';
 import {
   BadRequestException,
   Body,
@@ -70,7 +77,7 @@ export class RolesController {
   ) {}
 
   @Post()
-  @Permissions(CREATE_ROLE, READ_ROLE, READ_PERMISSION)
+  @Permissions(CREATE_ROLE, READ_ROLE)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new role',
@@ -125,9 +132,26 @@ export class RolesController {
   async createRole(
     @Body()
     roleDto: CreateRoleDto,
-    @CurrentUserId() createdBy: UUID,
+    @CurrentUser() reqUser: JWTPayload,
   ): Promise<Role> {
-    return await this.roleService.create({ roleDto, createdBy });
+    const { permissions: userPermissions, id: createdBy } = reqUser;
+
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
+    });
+
+    const hasAccessToPermissions = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_PERMISSION],
+    });
+
+    return await this.roleService.create({
+      roleDto,
+      createdBy,
+      hasAccessToUser,
+      hasAccessToPermissions,
+    });
   }
 
   @Get('attributes/ids')
@@ -166,7 +190,7 @@ export class RolesController {
     type: String,
     required: false,
     description: 'Sort roles by sort field',
-    enum: getRoleGenerucSelectableFields({}),
+    enum: getRoleGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -175,6 +199,14 @@ export class RolesController {
     required: false,
     description: 'Order roles by sort order',
     enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'select',
+    type: String,
+    required: false,
+    description: 'Selct Roles by fields',
+    enum: getRoleGenericSelectableFields({}),
+    example: ['role.name'],
   })
   @ApiOkResponse({
     description: 'Roles found and returned successfully',
@@ -221,20 +253,41 @@ export class RolesController {
   })
   async getRolesByIds(
     @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
-    @Query('page', new ParseIntPipe()) page: number,
+    @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('select') select: string[],
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<Role[]> {
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
+    });
+
+    const hasAccessToPermissions = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_PERMISSION],
+    });
+
     return await this.roleService.findByIds({
       ids,
-      pagination: { page, limit },
-      ...(sortField && { sort: { sortField, sortOrder } }),
+      pagination: {
+        page,
+        limit,
+      },
+      order: {
+        sortField,
+        sortOrder,
+      },
+      select,
+      hasAccessToUser,
+      hasAccessToPermissions,
     });
   }
 
   @Get('attributes/createdBy')
-  @Permissions(READ_ROLE)
+  @Permissions(READ_ROLE, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get roles by IDs of users who created them',
@@ -269,7 +322,7 @@ export class RolesController {
     type: String,
     required: false,
     description: 'Sort roles by sort field',
-    enum: getRoleGenerucSelectableFields({}),
+    enum: getRoleGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -278,6 +331,14 @@ export class RolesController {
     required: false,
     description: 'Order roles by sort order',
     enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'select',
+    type: String,
+    required: false,
+    description: 'Selct Roles by fields',
+    enum: getRoleGenericSelectableFields({}),
+    example: ['role.name'],
   })
   @ApiOkResponse({
     description: 'Roles found and returned successfully',
@@ -328,15 +389,30 @@ export class RolesController {
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('select') select: string[],
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<Role[]> {
+    const hasAccessToPermissions = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_PERMISSION],
+    });
+
     return await this.roleService.findCreatedByUserWithId({
       createdByUserIds,
-      pagination: { page, limit },
-      sort: { sortField, sortOrder },
+      pagination: {
+        page,
+        limit,
+      },
+      order: {
+        sortField,
+        sortOrder,
+      },
+      select,
+      hasAccessToPermissions,
     });
   }
 
-  @Get('attributes/:value')
+  @Get('search/:value')
   @Permissions(READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -369,7 +445,7 @@ export class RolesController {
     type: String,
     required: false,
     description: 'Sort roles by sort field',
-    enum: getRoleGenerucSelectableFields({}),
+    enum: getRoleGenericSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -378,6 +454,14 @@ export class RolesController {
     required: false,
     description: 'Order roles by sort order',
     enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'select',
+    type: String,
+    required: false,
+    description: 'Selct Roles by fields',
+    enum: getRoleGenericSelectableFields({}),
+    example: ['role.name'],
   })
   @ApiOkResponse({
     description: 'Role found and returned successfully',
@@ -405,6 +489,7 @@ export class RolesController {
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('select') select: string[],
   ): Promise<RoleListResponseDto> {
     if (!sortField || sortField === '') {
       sortField = 'name';
@@ -416,10 +501,11 @@ export class RolesController {
         page,
         limit,
       },
-      sort: {
+      order: {
         sortField,
         sortOrder,
       },
+      select,
     });
   }
 
@@ -599,21 +685,7 @@ export class RolesController {
   })
   @ApiBody({
     description: 'Permission IDs and Role ID',
-    schema: {
-      type: 'object',
-      properties: {
-        permissionIds: {
-          type: 'array',
-          items: { type: 'string', format: 'uuid' },
-          example: ['permission-id-1', 'permission-id-2'],
-        },
-        roleId: {
-          type: 'string',
-          format: 'uuid',
-          example: 'role-id-1',
-        },
-      },
-    },
+    type: AssignPermissionsToRoleDto,
   })
   @ApiOkResponse({
     description: 'Permissions successfully added to the role',
@@ -643,11 +715,22 @@ export class RolesController {
     },
   })
   async addPermissionsToRole(
-    @Body('permissionIds', new ParseArrayPipe({ items: String }))
-    permissionIds: UUID[],
-    @Body('roleId') roleId: UUID,
+    @Body() payload: AssignPermissionsToRoleDto,
+    @CurrentUser() reqUser: JWTPayload,
   ): Promise<Role> {
-    return this.roleService.addPermissionsToRole({ permissionIds, roleId });
+    const hasAccessToUser = hasPermissions({
+      userPermissions: reqUser.permissions,
+      requestedPermissions: [READ_USER],
+    });
+
+    const { permissionIds, permissionCodes, roleId } = payload;
+
+    return this.roleService.addPermissionsToRole({
+      permissionIds,
+      permissionCodes,
+      roleId,
+      hasAccessToUser,
+    });
   }
 
   /**
@@ -738,7 +821,7 @@ export class RolesController {
   //   required: false,
   //   description: 'Filter users by sort order',
   //   enum: [
-  //     ...getRoleGenerucSelectableFields({}),
+  //     ...getRoleGenericSelectableFields({}),
   //     ...getPermissionsGenericSelectableFields({}),
   //     ...getUserSelectableFields({}),
   //   ],
@@ -757,7 +840,7 @@ export class RolesController {
   //   isArray: true,
   //   required: false,
   //   description: 'Set role fields to include in response',
-  //   enum: getRoleGenerucSelectableFields({}),
+  //   enum: getRoleGenericSelectableFields({}),
   // })
   // @ApiQuery({
   //   name: 'selectPermissions',

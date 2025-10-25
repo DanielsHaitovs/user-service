@@ -9,7 +9,7 @@ export function validateDepartmentsResponse(response: {
   names?: string[] | undefined;
   countries?: string[] | undefined;
   amountExpected?: number | undefined;
-  hasUserPermission?: boolean;
+  hasAccessToUser?: boolean;
   hasUser?: boolean;
 }): void {
   const { departments, ids, names, countries, amountExpected, hasUser } =
@@ -46,10 +46,7 @@ export function validateDepartmentsResponse(response: {
       expect(countries).toContain(department.country);
     }
 
-    if (
-      response.hasUserPermission !== undefined &&
-      response.hasUserPermission
-    ) {
+    if (response.hasAccessToUser !== undefined && response.hasAccessToUser) {
       expect(department).toHaveProperty('createdBy');
       expect(department.createdBy).toHaveProperty('id');
       expect(department.createdBy).toHaveProperty('email');
@@ -58,8 +55,8 @@ export function validateDepartmentsResponse(response: {
     }
 
     if (
-      response.hasUserPermission !== undefined &&
-      response.hasUserPermission &&
+      response.hasAccessToUser !== undefined &&
+      response.hasAccessToUser &&
       hasUser != undefined &&
       hasUser
     ) {

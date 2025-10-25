@@ -78,7 +78,7 @@ export async function queryDepartmentApi(
   app: INestApplication,
   accessToken: string,
   filters: DepartmentQueryDto,
-  hasUserPermission: boolean,
+  hasAccessToUser: boolean,
   amountExpected?: number,
 ): Promise<DepartmentListResponseDto> {
   const httpServer = app.getHttpServer() as Server;
@@ -149,7 +149,7 @@ export async function queryDepartmentApi(
     names,
     countries,
     amountExpected,
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   return data;

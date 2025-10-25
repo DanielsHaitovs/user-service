@@ -28,3 +28,17 @@ export function hasLoosePermission({
     payload.permissions.includes(permission),
   );
 }
+
+export function hasPermissions({
+  userPermissions,
+  requestedPermissions,
+}: {
+  userPermissions: string[];
+  requestedPermissions: string[];
+}): boolean {
+  if (userPermissions.includes(ROOT_ADMIN_PERMISSION)) return true;
+
+  return requestedPermissions.every((permission) =>
+    userPermissions.includes(permission),
+  );
+}

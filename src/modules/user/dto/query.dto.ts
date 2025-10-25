@@ -239,13 +239,13 @@ export class UserQueryDto {
   // @ApiProperty({
   //   description:
   //     'Specific user roles fields to return - optimizes payload size and performance',
-  //   enum: getRoleGenerucSelectableFields({}),
+  //   enum: getRoleGenericSelectableFields({}),
   //   type: String,
   //   isArray: true,
   //   required: false,
-  //   example: getRoleGenerucSelectableFields({}),
+  //   example: getRoleGenericSelectableFields({}),
   // })
-  // @IsEnum(getRoleGenerucSelectableFields({}), { each: true })
+  // @IsEnum(getRoleGenericSelectableFields({}), { each: true })
   // selectRoleFields?: string[];
 
   constructor(

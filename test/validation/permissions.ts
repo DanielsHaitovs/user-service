@@ -9,19 +9,42 @@ export function validatePermissionResponse({
   ids,
   names,
   codes,
-  hasUserPermission,
-  hasRolePermission,
+  hasAccessToUser,
+  hasAccessToRole,
 }: {
-  permissions: Permission[] | PermissionResponseDto[];
+  permissions: Permission[] | PermissionResponseDto[] | undefined;
   amountExpected?: number;
   ids?: UUID[];
   names?: string[];
   codes?: string[];
-  hasUserPermission?: boolean;
-  hasRolePermission?: boolean;
+  hasAccessToUser?: boolean;
+  hasAccessToRole?: boolean;
 }): void {
-  if (permissions.length === 0) {
-    throw new Error('No permissions created');
+  if (
+    (permissions?.length === 0 || permissions === undefined) &&
+    amountExpected != undefined &&
+    amountExpected !== 0
+  ) {
+    throw new Error('Could not find any permissions');
+  }
+
+  if (
+    (amountExpected === 0 || amountExpected === undefined) &&
+    permissions != undefined &&
+    permissions.length > 0
+  ) {
+    throw new Error('Unexpected permissions found');
+  }
+
+  if (
+    (amountExpected === 0 || amountExpected === undefined) &&
+    (permissions?.length === 0 || permissions === undefined)
+  ) {
+    return;
+  }
+
+  if (permissions === undefined) {
+    throw new Error('Permissions is undefined, cannot validate');
   }
 
   expect(permissions).toBeDefined();
@@ -47,12 +70,12 @@ export function validatePermissionResponse({
       expect(codes).toContain(permission.code);
     }
 
-    if (hasUserPermission !== undefined && hasUserPermission) {
+    if (hasAccessToUser !== undefined && hasAccessToUser) {
       expect(permission).toHaveProperty('createdBy');
       expect(permission.createdBy).toHaveProperty('id');
     }
 
-    if (hasRolePermission !== undefined && hasRolePermission) {
+    if (hasAccessToRole !== undefined && hasAccessToRole) {
       expect(permission).toHaveProperty('roles');
       expect(Array.isArray(permission.roles)).toBe(true);
       permission.roles.forEach((role) => {

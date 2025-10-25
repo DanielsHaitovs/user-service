@@ -21,7 +21,7 @@ import { v4 as uuid } from 'uuid';
 export async function createDepartment(
   service: DepartmentService,
   createdBy: UUID,
-  hasUserPermission: boolean,
+  hasAccessToUser: boolean,
 ): Promise<Department> {
   const dto: CreateDepartmentDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
@@ -31,7 +31,7 @@ export async function createDepartment(
   const department = await service.create({
     createDepartmentDto: dto,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   validateDepartmentsResponse({
@@ -40,7 +40,7 @@ export async function createDepartment(
     names: [department.name],
     countries: [department.country],
     amountExpected: 1,
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   return department;
@@ -49,18 +49,18 @@ export async function createDepartment(
 export async function findDepartmentsByIds(
   service: DepartmentService,
   createdBy: UUID,
-  hasUserPermission: boolean,
+  hasAccessToUser: boolean,
 ): Promise<Department[]> {
   const department = await createDepartment(
     service,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   );
 
   const departments = await service.findByIds({
     ids: [department.id],
     pagination: { page: 1, limit: 1 },
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   validateDepartmentsResponse({
@@ -69,7 +69,7 @@ export async function findDepartmentsByIds(
     names: [department.name],
     countries: [department.country],
     amountExpected: 1,
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   return departments;
@@ -78,12 +78,12 @@ export async function findDepartmentsByIds(
 export async function searchForDepartments(
   service: DepartmentService,
   createdBy: UUID,
-  hasUserPermission: boolean,
+  hasAccessToUser: boolean,
 ): Promise<DepartmentListResponseDto> {
   const newDepartment = await createDepartment(
     service,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   );
 
   const res = await service.searchFor({
@@ -92,11 +92,11 @@ export async function searchForDepartments(
       limit: 20,
       page: 1,
     },
-    sort: {
+    order: {
       sortField: `${DEPARTMENT_QUERY_ALIAS}.name`,
       sortOrder: 'ASC',
     },
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   const departments = res.departments as Department[];
@@ -107,7 +107,7 @@ export async function searchForDepartments(
     countries: [newDepartment.country],
     ids: [newDepartment.id],
     amountExpected: 1,
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   return res;
@@ -169,27 +169,27 @@ export async function queryDepartments(
   service: DepartmentService,
   queryService: DepartmentQueryService,
   createdBy: UUID,
-  hasUserPermission: boolean,
+  hasAccessToUser: boolean,
 ): Promise<DepartmentListResponseDto> {
   const department1 = await createDepartment(
     service,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   );
   const department2 = await createDepartment(
     service,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   );
   const department3 = await createDepartment(
     service,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   );
   const department4 = await createDepartment(
     service,
     createdBy,
-    hasUserPermission,
+    hasAccessToUser,
   );
 
   const ids = [department1.id, department2.id, department3.id, department4.id];
@@ -220,7 +220,7 @@ export async function queryDepartments(
         limit: 20,
       },
     },
-    hasUserPermission,
+    hasAccessToUser,
   );
 
   validateDepartmentsResponse({
@@ -229,7 +229,7 @@ export async function queryDepartments(
     names,
     countries,
     amountExpected: 4,
-    hasUserPermission,
+    hasAccessToUser,
   });
 
   return departments;
@@ -249,7 +249,7 @@ export async function deleteDepartments(
     service.findByIds({
       ids: [department.id],
       pagination: { page: 1, limit: 1 },
-      hasUserPermission: false,
+      hasAccessToUser: false,
     }),
   ).rejects.toThrow(EntityNotFoundError);
 }

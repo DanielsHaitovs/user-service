@@ -58,7 +58,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
             country: department.country,
           },
           createdBy: systemUserId,
-          hasUserPermission: false,
+          hasAccessToUser: false,
         }),
       ).rejects.toThrow(ConflictException);
     });
@@ -78,7 +78,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
-          hasUserPermission: false,
+          hasAccessToUser: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
     });
@@ -107,7 +107,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
-          hasUserPermission: false,
+          hasAccessToUser: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
     });

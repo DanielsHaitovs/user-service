@@ -14,12 +14,11 @@ import { SelectQueryBuilder } from 'typeorm';
 
 @Injectable()
 export class DepartmentQueryService extends QueryService {
-  private readonly departmentAlias = DEPARTMENT_QUERY_ALIAS;
   private readonly userAlias = `${USER_QUERY_ALIAS}s`;
 
   async getDepartements(
     filters: DepartmentQueryDto,
-    hasUserPermissions: boolean,
+    hasAccessToUser: boolean,
   ): Promise<DepartmentListResponseDto> {
     const {
       query: { ids, names, countries, userIds, createdByUserIds },
@@ -31,58 +30,76 @@ export class DepartmentQueryService extends QueryService {
     } = filters;
 
     let { includeUsers, includeCreatedBy } = filters;
-    includeUsers ??= hasUserPermissions;
-    includeCreatedBy ??= hasUserPermissions;
+    includeUsers ??= hasAccessToUser;
+    includeCreatedBy ??= hasAccessToUser;
 
-    const queryBuilder = this.initQuery(Department, this.departmentAlias);
+    const query = this.initQuery({
+      entity: Department,
+      alias: DEPARTMENT_QUERY_ALIAS,
+    });
 
-    if (ids && ids.length > 0) {
-      this.whereIn(queryBuilder, 'id', ids, 'AND');
-    }
+    this.whereIn({
+      query,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
+    });
 
-    this.whereIn<Department>(queryBuilder, 'name', names, 'AND');
+    this.whereIn<Department>({
+      query,
+      field: 'name',
+      values: names,
+      condition: 'AND',
+    });
 
-    this.whereIn<Department>(queryBuilder, 'country', countries, 'AND');
+    this.whereIn<Department>({
+      query,
+      field: 'country',
+      values: countries,
+      condition: 'AND',
+    });
 
     // Join user relation if specified or if IDs are provided
-    this.joinEntityRelation(
-      queryBuilder,
-      this.userAlias,
-      includeUsers && hasUserPermissions,
-      'AND',
-      {
+    this.joinEntityRelation({
+      query,
+      relationAlias: this.userAlias,
+      shouldJoin: includeUsers && hasAccessToUser,
+      condition: 'AND',
+      options: {
         filters: {
           id: userIds,
         },
       },
-    );
+    });
 
     // Join created by user relation if specified or if IDs are provided
-    this.joinEntityRelation(
-      queryBuilder,
-      CREATEDBY_USER_QUERY_ALIAS,
-      includeCreatedBy && hasUserPermissions,
-      'AND',
-      {
+    this.joinEntityRelation({
+      query,
+      relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+      shouldJoin: includeCreatedBy && hasAccessToUser,
+      condition: 'AND',
+      options: {
         filters: {
           id: createdByUserIds,
         },
       },
-    );
+    });
 
-    this.optimize(
-      queryBuilder,
-      { page, limit },
-      hasUserPermissions,
+    this.optimize({
+      query,
+      pagination: { page, limit },
+      hasAccessToUser,
       includeCreatedBy,
       includeUsers,
-      selectDepartmentFields,
-      selectUserFields,
-      selectUserCreatedByFields,
-      sort,
-    );
+      select: [
+        ...(selectUserFields ?? []),
+        ...(selectDepartmentFields ?? []),
+        ...(selectUserCreatedByFields ?? []),
+      ],
+      order: sort,
+    });
 
-    const departments = await queryBuilder.getManyAndCount();
+    const departments = await query.getManyAndCount();
     const totalCount = departments[1];
 
     return {
@@ -94,54 +111,63 @@ export class DepartmentQueryService extends QueryService {
     };
   }
 
-  optimize(
-    query: SelectQueryBuilder<Department>,
-    pagination: PaginationDto,
-    hasUserPermissions: boolean,
-    includeCreatedBy: boolean,
-    includeUsers: boolean,
-    selectDepartmentFields?: string[],
-    selectUserFields?: string[],
-    selectUserCreatedByFields?: string[],
-    order?: SortDto,
-  ): void {
-    const select = new Array<string>();
-
-    this.validateSelect<Department>(
-      query,
-      select,
-      selectUserCreatedByFields,
-      hasUserPermissions && includeCreatedBy,
-      CREATEDBY_USER_QUERY_ALIAS,
-    );
-
-    this.validateSelect<Department>(
-      query,
-      select,
-      selectUserFields,
-      hasUserPermissions && includeUsers,
-      this.userAlias,
-    );
-
-    this.validateSelect<Department>(
-      query,
-      select,
-      selectDepartmentFields,
-      true,
-    );
-
-    this.validateOrder<Department>(
-      query,
-      [this.userAlias, CREATEDBY_USER_QUERY_ALIAS],
-      hasUserPermissions,
-      select,
-      order,
-    );
-
-    if (select.length > 0 && !select.includes(`${query.alias}.id`)) {
-      select.push(`${query.alias}.id`);
+  optimize({
+    query,
+    pagination,
+    hasAccessToUser,
+    includeCreatedBy,
+    includeUsers,
+    select,
+    order,
+  }: {
+    query: SelectQueryBuilder<Department>;
+    pagination: PaginationDto;
+    hasAccessToUser: boolean;
+    includeCreatedBy: boolean;
+    includeUsers: boolean;
+    select: string[] | undefined;
+    order: SortDto | undefined;
+  }): void {
+    if (
+      select != undefined &&
+      select.length > 0 &&
+      order?.sortField !== undefined &&
+      !select.includes(order.sortField)
+    ) {
+      select.push(order.sortField);
     }
 
-    this.optimizeQuery({ query, pagination, order, select });
+    this.validateRelationSelect<Department>({
+      query,
+      select,
+      hasAccess: hasAccessToUser && includeCreatedBy,
+      relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+    });
+
+    this.validateRelationSelect<Department>({
+      query,
+      select,
+      hasAccess: hasAccessToUser && includeUsers,
+      relationAlias: this.userAlias,
+    });
+
+    this.validateSelect<Department>({ query, select });
+
+    this.validateOrder<Department>({
+      query,
+      relations: {
+        [this.userAlias]: hasAccessToUser && includeUsers,
+        [CREATEDBY_USER_QUERY_ALIAS]: hasAccessToUser && includeCreatedBy,
+      },
+      order,
+    });
+
+    if (select != undefined && select.length > 0) {
+      query.select(select);
+    }
+
+    this.sort<Department>({ query, order });
+
+    this.paginate<Department>({ query, pagination });
   }
 }

@@ -1,10 +1,9 @@
+import { ensureSystemUser } from '@/base/system-user.bootstrap';
 import type { INestApplication } from '@nestjs/common';
 
 import * as request from 'supertest';
 import type { App } from 'supertest/types';
 import type { DataSource } from 'typeorm';
-
-import { ensureSystemUser } from '../src/modules/base/system-user.bootstrap';
 
 import { bootstrapTestApp } from './bootstrap-e2e';
 

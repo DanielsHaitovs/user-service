@@ -91,6 +91,23 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
     it('should query departments with access to users', async () => {
       await queryDepartments(service, queryService, systemUserId, true);
     });
+
+    it('should return empty array because department does not exist', async () => {
+      await expect(
+        queryService.getDepartements(
+          {
+            query: {
+              ids: [uuid() as UUID, uuid() as UUID],
+            },
+            pagination: {
+              page: 1,
+              limit: 20,
+            },
+          },
+          true,
+        ),
+      ).resolves.toHaveProperty('departments', []);
+    });
   });
 
   describe('searchFor()', () => {

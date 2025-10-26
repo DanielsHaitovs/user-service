@@ -1,4 +1,5 @@
 import { PermissionService } from '@/role/services/permission/permission.service';
+import { RoleQueryService } from '@/role/services/role/query.service';
 import { RoleService } from '@/role/services/role/role.service';
 import { getSystemUserId } from '@/test/api/auth-user-api';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
@@ -9,6 +10,7 @@ import {
   deleteRolesByIds,
   findRolesByIds,
   findRolesCreatedByUserWithId,
+  queryRoles,
   searchForRoles,
   updateRole,
 } from '@/test/factories/role.factory';
@@ -23,14 +25,16 @@ import { v4 as uuid } from 'uuid';
 describe('RoleService (Integration - PostgreSQL)', () => {
   let app: INestApplication<App>;
   let module: TestingModule;
-  let permissionService: PermissionService;
   let roleService: RoleService;
+  let roleQueryService: RoleQueryService;
+  let permissionService: PermissionService;
   let systemUserId: UUID;
 
   beforeAll(async () => {
     ({ moduleFixture: module, app } = await bootstrapTestApp());
 
     roleService = module.get<RoleService>(RoleService);
+    roleQueryService = module.get<RoleQueryService>(RoleQueryService);
     permissionService = module.get<PermissionService>(PermissionService);
     systemUserId = await getSystemUserId(app);
   });
@@ -228,6 +232,73 @@ describe('RoleService (Integration - PostgreSQL)', () => {
           hasAccessToPermissions: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
+    });
+  });
+
+  describe('Query Roles ()', () => {
+    it('should get role with access to user and permissions', async () => {
+      await queryRoles({
+        roleService,
+        roleQueryService,
+        permissionService,
+        createdBy: systemUserId,
+        hasAccessToUser: true,
+        hasAccessToPermissions: true,
+      });
+    });
+
+    it('should get role with access to user', async () => {
+      await queryRoles({
+        roleService,
+        roleQueryService,
+        permissionService,
+        createdBy: systemUserId,
+        hasAccessToUser: true,
+        hasAccessToPermissions: false,
+      });
+    });
+
+    it('should get role with access to permissions', async () => {
+      await queryRoles({
+        roleService,
+        roleQueryService,
+        permissionService,
+        createdBy: systemUserId,
+        hasAccessToUser: false,
+        hasAccessToPermissions: true,
+      });
+    });
+
+    it('should get role with access to user and permissions', async () => {
+      await queryRoles({
+        roleService,
+        roleQueryService,
+        permissionService,
+        createdBy: systemUserId,
+        hasAccessToUser: false,
+        hasAccessToPermissions: false,
+      });
+    });
+
+    it('should return empty array because roles with ids does not exist role with access to user and permissions', async () => {
+      await expect(
+        roleQueryService.getRoles(
+          {
+            rolesQuery: {
+              ids: [uuid() as UUID],
+              createdByIds: [systemUserId],
+            },
+            permissionsQuery: {
+              ids: [uuid() as UUID],
+            },
+            pagination: { page: 1, limit: 10 },
+            includeCreatedBy: true,
+            includePermissions: true,
+          },
+          true,
+          true,
+        ),
+      ).resolves.toHaveProperty('roles', []);
     });
   });
 

@@ -14,8 +14,6 @@ import { SelectQueryBuilder } from 'typeorm';
 
 @Injectable()
 export class RoleQueryService extends QueryService {
-  // private readonly userAlias = `${USER_QUERY_ALIAS}s`;
-
   async getRoles(
     filters: RolesQueryDto,
     hasAccessToPermissions: boolean,
@@ -28,7 +26,7 @@ export class RoleQueryService extends QueryService {
         names: permissionNames,
         codes: permissionCodes,
       },
-      sort: { sortField, sortOrder },
+      order,
       pagination: { page, limit },
       selectRoles,
       selectPermissions,
@@ -92,7 +90,7 @@ export class RoleQueryService extends QueryService {
         ...(selectPermissions ?? []),
         ...(selectCreatedBy ?? []),
       ],
-      order: { sortField, sortOrder },
+      order,
     });
 
     const roles = await query.getManyAndCount();

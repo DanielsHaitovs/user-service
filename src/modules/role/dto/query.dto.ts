@@ -194,7 +194,7 @@ export class RolesQueryDto {
     required: false,
   })
   @Type(() => SortDto)
-  sort: SortDto;
+  order?: SortDto;
 
   @ApiProperty({
     description:
@@ -238,7 +238,7 @@ export class RolesQueryDto {
     pagination: PaginationDto,
     includePermissions: boolean,
     includeCreatedBy: boolean,
-    sort: SortDto,
+    order: SortDto,
     selectRoles: string[],
     selectPermissions: string[],
     selectCreatedBy: string[],
@@ -248,7 +248,7 @@ export class RolesQueryDto {
     this.includePermissions = includePermissions;
     this.includeCreatedBy = includeCreatedBy;
     this.pagination = pagination;
-    this.sort = sort;
+    this.order = order;
     this.selectRoles = selectRoles;
     this.selectPermissions = selectPermissions;
     this.selectCreatedBy = selectCreatedBy;

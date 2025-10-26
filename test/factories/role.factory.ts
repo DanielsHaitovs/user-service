@@ -17,6 +17,8 @@ import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import type { RoleQueryService } from '../../src/modules/role/services/role/query.service';
+
 export async function createRole({
   roleService,
   createdBy,
@@ -291,6 +293,88 @@ export async function searchForRoles({
   });
 
   return res;
+}
+
+export async function queryRoles({
+  roleService,
+  roleQueryService,
+  permissionService,
+  createdBy,
+  hasAccessToUser,
+  hasAccessToPermissions,
+}: {
+  roleService: RoleService;
+  roleQueryService: RoleQueryService;
+  permissionService: PermissionService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+  hasAccessToPermissions: boolean;
+}): Promise<RoleListResponseDto> {
+  const newRole = await createRoleWithPermissions({
+    roleService,
+    permissionService,
+    createdBy,
+    hasAccessToUser: true,
+    hasAccessToPermissions: true,
+  });
+
+  const anotherRole = await createRoleWithPermissions({
+    roleService,
+    permissionService,
+    createdBy,
+    hasAccessToUser: true,
+    hasAccessToPermissions: true,
+  });
+
+  const permissionIds = [
+    ...newRole.permissions.map((p) => p.id),
+    ...anotherRole.permissions.map((p) => p.id),
+  ];
+  const permissionCodes = [
+    ...newRole.permissions.map((p) => p.code),
+    ...anotherRole.permissions.map((p) => p.code),
+  ];
+  const permissionNames = [
+    ...newRole.permissions.map((p) => p.name),
+    ...anotherRole.permissions.map((p) => p.name),
+  ];
+
+  const data = await roleQueryService.getRoles(
+    {
+      rolesQuery: {
+        ids: [newRole.id, anotherRole.id],
+        names: [newRole.name, anotherRole.name],
+        createdByIds: [createdBy],
+      },
+      permissionsQuery: {
+        ids: permissionIds,
+        names: permissionNames,
+        codes: permissionCodes,
+      },
+      pagination: { page: 1, limit: 10 },
+      includeCreatedBy: true,
+      includePermissions: true,
+    },
+    hasAccessToPermissions,
+    hasAccessToUser,
+  );
+
+  validateRoleApiResponse({
+    roles: data.roles,
+    amountExpected: 2,
+    expectsCreateByUser: hasAccessToUser,
+    createdByUserIds: hasAccessToUser ? [newRole.createdBy.id] : [],
+    expectedPermissionAmount: hasAccessToPermissions
+      ? newRole.permissions.length
+      : 0,
+    names: [newRole.name, anotherRole.name],
+    ids: [newRole.id, anotherRole.id],
+    permissionCodes: hasAccessToPermissions ? permissionCodes : [],
+    permissionNames: hasAccessToPermissions ? permissionNames : [],
+    permissionIds: hasAccessToPermissions ? permissionIds : [],
+  });
+
+  return data;
 }
 
 export async function updateRole({

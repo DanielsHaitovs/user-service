@@ -7,6 +7,8 @@ import { Role } from '@/role/entities/role.entity';
 
 import { getMetadataArgsStorage } from 'typeorm';
 
+import { getCreatedBySelectableFields } from '../../user/helper/user-fields.util';
+
 /**
  * Dynamically extract all column names from the Role entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
@@ -101,6 +103,7 @@ export function getPermissionsGenericSelectableFields({
 }
 
 export function getRoleSelectableFields({
+  createdByFields,
   roleFields,
   roleAlias,
   permissionFields,
@@ -108,6 +111,7 @@ export function getRoleSelectableFields({
 }: {
   roleFields?: string[] | undefined;
   roleAlias?: string | undefined;
+  createdByFields?: string[] | undefined;
   permissionFields?: string[] | undefined;
   permissionAlias?: string | undefined;
 }): string[] {
@@ -117,5 +121,6 @@ export function getRoleSelectableFields({
       fields: permissionFields,
       alias: permissionAlias,
     }),
+    ...getCreatedBySelectableFields(createdByFields),
   ];
 }

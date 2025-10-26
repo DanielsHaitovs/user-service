@@ -28,7 +28,10 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
-import { getPermissionsGenericSelectableFields } from '@/role/helper/role-fields.util';
+import {
+  getPermissionsGenericSelectableFields,
+  getRoleSelectableFields,
+} from '@/role/helper/role-fields.util';
 import { PermissionService } from '@/role/services/permission/permission.service';
 import {
   BadRequestException,
@@ -207,7 +210,7 @@ export class PermissionController {
     type: String,
     required: false,
     description: 'Sort Permission by sort field',
-    enum: getPermissionsGenericSelectableFields({}),
+    enum: getRoleSelectableFields({}),
     example: 'name',
   })
   @ApiQuery({
@@ -223,7 +226,7 @@ export class PermissionController {
     required: false,
     description: 'Selct Permission by fields',
     isArray: true,
-    enum: getPermissionsGenericSelectableFields({}),
+    enum: getRoleSelectableFields({}),
     example: ['permission.name'],
   })
   @ApiOkResponse({

@@ -7,10 +7,9 @@ import { validate as isUUID } from 'uuid';
 export class ParseUUIDArrayPipe
   implements PipeTransform<string | string[], UUID[]>
 {
-  transform(value: string | string[]): UUID[] {
-    if (!value) return [];
+  transform(value: string | string[] | undefined): UUID[] {
+    if (value == undefined) return [];
 
-    // Support both `?ids[]=uuid1&ids[]=uuid2` and `?ids=uuid1,uuid2`
     const values: string[] = Array.isArray(value)
       ? value
       : value

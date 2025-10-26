@@ -27,7 +27,11 @@ import {
   UpdateRoleDto,
 } from '@/role/dto/role.dto';
 import { Role } from '@/role/entities/role.entity';
-import { getRoleGenericSelectableFields } from '@/role/helper/role-fields.util';
+import {
+  getPermissionsGenericSelectableFields,
+  getRoleGenericSelectableFields,
+  getRoleSelectableFields,
+} from '@/role/helper/role-fields.util';
 import { RoleService } from '@/role/services/role/role.service';
 import {
   BadRequestException,
@@ -41,6 +45,7 @@ import {
   NotFoundException,
   Param,
   ParseArrayPipe,
+  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -65,6 +70,9 @@ import {
 
 import { UUID } from 'crypto';
 
+import { getCreatedBySelectableFields } from '../../user/helper/user-fields.util';
+import { RoleQueryService } from '../services/role/query.service';
+
 @ApiTags('Roles')
 @TraceController()
 @Controller('roles')
@@ -73,7 +81,7 @@ import { UUID } from 'crypto';
 export class RolesController {
   constructor(
     private readonly roleService: RoleService,
-    // private readonly queryService: RoleQueryService,
+    private readonly queryService: RoleQueryService,
   ) {}
 
   @Post()
@@ -154,7 +162,7 @@ export class RolesController {
     });
   }
 
-  @Get('attributes/ids')
+  @Get('attribute/ids')
   @Permissions(READ_ROLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -286,7 +294,7 @@ export class RolesController {
     });
   }
 
-  @Get('attributes/createdBy')
+  @Get('attribute/createdBy')
   @Permissions(READ_ROLE, READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -741,174 +749,186 @@ export class RolesController {
    * Designed for administrative interfaces, reporting systems, and complex roles&permissins
    * management scenarios requiring fine-grained data access control.
    */
-  // @Get('attributes/filter')
-  // @Permissions(READ_ROLE, READ_PERMISSION)
-  // @HttpCode(HttpStatus.OK)
-  // @ApiQuery({
-  //   name: 'ids',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter roles by IDs',
-  // })
-  // @ApiQuery({
-  //   name: 'createdByIds',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter by IDs of users who created the roles',
-  // })
-  // @ApiQuery({
-  //   name: 'names',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter role by names',
-  // })
-  // @ApiQuery({
-  //   name: 'includeCreatedBy',
-  //   type: Boolean,
-  //   isArray: false,
-  //   required: false,
-  //   description: 'Include created by user in the response',
-  // })
-  // @ApiQuery({
-  //   name: 'includePermissions',
-  //   type: Boolean,
-  //   isArray: false,
-  //   required: false,
-  //   description: 'Include permissions in the response',
-  // })
-  // @ApiQuery({
-  //   name: 'permissionIds',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter permissions IDs',
-  // })
-  // @ApiQuery({
-  //   name: 'permissionNames',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter by permissions names',
-  // })
-  // @ApiQuery({
-  //   name: 'permissionCodes',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter by permissions codes',
-  // })
-  // @ApiQuery({
-  //   name: 'page',
-  //   type: Number,
-  //   required: true,
-  //   description: 'Filter users by page number',
-  //   example: 1,
-  // })
-  // @ApiQuery({
-  //   name: 'limit',
-  //   type: Number,
-  //   required: true,
-  //   description: 'Filter users by limit of results per page',
-  //   example: 10,
-  //   maximum: 500,
-  // })
-  // @ApiQuery({
-  //   name: 'sortField',
-  //   type: String,
-  //   required: false,
-  //   description: 'Filter users by sort order',
-  //   enum: [
-  //     ...getRoleGenericSelectableFields({}),
-  //     ...getPermissionsGenericSelectableFields({}),
-  //     ...getUserSelectableFields({}),
-  //   ],
-  //   example: 'name',
-  // })
-  // @ApiQuery({
-  //   name: 'sortOrder',
-  //   type: String,
-  //   required: false,
-  //   description: 'Filter users by sort order',
-  //   enum: ['ASC', 'DESC'],
-  // })
-  // @ApiQuery({
-  //   name: 'selectRoles',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Set role fields to include in response',
-  //   enum: getRoleGenericSelectableFields({}),
-  // })
-  // @ApiQuery({
-  //   name: 'selectPermissions',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Set permissions fields to include in response',
-  //   enum: getPermissionsGenericSelectableFields({}),
-  // })
-  // @ApiQuery({
-  //   name: 'selectCreatedBy',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Set created by user fields to include in response',
-  //   enum: getPermissionsGenericSelectableFields({}),
-  // })
-  // async filterUsers(
-  //   @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
-  //   @Query('createdByIds', new ParseArrayPipe({ optional: true }))
-  //   createdByIds: UUID[],
-  //   @Query('names', new ParseArrayPipe({ optional: true }))
-  //   names: string[],
-  //   @Query('includePermissions', new ParseBoolPipe({ optional: true }))
-  //   includePermissions: boolean,
-  //   @Query('includeCreatedBy', new ParseBoolPipe({ optional: true }))
-  //   includeCreatedBy: boolean,
-  //   @Query('permissionIds', new ParseArrayPipe({ optional: true }))
-  //   permissionIds: UUID[],
-  //   @Query('permissionNames', new ParseArrayPipe({ optional: true }))
-  //   permissionNames: string[],
-  //   @Query('permissionCodes', new ParseArrayPipe({ optional: true }))
-  //   permissionCodes: string[],
-  //   @Query('page', ParseIntPipe) page: number,
-  //   @Query('limit', ParseIntPipe) limit: number,
-  //   @Query('sortField') sortField: string,
-  //   @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-  //   @Query('selectRoles', new ParseArrayPipe({ optional: true }))
-  //   selectRoles: string[],
-  //   @Query('selectPermissions', new ParseArrayPipe({ optional: true }))
-  //   selectPermissions: string[],
-  //   @Query('selectCreatedBy', new ParseArrayPipe({ optional: true }))
-  //   selectCreatedBy: string[],
-  // ): Promise<RoleListResponseDto> {
-  //   return await this.queryService.getRoles({
-  //     rolesQuery: {
-  //       ids,
-  //       names,
-  //       createdByIds,
-  //     },
-  //     permissionsQuery: {
-  //       ids: permissionIds,
-  //       names: permissionNames,
-  //       codes: permissionCodes,
-  //     },
-  //     includePermissions,
-  //     includeCreatedBy,
-  //     pagination: {
-  //       page,
-  //       limit,
-  //     },
-  //     sort: {
-  //       sortField,
-  //       sortOrder,
-  //     },
-  //     selectRoles,
-  //     selectPermissions,
-  //     selectCreatedBy,
-  //   });
-  // }
+  @Get('query')
+  @Permissions(READ_ROLE, READ_PERMISSION)
+  @HttpCode(HttpStatus.OK)
+  @ApiQuery({
+    name: 'ids',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter roles by IDs',
+  })
+  @ApiQuery({
+    name: 'createdByIds',
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    required: false,
+    description: 'Filter by IDs of users who created the roles',
+  })
+  @ApiQuery({
+    name: 'names',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter role by names',
+  })
+  @ApiQuery({
+    name: 'includeCreatedBy',
+    type: Boolean,
+    isArray: false,
+    required: false,
+    description: 'Include created by user in the response',
+  })
+  @ApiQuery({
+    name: 'includePermissions',
+    type: Boolean,
+    isArray: false,
+    required: false,
+    description: 'Include permissions in the response',
+  })
+  @ApiQuery({
+    name: 'permissionIds',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter permissions IDs',
+  })
+  @ApiQuery({
+    name: 'permissionNames',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter by permissions names',
+  })
+  @ApiQuery({
+    name: 'permissionCodes',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter by permissions codes',
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter users by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter users by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: 'Filter users by sort order',
+    enum: getRoleSelectableFields({}),
+    example: 'name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: 'Filter users by sort order',
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'selectRoles',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Set role fields to include in response',
+    enum: getRoleGenericSelectableFields({}),
+  })
+  @ApiQuery({
+    name: 'selectPermissions',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Set permissions fields to include in response',
+    enum: getPermissionsGenericSelectableFields({}),
+  })
+  @ApiQuery({
+    name: 'selectCreatedBy',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Set created by user fields to include in response',
+    enum: getCreatedBySelectableFields(),
+  })
+  async filterUsers(
+    @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
+    @Query('createdByIds', new ParseArrayPipe({ optional: true }))
+    createdByIds: UUID[],
+    @Query('names', new ParseArrayPipe({ optional: true }))
+    names: string[],
+    @Query('includePermissions', new ParseBoolPipe({ optional: true }))
+    includePermissions: boolean,
+    @Query('includeCreatedBy', new ParseBoolPipe({ optional: true }))
+    includeCreatedBy: boolean,
+    @Query('permissionIds', new ParseArrayPipe({ optional: true }))
+    permissionIds: UUID[],
+    @Query('permissionNames', new ParseArrayPipe({ optional: true }))
+    permissionNames: string[],
+    @Query('permissionCodes', new ParseArrayPipe({ optional: true }))
+    permissionCodes: string[],
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('selectRoles', new ParseArrayPipe({ optional: true }))
+    selectRoles: string[],
+    @Query('selectPermissions', new ParseArrayPipe({ optional: true }))
+    selectPermissions: string[],
+    @Query('selectCreatedBy', new ParseArrayPipe({ optional: true }))
+    selectCreatedBy: string[],
+    @CurrentUserPermissions() userPermissions: string[],
+  ): Promise<RoleListResponseDto> {
+    const hasAccessToUser = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_USER],
+    });
+
+    const hasAccessToPermissions = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_PERMISSION],
+    });
+
+    return await this.queryService.getRoles(
+      {
+        rolesQuery: {
+          ids,
+          names,
+          createdByIds,
+        },
+        permissionsQuery: {
+          ids: permissionIds,
+          names: permissionNames,
+          codes: permissionCodes,
+        },
+        includePermissions,
+        includeCreatedBy,
+        pagination: {
+          page,
+          limit,
+        },
+        sort: {
+          sortField,
+          sortOrder,
+        },
+        selectRoles,
+        selectPermissions,
+        selectCreatedBy,
+      },
+      hasAccessToPermissions,
+      hasAccessToUser,
+    );
+  }
 }

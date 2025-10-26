@@ -64,7 +64,7 @@ export class DepartmentQueryService extends QueryService {
       query,
       relationAlias: this.userAlias,
       shouldJoin: includeUsers && hasAccessToUser,
-      condition: 'AND',
+      condition: 'OR',
       options: {
         filters: {
           id: userIds,
@@ -77,7 +77,7 @@ export class DepartmentQueryService extends QueryService {
       query,
       relationAlias: CREATEDBY_USER_QUERY_ALIAS,
       shouldJoin: includeCreatedBy && hasAccessToUser,
-      condition: 'AND',
+      condition: 'OR',
       options: {
         filters: {
           id: createdByUserIds,

@@ -15,17 +15,6 @@ import {
  * Centralizes common query patterns to ensure consistency across all entity services
  * and reduces code duplication. Implements a fluent interface for building complex
  * database queries with proper parameter binding to prevent SQL injection.
- *
- * @example
- * ```typescript
- * class UserQueryService extends QueryService {
- *   async findActiveUsers() {
- *     const query = this.initQuery(User, 'user');
- *     this.whereIn(query, 'status', ['active', 'pending']);
- *     return query.getMany();
- *   }
- * }
- * ```
  */
 export class QueryService {
   constructor(
@@ -63,7 +52,7 @@ export class QueryService {
 
     if (condition === 'OR') {
       query.orWhere(`${fieldPath} IN (:...${alias}_${field}s)`, {
-        [`${alias}${field}s`]: values,
+        [`${alias}_${field}s`]: values,
       });
     } else {
       query.andWhere(`${fieldPath} IN (:...${alias}_${field}s)`, {
@@ -218,7 +207,7 @@ export class QueryService {
 
     if (!hasAccess && hasFieldFromRelation) {
       throw new ForbiddenException(
-        `Cannot select fields from ${query.alias} with relation ${relationAlias} without permission`,
+        `Cannot select fields from ${query.alias} with relation ${relationAlias} without access`,
       );
     }
 
@@ -263,7 +252,7 @@ export class QueryService {
 
       if (order.sortField.includes(relationAlias) && hasAccess === false) {
         throw new ForbiddenException(
-          `Cannot order by field ${order.sortField} without permission`,
+          `Cannot order by field ${order.sortField} without access`,
         );
       } else if (
         order.sortField.includes(relationAlias) &&

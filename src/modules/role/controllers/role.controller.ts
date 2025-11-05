@@ -26,13 +26,15 @@ import {
   RoleListResponseDto,
   UpdateRoleDto,
 } from '@/role/dto/role.dto';
-import { Role } from '@/role/entities/role.entity';
+import { Roles } from '@/role/entities/role.entity';
 import {
   getPermissionsGenericSelectableFields,
   getRoleGenericSelectableFields,
   getRoleSelectableFields,
 } from '@/role/helper/role-fields.util';
+import { QueryService } from '@/role/services/role/query.service';
 import { RoleService } from '@/role/services/role/role.service';
+import { getCreatedByGenericSelectableFields } from '@/user/helper/user-fields.util';
 import {
   BadRequestException,
   Body,
@@ -70,9 +72,6 @@ import {
 
 import { UUID } from 'crypto';
 
-import { getCreatedBySelectableFields } from '../../user/helper/user-fields.util';
-import { RoleQueryService } from '../services/role/query.service';
-
 @ApiTags('Roles')
 @TraceController()
 @Controller('roles')
@@ -81,7 +80,7 @@ import { RoleQueryService } from '../services/role/query.service';
 export class RolesController {
   constructor(
     private readonly roleService: RoleService,
-    private readonly queryService: RoleQueryService,
+    private readonly queryService: QueryService,
   ) {}
 
   @Post()
@@ -92,7 +91,7 @@ export class RolesController {
     description: 'Creates a new role with the provided information.',
   })
   @ApiBody({
-    description: 'Role creation data',
+    description: 'Roles creation data',
     type: CreateRoleDto,
     isArray: true,
     required: true,
@@ -101,7 +100,6 @@ export class RolesController {
         summary: 'Create a new role',
         value: {
           name: EXAMPLE_ROLE_NAME,
-          description: EXAMPLE_ROLE_DESCRIPTION,
         },
       },
     },
@@ -122,7 +120,7 @@ export class RolesController {
     },
   })
   @ApiCreatedResponse({
-    description: 'Role successfully created',
+    description: 'Roles successfully created',
     example: {
       id: [EXAMPLE_ROLE_ID],
       name: EXAMPLE_ROLE_NAME,
@@ -141,10 +139,10 @@ export class RolesController {
     @Body()
     roleDto: CreateRoleDto,
     @CurrentUser() reqUser: JWTPayload,
-  ): Promise<Role> {
+  ): Promise<Roles> {
     const { permissions: userPermissions, id: createdBy } = reqUser;
 
-    const hasAccessToUser = hasPermissions({
+    const hasAccessToCreatedBy = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],
     });
@@ -157,7 +155,7 @@ export class RolesController {
     return await this.roleService.create({
       roleDto,
       createdBy,
-      hasAccessToUser,
+      hasAccessToCreatedBy,
       hasAccessToPermissions,
     });
   }
@@ -175,7 +173,7 @@ export class RolesController {
     isArray: true,
     format: 'uuid',
     required: true,
-    description: 'Role unique identifiers',
+    description: 'Roles unique identifiers',
     example: [EXAMPLE_ROLE_ID],
   })
   @ApiQuery({
@@ -267,8 +265,8 @@ export class RolesController {
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select') select: string[],
     @CurrentUserPermissions() userPermissions: string[],
-  ): Promise<Role[]> {
-    const hasAccessToUser = hasPermissions({
+  ): Promise<Roles[]> {
+    const hasAccessToCreatedBy = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],
     });
@@ -284,12 +282,12 @@ export class RolesController {
         page,
         limit,
       },
-      order: {
+      sort: {
         sortField,
         sortOrder,
       },
       select,
-      hasAccessToUser,
+      hasAccessToCreatedBy,
       hasAccessToPermissions,
     });
   }
@@ -307,7 +305,7 @@ export class RolesController {
     isArray: true,
     format: 'uuid',
     required: true,
-    description: 'User ids that created Role',
+    description: 'User ids that created Roles',
     example: [EXAMPLE_ROLE_ID],
   })
   @ApiQuery({
@@ -399,7 +397,7 @@ export class RolesController {
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select') select: string[],
     @CurrentUserPermissions() userPermissions: string[],
-  ): Promise<Role[]> {
+  ): Promise<Roles[]> {
     const hasAccessToPermissions = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_PERMISSION],
@@ -411,7 +409,7 @@ export class RolesController {
         page,
         limit,
       },
-      order: {
+      sort: {
         sortField,
         sortOrder,
       },
@@ -472,7 +470,7 @@ export class RolesController {
     example: ['role.name'],
   })
   @ApiOkResponse({
-    description: 'Role found and returned successfully',
+    description: 'Roles found and returned successfully',
     example: [
       {
         id: EXAMPLE_ROLE_ID,
@@ -509,7 +507,7 @@ export class RolesController {
         page,
         limit,
       },
-      order: {
+      sort: {
         sortField,
         sortOrder,
       },
@@ -533,7 +531,7 @@ export class RolesController {
     example: EXAMPLE_ROLE_ID,
   })
   @ApiBody({
-    description: 'Role update data',
+    description: 'Roles update data',
     type: UpdateRoleDto,
     isArray: false,
     required: true,
@@ -605,9 +603,9 @@ export class RolesController {
   async updateRole(
     @Param('id') id: UUID,
     @Body()
-    role: UpdateRoleDto,
-  ): Promise<Role> {
-    return await this.roleService.update({ id, role });
+    roleToUpdate: UpdateRoleDto,
+  ): Promise<Roles> {
+    return await this.roleService.update({ id, roleToUpdate });
   }
 
   @Delete()
@@ -623,7 +621,7 @@ export class RolesController {
     isArray: true,
     format: 'uuid',
     required: true,
-    description: 'Role unique identifiers',
+    description: 'Roles unique identifiers',
     example: [EXAMPLE_ROLE_ID],
   })
   @ApiOkResponse({
@@ -692,14 +690,14 @@ export class RolesController {
     description: 'Associates permissions with an existing role.',
   })
   @ApiBody({
-    description: 'Permission IDs and Role ID',
+    description: 'Permission IDs and Roles ID',
     type: AssignPermissionsToRoleDto,
   })
   @ApiOkResponse({
     description: 'Permissions successfully added to the role',
     example: {
       id: 'role-id-1',
-      name: 'Role Name',
+      name: 'Roles Name',
       permissions: [
         {
           id: 'permission-id-1',
@@ -715,18 +713,18 @@ export class RolesController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Role or permissions not found',
+    description: 'Roles or permissions not found',
     example: {
       statusCode: 404,
-      message: 'Role with id role-id-1 not found',
+      message: 'Roles with id role-id-1 not found',
       error: 'NotFoundException',
     },
   })
   async addPermissionsToRole(
     @Body() payload: AssignPermissionsToRoleDto,
     @CurrentUser() reqUser: JWTPayload,
-  ): Promise<Role> {
-    const hasAccessToUser = hasPermissions({
+  ): Promise<Roles> {
+    const hasAccessToCreatedBy = hasPermissions({
       userPermissions: reqUser.permissions,
       requestedPermissions: [READ_USER],
     });
@@ -737,7 +735,7 @@ export class RolesController {
       permissionIds,
       permissionCodes,
       roleId,
-      hasAccessToUser,
+      hasAccessToCreatedBy,
     });
   }
 
@@ -861,7 +859,7 @@ export class RolesController {
     isArray: true,
     required: false,
     description: 'Set created by user fields to include in response',
-    enum: getCreatedBySelectableFields(),
+    enum: getCreatedByGenericSelectableFields(),
   })
   async filterUsers(
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
@@ -891,7 +889,7 @@ export class RolesController {
     selectCreatedBy: string[],
     @CurrentUserPermissions() userPermissions: string[],
   ): Promise<RoleListResponseDto> {
-    const hasAccessToUser = hasPermissions({
+    const hasAccessToCreatedBy = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],
     });
@@ -928,7 +926,7 @@ export class RolesController {
         selectCreatedBy,
       },
       hasAccessToPermissions,
-      hasAccessToUser,
+      hasAccessToCreatedBy,
     );
   }
 }

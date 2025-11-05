@@ -1,6 +1,6 @@
 import type { UpdateDepartmentDto } from '@/department/dto/department.dto';
 import { DepartmentService } from '@/department/services/department.service';
-import { DepartmentQueryService } from '@/department/services/query.service';
+import { QueryService } from '@/department/services/query.service';
 import { getSystemUserId } from '@/test/api/auth-user-api';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import {
@@ -24,14 +24,14 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
   let app: INestApplication<App>;
   let module: TestingModule;
   let service: DepartmentService;
-  let queryService: DepartmentQueryService;
+  let queryService: QueryService;
   let systemUserId: UUID;
 
   beforeAll(async () => {
     ({ moduleFixture: module, app } = await bootstrapTestApp());
 
     service = module.get<DepartmentService>(DepartmentService);
-    queryService = module.get<DepartmentQueryService>(DepartmentQueryService);
+    queryService = module.get<QueryService>(QueryService);
     systemUserId = await getSystemUserId(app);
   });
 

@@ -1,72 +1,38 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
-import { QueryService } from '@/base/service/query.service';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
+import { OptimizeCriteria } from '@/base/interface/query.request';
+import { EntityQueryService } from '@/base/service/query.service';
+import {
+  PERMISSION_QUERY_ALIAS,
+  ROLE_QUERY_ALIAS,
+} from '@/lib/const/role.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
-import { Permission } from '@/role/entities/permissions.entity';
 import { Injectable } from '@nestjs/common';
 
-import { SelectQueryBuilder } from 'typeorm';
-
 @Injectable()
-export class PermissionQueryService extends QueryService {
-  optimize({
-    query,
-    pagination,
-    hasAccessToUser,
-    hasAccessToRole,
+export class QueryService extends EntityQueryService {
+  permissionQueryCriteria({
+    hasAccessToCreatedBy,
     includeCreatedBy,
-    includeRole,
-    select,
-    order,
+    hasAccessToRole,
+    includeRoles,
   }: {
-    query: SelectQueryBuilder<Permission>;
-    pagination: PaginationDto;
-    hasAccessToUser: boolean;
-    hasAccessToRole: boolean;
+    hasAccessToCreatedBy: boolean;
     includeCreatedBy: boolean;
-    includeRole: boolean;
-    select: string[] | undefined;
-    order: SortDto | undefined;
-  }): void {
-    if (
-      select != undefined &&
-      select.length > 0 &&
-      order?.sortField !== undefined
-    ) {
-      select.push(order.sortField);
-    }
-
-    this.validateRelationSelect<Permission>({
-      query,
-      select,
-      hasAccess: hasAccessToUser && includeCreatedBy,
-      relationAlias: CREATEDBY_USER_QUERY_ALIAS,
-    });
-
-    this.validateRelationSelect<Permission>({
-      query,
-      select,
-      hasAccess: hasAccessToRole && includeRole,
-      relationAlias: ROLE_QUERY_ALIAS,
-    });
-
-    this.validateSelect<Permission>({ query, select });
-
-    this.validateOrder<Permission>({
-      query,
-      relations: {
-        [ROLE_QUERY_ALIAS]: hasAccessToRole && includeRole,
-        [CREATEDBY_USER_QUERY_ALIAS]: hasAccessToUser && includeCreatedBy,
+    hasAccessToRole: boolean;
+    includeRoles: boolean;
+  }): Record<string, OptimizeCriteria> {
+    return {
+      [PERMISSION_QUERY_ALIAS]: {
+        permissionAccess: true,
+        includeRelation: true,
       },
-      order,
-    });
-
-    if (select != undefined && select.length > 0) {
-      query.select(select);
-    }
-
-    this.sort<Permission>({ query, order });
-
-    this.paginate<Permission>({ query, pagination });
+      [ROLE_QUERY_ALIAS]: {
+        permissionAccess: hasAccessToRole,
+        includeRelation: includeRoles,
+      },
+      [CREATEDBY_USER_QUERY_ALIAS]: {
+        permissionAccess: hasAccessToCreatedBy,
+        includeRelation: includeCreatedBy,
+      },
+    };
   }
 }

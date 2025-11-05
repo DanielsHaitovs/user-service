@@ -9,7 +9,7 @@ import {
   getPermissionsGenericSelectableFields,
   getRoleGenericSelectableFields,
 } from '@/role/helper/role-fields.util';
-import { getUserSelectableFields } from '@/user/helper/user-fields.util';
+import { getUserGenericSelectableFields } from '@/user/helper/user-fields.util';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -194,7 +194,7 @@ export class RolesQueryDto {
     required: false,
   })
   @Type(() => SortDto)
-  order?: SortDto;
+  sort?: SortDto;
 
   @ApiProperty({
     description:
@@ -223,13 +223,13 @@ export class RolesQueryDto {
   @ApiProperty({
     description:
       'Specific user fields to return - optimizes payload size and performance',
-    enum: getUserSelectableFields({}),
+    enum: getUserGenericSelectableFields({}),
     type: String,
     isArray: true,
     required: false,
-    example: getUserSelectableFields({}),
+    example: getUserGenericSelectableFields({}),
   })
-  @IsEnum(getUserSelectableFields({}), { each: true })
+  @IsEnum(getUserGenericSelectableFields({}), { each: true })
   selectCreatedBy?: string[];
 
   constructor(
@@ -238,7 +238,7 @@ export class RolesQueryDto {
     pagination: PaginationDto,
     includePermissions: boolean,
     includeCreatedBy: boolean,
-    order: SortDto,
+    sort: SortDto,
     selectRoles: string[],
     selectPermissions: string[],
     selectCreatedBy: string[],
@@ -248,7 +248,7 @@ export class RolesQueryDto {
     this.includePermissions = includePermissions;
     this.includeCreatedBy = includeCreatedBy;
     this.pagination = pagination;
-    this.order = order;
+    this.sort = sort;
     this.selectRoles = selectRoles;
     this.selectPermissions = selectPermissions;
     this.selectCreatedBy = selectCreatedBy;

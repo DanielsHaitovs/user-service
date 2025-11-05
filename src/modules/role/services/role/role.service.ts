@@ -9,16 +9,11 @@ import {
   RoleListResponseDto,
   UpdateRoleDto,
 } from '@/role/dto/role.dto';
-import { Permission } from '@/role/entities/permissions.entity';
-import { Role } from '@/role/entities/role.entity';
-import { PermissionService } from '@/role/services/permission/permission.service';
-import { RoleQueryService } from '@/role/services/role/query.service';
+import { Roles } from '@/role/entities/role.entity';
+import { HelperService } from '@/role/services/role/helper.service';
+import { QueryService } from '@/role/services/role/query.service';
 import { User } from '@/user/entities/user.entity';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
@@ -27,10 +22,10 @@ import { EntityNotFoundError, Repository } from 'typeorm';
 @Injectable()
 export class RoleService {
   constructor(
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
-    private readonly permissionService: PermissionService,
-    private readonly queryService: RoleQueryService,
+    @InjectRepository(Roles)
+    private readonly roleRepository: Repository<Roles>,
+    private readonly queryService: QueryService,
+    private readonly helperService: HelperService,
   ) {}
 
   /**
@@ -42,32 +37,20 @@ export class RoleService {
   async create({
     roleDto,
     createdBy,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     hasAccessToPermissions,
   }: {
     roleDto: CreateRoleDto;
     createdBy: UUID;
-    hasAccessToUser: boolean;
+    hasAccessToCreatedBy: boolean;
     hasAccessToPermissions: boolean;
-  }): Promise<Role> {
-    if (createdBy.length === 0) {
-      throw new BadRequestException('Creator user ID is required');
-    }
-
-    if (!roleDto.name) {
-      throw new BadRequestException('Role name is required');
-    }
-
+  }): Promise<Roles> {
     const { permissions, ...roleData } = roleDto;
 
     // Check for existing role with the same name
-    const existingRole = await this.getRoleByName(roleData.name);
-
-    if (existingRole) {
-      throw new ConflictException(
-        `Role with name "${roleData.name}" already exists. Please choose a different name.`,
-      );
-    }
+    await this.helperService.findNameConflicts({
+      name: roleData.name,
+    });
 
     // Create a new role entity
     const role = this.roleRepository.create({
@@ -85,11 +68,11 @@ export class RoleService {
       return await this.addPermissionsToRole({
         permissionCodes: permissions.flatMap((code) => code),
         roleId: newRole.id,
-        hasAccessToUser,
+        hasAccessToCreatedBy,
       });
     }
 
-    if (!hasAccessToUser) {
+    if (!hasAccessToCreatedBy) {
       newRole.createdBy = {} as User;
     }
 
@@ -108,24 +91,24 @@ export class RoleService {
     permissionIds,
     permissionCodes,
     roleId,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
   }: {
     permissionIds?: UUID[];
     permissionCodes?: string[];
     roleId: UUID;
-    hasAccessToUser: boolean;
-  }): Promise<Role> {
+    hasAccessToCreatedBy: boolean;
+  }): Promise<Roles> {
     const query = this.roleRepository
       .createQueryBuilder(ROLE_QUERY_ALIAS)
       .where(`${ROLE_QUERY_ALIAS}.id = :roleId`, { roleId });
 
-    this.queryService.joinRelation<Role>({
+    this.queryService.joinRelation<Roles>({
       query,
       relationAlias: PERMISSION_QUERY_ALIAS,
     });
 
-    if (hasAccessToUser) {
-      this.queryService.joinRelation<Role>({
+    if (hasAccessToCreatedBy) {
+      this.queryService.joinRelation<Roles>({
         query,
         relationAlias: CREATEDBY_USER_QUERY_ALIAS,
       });
@@ -133,44 +116,16 @@ export class RoleService {
 
     const role = await query.getOneOrFail();
 
-    const permissionsBuffer = new Array<Permission>();
-
-    if (permissionIds !== undefined) {
-      permissionsBuffer.push(
-        ...(await this.permissionService.findByIds({
-          ids: permissionIds,
-          pagination: { page: 1, limit: permissionIds.length },
-          hasAccessToRole: false,
-          hasAccessToUser: false,
-        })),
-      );
-    }
-
-    if (permissionCodes !== undefined) {
-      permissionsBuffer.push(
-        ...(await this.permissionService.findByCodes({
-          codes: permissionCodes,
-          pagination: { page: 1, limit: permissionCodes.length },
-          hasAccessToRole: false,
-          hasAccessToUser: false,
-        })),
-      );
-    }
+    const permissionsBuffer = await this.helperService.getPermissionsBy({
+      ids: permissionIds,
+      codes: permissionCodes,
+    });
 
     if (permissionsBuffer.length === 0) {
-      const errorMessage = new Array<string>();
-      if (permissionIds !== undefined) {
-        errorMessage.push(
-          `Permissions not found with IDs: ${permissionIds.join(', ')}`,
-        );
-      }
-      if (permissionCodes !== undefined) {
-        errorMessage.push(
-          `Permissions not found with codes: ${permissionCodes.join(', ')}`,
-        );
-      }
-
-      throw new EntityNotFoundError('Role', errorMessage);
+      throw new EntityNotFoundError(
+        'Roles',
+        `No permissions found to add to the role with ID ${roleId}`,
+      );
     }
 
     const permissions = permissionsBuffer.filter(
@@ -198,39 +153,35 @@ export class RoleService {
   async findByIds({
     ids,
     hasAccessToPermissions,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     pagination,
     select,
-    order,
+    sort,
   }: {
     ids: UUID[];
     hasAccessToPermissions: boolean;
-    hasAccessToUser: boolean;
+    hasAccessToCreatedBy: boolean;
     pagination: PaginationDto;
     select?: string[];
-    order?: SortDto;
-  }): Promise<Role[]> {
-    if (ids.length === 0) {
-      throw new BadRequestException('At least one role ID must be provided');
-    }
-
+    sort?: SortDto;
+  }): Promise<Roles[]> {
     const query = this.roleRepository.createQueryBuilder(ROLE_QUERY_ALIAS);
 
     if (hasAccessToPermissions) {
-      this.queryService.joinRelation<Role>({
+      this.queryService.joinRelation<Roles>({
         query,
         relationAlias: PERMISSION_QUERY_ALIAS,
       });
     }
 
-    if (hasAccessToUser) {
-      this.queryService.joinRelation<Role>({
+    if (hasAccessToCreatedBy) {
+      this.queryService.joinRelation<Roles>({
         query,
         relationAlias: CREATEDBY_USER_QUERY_ALIAS,
       });
     }
 
-    this.queryService.whereIn<Role>({
+    this.queryService.whereIn<Roles>({
       query,
       field: 'id',
       values: ids,
@@ -240,19 +191,25 @@ export class RoleService {
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser,
-      hasAccessToPermissions,
-      includeCreatedBy: true,
-      includePermissions: true,
       select,
-      order,
+      sort,
+      criteria: this.queryService.roleQueryCriteria({
+        includeCreatedBy: true,
+        includePermissions: true,
+        hasAccessToCreatedBy,
+        hasAccessToPermissions,
+      }),
     });
 
-    const roles = await query.getMany();
+    const { roles } = await this.queryService.paginatedResult({
+      query,
+      alias: 'roles',
+      pagination,
+    });
 
     if (roles.length === 0) {
       throw new EntityNotFoundError(
-        'Role',
+        'Roles',
         `Roles not found: ${ids.join(', ')}`,
       );
     }
@@ -273,35 +230,29 @@ export class RoleService {
     hasAccessToPermissions,
     pagination,
     select,
-    order,
+    sort,
   }: {
     createdByUserIds: UUID[];
     hasAccessToPermissions: boolean;
     pagination: PaginationDto;
     select?: string[];
-    order?: SortDto;
-  }): Promise<Role[]> {
-    if (createdByUserIds.length === 0) {
-      throw new BadRequestException(
-        'At least one createdBy user ID must be provided',
-      );
-    }
-
+    sort?: SortDto;
+  }): Promise<Roles[]> {
     const query = this.roleRepository.createQueryBuilder(ROLE_QUERY_ALIAS);
 
     if (hasAccessToPermissions) {
-      this.queryService.joinRelation<Role>({
+      this.queryService.joinRelation<Roles>({
         query,
         relationAlias: PERMISSION_QUERY_ALIAS,
       });
     }
 
-    this.queryService.joinRelation<Role>({
+    this.queryService.joinRelation<Roles>({
       query,
       relationAlias: CREATEDBY_USER_QUERY_ALIAS,
     });
 
-    this.queryService.whereIn<Role>({
+    this.queryService.whereIn<Roles>({
       query,
       field: CREATEDBY_USER_QUERY_ALIAS,
       values: createdByUserIds,
@@ -311,19 +262,25 @@ export class RoleService {
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser: true,
-      hasAccessToPermissions,
-      includeCreatedBy: true,
-      includePermissions: true,
       select,
-      order,
+      sort,
+      criteria: this.queryService.roleQueryCriteria({
+        includeCreatedBy: true,
+        includePermissions: true,
+        hasAccessToCreatedBy: true,
+        hasAccessToPermissions,
+      }),
     });
 
-    const roles = await query.getMany();
+    const { roles } = await this.queryService.paginatedResult({
+      query,
+      alias: 'roles',
+      pagination,
+    });
 
     if (roles.length === 0) {
       throw new EntityNotFoundError(
-        'Role',
+        'Roles',
         `Roles not found: ${createdByUserIds.join(', ')}`,
       );
     }
@@ -342,12 +299,12 @@ export class RoleService {
   async searchFor({
     value,
     pagination,
-    order,
+    sort,
     select,
   }: {
     value: string;
     pagination: PaginationDto;
-    order: SortDto;
+    sort: SortDto;
     select?: string[];
   }): Promise<RoleListResponseDto> {
     const query = this.roleRepository
@@ -362,27 +319,21 @@ export class RoleService {
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser: false,
-      hasAccessToPermissions: false,
-      includeCreatedBy: false,
-      includePermissions: false,
       select,
-      order,
+      sort,
+      criteria: this.queryService.roleQueryCriteria({
+        includeCreatedBy: false,
+        includePermissions: false,
+        hasAccessToCreatedBy: false,
+        hasAccessToPermissions: false,
+      }),
     });
 
-    const roles = await query.getManyAndCount();
-
-    const totalCount = roles[1];
-
-    const { page, limit } = pagination;
-
-    return {
-      total: totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-      roles: roles[0],
-    };
+    return await this.queryService.paginatedResult({
+      query,
+      alias: 'roles',
+      pagination,
+    });
   }
 
   /**
@@ -396,51 +347,36 @@ export class RoleService {
    * @throws BadRequestException if the name is not provided
    * @throws ConflictException if the new name conflicts with existing roles
    */
-  async update({ id, role }: { id: UUID; role: UpdateRoleDto }): Promise<Role> {
-    await this.findByIds({
-      ids: [id],
-      hasAccessToPermissions: false,
-      hasAccessToUser: false,
-      pagination: { page: 1, limit: 1 },
-    });
+  async update({
+    id,
+    roleToUpdate,
+  }: {
+    id: UUID;
+    roleToUpdate: UpdateRoleDto;
+  }): Promise<Roles> {
+    const role = await this.helperService.getByIdOrFail(id);
 
-    if (role.name === undefined) {
+    if (roleToUpdate.name === undefined) {
       throw new BadRequestException(
-        'Role name is required for update. Please provide a valid name.',
+        'Roles name is required for update. Please provide a valid name.',
       );
     }
 
-    const conflictName = await this.roleRepository
-      .createQueryBuilder(ROLE_QUERY_ALIAS)
-      .where(`${ROLE_QUERY_ALIAS}.name = :name`, { name: role.name })
-      .andWhere(`${ROLE_QUERY_ALIAS}.id != :id`, { id })
-      .getOne();
-
-    if (conflictName) {
-      throw new ConflictException(
-        `Role with name "${role.name}" already exists. Please choose a different name.`,
-      );
-    }
+    await this.helperService.findNameConflicts({
+      id,
+      name: roleToUpdate.name,
+    });
 
     await this.roleRepository
       .createQueryBuilder()
-      .update(Role)
+      .update(Roles)
       .set({ name: role.name })
       .where('id = :id', { id })
       .execute();
 
-    return this.roleRepository
-      .createQueryBuilder(ROLE_QUERY_ALIAS)
-      .where(`${ROLE_QUERY_ALIAS}.id = :id`, { id })
-      .leftJoinAndSelect(
-        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
-        PERMISSION_QUERY_ALIAS,
-      )
-      .leftJoinAndSelect(
-        `${ROLE_QUERY_ALIAS}.${CREATEDBY_USER_QUERY_ALIAS}`,
-        CREATEDBY_USER_QUERY_ALIAS,
-      )
-      .getOneOrFail();
+    role.name = roleToUpdate.name;
+
+    return role;
   }
 
   /**
@@ -456,38 +392,16 @@ export class RoleService {
     }
 
     // Comprehensive existence validation before any deletion
-    const existingRoles = await this.roleRepository
-      .createQueryBuilder(ROLE_QUERY_ALIAS)
-      .where(`${ROLE_QUERY_ALIAS}.id IN (:...ids)`, { ids })
-      .getMany();
+    await this.helperService.getManyByIdsOrFail(ids);
 
-    // Fail-fast validation with detailed error reporting
-    if (existingRoles.length !== ids.length) {
-      const missingIds = ids.filter(
-        (id) => !existingRoles.find((role) => role.id === id),
-      );
-
-      throw new EntityNotFoundError(
-        'Role',
-        `Roles with IDs [${missingIds.join(', ')}] not found`,
-      );
-    }
-
-    // Atomic bulk deletion with affected row tracking
+    // Perform deletion
     const result = await this.roleRepository
       .createQueryBuilder()
       .delete()
-      .from(Role)
+      .from(Roles)
       .where('id IN (:...ids)', { ids })
       .execute();
 
     return { deleted: result.affected ?? 0 };
-  }
-
-  private async getRoleByName(name: string): Promise<Role | null> {
-    return this.roleRepository
-      .createQueryBuilder(ROLE_QUERY_ALIAS)
-      .where(`${ROLE_QUERY_ALIAS}.name = :name`, { name })
-      .getOne();
   }
 }

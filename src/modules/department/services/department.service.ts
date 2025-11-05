@@ -5,16 +5,13 @@ import {
   DepartmentListResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
-import { Department } from '@/department/entities/department.entity';
-import { DepartmentQueryService } from '@/department/services/query.service';
+import { Departments } from '@/department/entities/department.entity';
+import { HelperService } from '@/department/services/helper.service';
+import { QueryService } from '@/department/services/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
@@ -23,9 +20,10 @@ import { EntityNotFoundError, Repository } from 'typeorm';
 @Injectable()
 export class DepartmentService {
   constructor(
-    @InjectRepository(Department)
-    private readonly departmentRepository: Repository<Department>,
-    private readonly queryService: DepartmentQueryService,
+    @InjectRepository(Departments)
+    private readonly departmentRepository: Repository<Departments>,
+    private readonly queryService: QueryService,
+    private readonly helperService: HelperService,
   ) {}
 
   /**
@@ -35,7 +33,7 @@ export class DepartmentService {
    * and maintain data integrity. Uses selective field querying for optimal
    * performance during validation checks.
    *
-   * @param createDepartmentDto - Department creation data with validated fields
+   * @param createDepartmentDto - Departments creation data with validated fields
    * @returns Promise resolving to the created department entity
    * @throws ConflictException when department name already exists
    */
@@ -47,7 +45,7 @@ export class DepartmentService {
     createDepartmentDto: CreateDepartmentDto;
     createdBy: UUID;
     hasAccessToUser: boolean;
-  }): Promise<Department> {
+  }): Promise<Departments> {
     const { name, country } = createDepartmentDto;
 
     const department = this.departmentRepository.create({
@@ -63,7 +61,7 @@ export class DepartmentService {
 
         if (error.code === '23505') {
           throw new ConflictException(
-            `Department with this name ${name} already exists`,
+            `Departments with this name ${name} already exists`,
           );
         }
 
@@ -90,18 +88,14 @@ export class DepartmentService {
     pagination,
     hasAccessToUser,
     select,
-    order,
+    sort,
   }: {
     ids: UUID[];
     pagination: PaginationDto;
     hasAccessToUser: boolean;
     select?: string[];
-    order?: SortDto;
-  }): Promise<Department[]> {
-    if (ids.length === 0) {
-      throw new BadRequestException('At least one ID must be provided');
-    }
-
+    sort?: SortDto;
+  }): Promise<Departments[]> {
     const query = this.departmentRepository.createQueryBuilder(
       DEPARTMENT_QUERY_ALIAS,
     );
@@ -126,18 +120,24 @@ export class DepartmentService {
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser,
-      includeCreatedBy: hasAccessToUser,
-      includeUsers: true,
       select,
-      order,
+      sort,
+      criteria: this.queryService.departmentQueryCriteria({
+        hasAccessToUser,
+        includeCreatedBy: true,
+        includeUsers: true,
+      }),
     });
 
-    const departments = await query.getMany();
+    const { departments } = await this.queryService.paginatedResult({
+      query,
+      alias: 'departments',
+      pagination,
+    });
 
     if (departments.length === 0) {
       throw new EntityNotFoundError(
-        'Department',
+        'Departments',
         `Departments with IDs [${ids.join(', ')}] not found`,
       );
     }
@@ -159,24 +159,14 @@ export class DepartmentService {
   async searchFor({
     value,
     pagination,
-    order,
+    sort,
     select,
-    hasAccessToUser,
   }: {
     value: string;
     pagination: PaginationDto;
-    hasAccessToUser: boolean;
-    order: SortDto;
+    sort: SortDto;
     select?: string[];
   }): Promise<DepartmentListResponseDto> {
-    if (pagination.page < 1 || pagination.limit < 1) {
-      throw new BadRequestException(
-        'Pagination parameters must be greater than 0',
-      );
-    }
-
-    const { page, limit } = pagination;
-
     const query = this.departmentRepository
       .createQueryBuilder(DEPARTMENT_QUERY_ALIAS)
       .where(`${DEPARTMENT_QUERY_ALIAS}.name like :value`, {
@@ -189,34 +179,23 @@ export class DepartmentService {
         value: `%${value}%`,
       });
 
-    if (hasAccessToUser) {
-      this.queryService.joinRelation({
-        query,
-        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
-      });
-    }
-
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser,
-      includeCreatedBy: hasAccessToUser,
-      includeUsers: true,
       select,
-      order,
+      sort,
+      criteria: this.queryService.departmentQueryCriteria({
+        hasAccessToUser: false,
+        includeCreatedBy: false,
+        includeUsers: false,
+      }),
     });
 
-    const departments = await query.getManyAndCount();
-
-    const totalCount = departments[1];
-
-    return {
-      total: totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-      departments: departments[0],
-    };
+    return await this.queryService.paginatedResult({
+      query,
+      alias: 'departments',
+      pagination,
+    });
   }
 
   /**
@@ -226,7 +205,7 @@ export class DepartmentService {
    * and maintain data integrity. Uses atomic update operation with parameterized query.
    *
    * @param id - Unique identifier of the department to update
-   * @param updateDepartmentDto - Department update data with validated fields
+   * @param updateDepartmentDto - Departments update data with validated fields
    * @returns Promise resolving to the updated department entity
    * @throws NotFoundException when department ID doesn't exist
    * @throws ConflictException when department name already exists
@@ -237,41 +216,33 @@ export class DepartmentService {
   }: {
     id: UUID;
     updateDepartmentDto: UpdateDepartmentDto;
-  }): Promise<Department> {
-    await this.findByIds({
-      ids: [id],
-      pagination: { page: 1, limit: 1 },
-      hasAccessToUser: false,
-    });
+  }): Promise<Departments> {
+    const department = await this.helperService.getByIdOrFail(id);
 
     if (updateDepartmentDto.name !== undefined) {
-      const nameExists = await this.departmentRepository
-        .createQueryBuilder(DEPARTMENT_QUERY_ALIAS)
-        .where(
-          `${DEPARTMENT_QUERY_ALIAS}.name = :name AND ${DEPARTMENT_QUERY_ALIAS}.id != :id`,
-          {
-            name: updateDepartmentDto.name,
-            id,
-          },
-        )
-        .getOne();
-
-      if (nameExists) {
-        throw new ConflictException(
-          'Name is already in use by another department',
-        );
-      }
+      await this.helperService.findNameConflicts({
+        id,
+        name: updateDepartmentDto.name,
+      });
     }
 
     // Atomic update operation with parameterized query
     await this.departmentRepository
       .createQueryBuilder()
-      .update(Department)
+      .update(Departments)
       .set(updateDepartmentDto)
       .where('id = :id', { id })
       .execute();
 
-    return this.departmentRepository.findOneByOrFail({ id });
+    if (updateDepartmentDto.name != undefined) {
+      department.name = updateDepartmentDto.name;
+    }
+
+    if (updateDepartmentDto.country != undefined) {
+      department.country = updateDepartmentDto.country;
+    }
+
+    return department;
   }
 
   /**
@@ -290,28 +261,14 @@ export class DepartmentService {
       return { deleted: 0 };
     }
 
-    const existingDepartments = await this.findByIds({
-      ids,
-      pagination: { page: 1, limit: ids.length },
-      hasAccessToUser: false,
-    });
-
-    if (existingDepartments.length !== ids.length) {
-      const missingIds = ids.filter(
-        (id) => !existingDepartments.find((department) => department.id === id),
-      );
-
-      throw new EntityNotFoundError(
-        'Department',
-        `Departments with IDs [${missingIds.join(', ')}] not found`,
-      );
-    }
+    // validate if request contains departments that exist
+    await this.helperService.getManyByIdsOrFail(ids);
 
     // Atomic bulk deletion with affected row tracking
     const result = await this.departmentRepository
       .createQueryBuilder()
       .delete()
-      .from(Department)
+      .from(Departments)
       .where('id IN (:...ids)', { ids })
       .execute();
 

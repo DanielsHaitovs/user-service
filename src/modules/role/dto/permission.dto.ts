@@ -78,7 +78,7 @@ export class CreatePermissionDto extends PermissionBaseDto {
   }
 }
 
-export class UpdatePermissionDto extends PartialType(CreatePermissionDto) {}
+export class UpdatePermissionDto extends PartialType(PermissionBaseDto) {}
 
 export class PermissionResponseDto extends PermissionBaseDto {
   @ApiProperty({

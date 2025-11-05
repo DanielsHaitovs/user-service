@@ -6,15 +6,24 @@ import { UUID } from 'crypto';
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToMany,
   ManyToOne,
   Unique,
 } from 'typeorm';
 
-@Entity('department')
+@Entity('departments')
 @Unique('UQ_DEPARTMENT_NAME', ['name'], { deferrable: 'INITIALLY IMMEDIATE' })
-export class Department extends MecBaseEntity {
+@Index('IX_DEPARTMENT_COUNTRY_NAME', ['country', 'name'])
+@Index('IX_DEPARTMENT_NAME_CREATED_BY', ['name', 'createdBy'])
+@Index('IX_DEPARTMENT_COUNTRY_CREATED_BY', ['country', 'createdBy'])
+@Index('IX_DEPARTMENT_COUNTRY_NAME_CREATED_BY', [
+  'country',
+  'name',
+  'createdBy',
+])
+export class Departments extends MecBaseEntity {
   @Column({ length: 100 })
   @IsNotEmpty()
   @IsString()

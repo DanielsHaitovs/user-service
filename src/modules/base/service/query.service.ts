@@ -1,4 +1,9 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import {
+  PaginatedResponseDto,
+  PaginationDto,
+  SortDto,
+} from '@/base/dto/pagination.dto';
+import { QueryRequest } from '@/base/interface/query.request';
 import { ForbiddenException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
@@ -16,10 +21,10 @@ import {
  * and reduces code duplication. Implements a fluent interface for building complex
  * database queries with proper parameter binding to prevent SQL injection.
  */
-export class QueryService {
+export class EntityQueryService {
   constructor(
     @InjectEntityManager()
-    private readonly entityManager: EntityManager,
+    protected entityManager: EntityManager,
   ) {}
 
   /**
@@ -172,16 +177,16 @@ export class QueryService {
    */
   sort<T extends ObjectLiteral>({
     query,
-    order,
+    sort,
   }: {
     query: SelectQueryBuilder<T>;
-    order: SortDto | undefined;
+    sort: SortDto | undefined;
   }): void {
-    if (order?.sortField == undefined) return;
+    if (sort?.sortField == undefined) return;
 
     // order.sortOrder ??= 'ASC';
 
-    const { sortField, sortOrder } = order;
+    const { sortField, sortOrder } = sort;
 
     query.orderBy(sortField, sortOrder);
   }
@@ -195,7 +200,7 @@ export class QueryService {
     query: SelectQueryBuilder<T>;
     select: string[] | undefined;
     hasAccess: boolean;
-    relationAlias?: string;
+    relationAlias: string | undefined;
   }): void {
     if (select == undefined || select.length === 0) return;
 
@@ -239,25 +244,22 @@ export class QueryService {
   validateOrder<T extends ObjectLiteral>({
     query,
     relations,
-    order,
+    sort,
   }: {
     query: SelectQueryBuilder<T>;
     relations: Record<string, boolean>;
-    order: SortDto | undefined;
+    sort: SortDto | undefined;
   }): void {
-    if (order?.sortField === undefined) return;
+    if (sort?.sortField === undefined) return;
 
     Object.keys(relations).forEach((relationAlias) => {
       const hasAccess = relations[relationAlias];
 
-      if (order.sortField.includes(relationAlias) && hasAccess === false) {
+      if (sort.sortField.includes(relationAlias) && hasAccess === false) {
         throw new ForbiddenException(
-          `Cannot order by field ${order.sortField} without access`,
+          `Cannot order by field ${sort.sortField} without access`,
         );
-      } else if (
-        order.sortField.includes(relationAlias) &&
-        hasAccess === true
-      ) {
+      } else if (sort.sortField.includes(relationAlias) && hasAccess === true) {
         if (!this.isLeftJoinPresent({ query, relationAlias })) {
           this.joinRelation<T>({ query, relationAlias });
         }
@@ -278,12 +280,42 @@ export class QueryService {
   joinRelation<T extends ObjectLiteral>({
     query,
     relationAlias,
+    nestedRelation,
   }: {
     query: SelectQueryBuilder<T>;
     relationAlias: string;
+    nestedRelation?: Record<
+      string,
+      { nestedFrom: string; hasAccess: boolean; includeAll?: boolean }
+    >;
   }): void {
     if (!this.isLeftJoinPresent({ query, relationAlias })) {
       query.leftJoinAndSelect(`${query.alias}.${relationAlias}`, relationAlias);
+    }
+
+    if (nestedRelation !== undefined) {
+      const nestedEntries = Object.entries(nestedRelation);
+      nestedEntries.forEach(
+        ([nestedAlias, { nestedFrom, hasAccess, includeAll }]) => {
+          if (!hasAccess) return;
+
+          if (!this.isLeftJoinPresent({ query, relationAlias: nestedAlias })) {
+            query.leftJoinAndSelect(
+              `${nestedFrom}.${nestedAlias}`,
+              nestedAlias,
+            );
+          }
+
+          if (includeAll == undefined || includeAll) {
+            const filterAlias = `${nestedAlias}_filter`;
+            if (
+              !this.isLeftJoinPresent({ query, relationAlias: filterAlias })
+            ) {
+              query.leftJoin(`${nestedFrom}.${nestedAlias}`, filterAlias);
+            }
+          }
+        },
+      );
     }
   }
 
@@ -349,5 +381,75 @@ export class QueryService {
     return query.expressionMap.joinAttributes.some(
       (join) => join.alias.name === relationAlias && join.alias.type === 'join',
     );
+  }
+
+  optimize<T extends ObjectLiteral>(queryCriteria: QueryRequest<T>): void {
+    const { query, pagination, sort, select, criteria } = queryCriteria;
+
+    if (
+      select != undefined &&
+      select.length > 0 &&
+      sort?.sortField !== undefined &&
+      !select.includes(sort.sortField)
+    ) {
+      select.push(sort.sortField);
+    }
+
+    const relations: Record<string, boolean> = {};
+
+    Object.entries(criteria).forEach(
+      ([relationAlias, { permissionAccess, includeRelation, nestedFrom }]) => {
+        const hasAccess = permissionAccess && includeRelation;
+
+        if (query.alias !== relationAlias && nestedFrom === undefined) {
+          this.validateRelationSelect<T>({
+            query,
+            select,
+            hasAccess,
+            relationAlias,
+          });
+          relations[relationAlias] = hasAccess;
+        }
+      },
+    );
+
+    this.validateSelect<T>({ query, select });
+
+    this.validateOrder<T>({
+      query,
+      relations,
+      sort,
+    });
+
+    if (select != undefined && select.length > 0) {
+      query.select(select);
+    }
+
+    this.sort<T>({ query, sort });
+
+    this.paginate<T>({ query, pagination });
+  }
+
+  async paginatedResult<T extends ObjectLiteral, K extends string>({
+    query,
+    alias,
+    pagination,
+  }: {
+    query: SelectQueryBuilder<T>;
+    alias: K;
+    pagination?: PaginationDto;
+  }): Promise<PaginatedResponseDto & Record<K, T[]>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 10;
+
+    const [items, totalCount] = await query.getManyAndCount();
+
+    return {
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+      [alias]: items,
+    } as PaginatedResponseDto & Record<K, T[]>;
   }
 }

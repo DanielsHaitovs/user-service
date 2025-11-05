@@ -11,8 +11,9 @@ import {
   UpdatePermissionDto,
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
-import { Role } from '@/role/entities/role.entity';
-import { PermissionQueryService } from '@/role/services/permission/query.service';
+import { Roles } from '@/role/entities/role.entity';
+import { QueryService } from '@/role/services/permission/query.service';
+import { HelperService } from '@/role/services/role/helper.service';
 import { User } from '@/user/entities/user.entity';
 import {
   BadRequestException,
@@ -22,16 +23,15 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { Brackets, EntityNotFoundError, Repository } from 'typeorm';
+import { EntityNotFoundError, Repository } from 'typeorm';
 
 @Injectable()
 export class PermissionService {
   constructor(
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
-    private readonly queryService: PermissionQueryService,
+    private readonly queryService: QueryService,
+    private readonly helperService: HelperService,
   ) {}
 
   /**
@@ -40,7 +40,7 @@ export class PermissionService {
    *
    * @param permissions - Array of permission data to create
    * @param createdBy - UUID of the user creating the permissions
-   * @param hasAccessToUser - Whether the requesting user has permission to view user details
+   * @param hasAccessToCreatedBy - Whether the requesting user has permission to view user details
    * @returns Array of created permission entities
    * @throws NotFoundException if any specified role ID does not exist
    * @throws ConflictException if a permission name or code already exists
@@ -48,11 +48,11 @@ export class PermissionService {
   async create({
     permissions,
     createdBy,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
   }: {
     permissions: CreatePermissionDto[];
     createdBy: UUID;
-    hasAccessToUser: boolean;
+    hasAccessToCreatedBy: boolean;
   }): Promise<Permission[]> {
     const rolesIds = Array.from(
       new Set(permissions.flatMap((permission) => permission.roleIds)),
@@ -60,17 +60,17 @@ export class PermissionService {
 
     if (rolesIds.length === 0) {
       throw new BadRequestException(
-        'No roles provivided for permissions, roles are required in order to create permissions',
+        'No roles provided for permissions, roles are required in order to create permissions',
       );
     }
 
-    await this.validateRolesExist(rolesIds);
+    await this.helperService.getManyByIdsOrFail(rolesIds);
 
     const permissionsToSave = permissions.map((permission) => {
       return this.permissionRepository.create({
         code: permission.code,
         name: permission.name,
-        roles: permission.roleIds.map((roleId) => ({ id: roleId }) as Role),
+        roles: permission.roleIds.map((roleId) => ({ id: roleId }) as Roles),
         createdBy: { id: createdBy } as User,
       });
     });
@@ -86,7 +86,7 @@ export class PermissionService {
         throw e;
       });
 
-    if (!hasAccessToUser) {
+    if (!hasAccessToCreatedBy) {
       newPermissions.forEach((permission) => {
         permission.createdBy = {} as User;
       });
@@ -104,24 +104,18 @@ export class PermissionService {
   async findByIds({
     ids,
     hasAccessToRole,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     pagination,
     select,
-    order,
+    sort,
   }: {
     ids: UUID[];
     hasAccessToRole: boolean;
-    hasAccessToUser: boolean;
+    hasAccessToCreatedBy: boolean;
     pagination: PaginationDto;
     select?: string[];
-    order?: SortDto;
+    sort?: SortDto;
   }): Promise<Permission[]> {
-    if (ids.length === 0) {
-      throw new BadRequestException(
-        'At least one permission ID must be provided',
-      );
-    }
-
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
     );
@@ -133,7 +127,7 @@ export class PermissionService {
       });
     }
 
-    if (hasAccessToUser) {
+    if (hasAccessToCreatedBy) {
       this.queryService.joinRelation<Permission>({
         query,
         relationAlias: CREATEDBY_USER_QUERY_ALIAS,
@@ -150,15 +144,21 @@ export class PermissionService {
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser,
-      hasAccessToRole,
-      includeCreatedBy: true,
-      includeRole: true,
       select,
-      order,
+      sort,
+      criteria: this.queryService.permissionQueryCriteria({
+        hasAccessToCreatedBy,
+        includeCreatedBy: true,
+        hasAccessToRole,
+        includeRoles: true,
+      }),
     });
 
-    const permissions = await query.getMany();
+    const { permissions } = await this.queryService.paginatedResult({
+      query,
+      alias: 'permissions',
+      pagination,
+    });
 
     if (permissions.length === 0) {
       throw new EntityNotFoundError(
@@ -179,24 +179,18 @@ export class PermissionService {
   async findByCodes({
     codes,
     hasAccessToRole,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     pagination,
     select,
-    order,
+    sort,
   }: {
     codes: string[];
     hasAccessToRole: boolean;
-    hasAccessToUser: boolean;
+    hasAccessToCreatedBy: boolean;
     pagination: PaginationDto;
     select?: string[];
-    order?: SortDto;
+    sort?: SortDto;
   }): Promise<Permission[]> {
-    if (codes.length === 0) {
-      throw new BadRequestException(
-        'At least one permission code must be provided',
-      );
-    }
-
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
     );
@@ -208,7 +202,7 @@ export class PermissionService {
       });
     }
 
-    if (hasAccessToUser) {
+    if (hasAccessToCreatedBy) {
       this.queryService.joinRelation<Permission>({
         query,
         relationAlias: CREATEDBY_USER_QUERY_ALIAS,
@@ -225,15 +219,21 @@ export class PermissionService {
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser,
-      hasAccessToRole,
-      includeCreatedBy: true,
-      includeRole: true,
       select,
-      order,
+      sort,
+      criteria: this.queryService.permissionQueryCriteria({
+        hasAccessToCreatedBy,
+        includeCreatedBy: true,
+        hasAccessToRole,
+        includeRoles: true,
+      }),
     });
 
-    const permissions = await query.getMany();
+    const { permissions } = await this.queryService.paginatedResult({
+      query,
+      alias: 'permissions',
+      pagination,
+    });
 
     if (permissions.length === 0) {
       throw new EntityNotFoundError(
@@ -251,32 +251,24 @@ export class PermissionService {
    *
    * @param value - The search term to match against permission name, code, or ID
    * @param pagination - Pagination parameters (page number and limit)
-   * @param order - Sorting parameters
+   * @param sort - Sorting parameters
    * @param select - Optional list of fields to select
    * @param hasAccessToRole - Whether to include role details in the results
-   * @param hasAccessToUser - Whether to include createdBy user details in the results
+   * @param hasAccessToCreatedBy - Whether to include createdBy user details in the results
    * @returns A paginated response containing matching permissions and metadata
    * @throws BadRequestException if pagination parameters are invalid
    */
   async searchFor({
     value,
     pagination,
-    order,
+    sort,
     select,
   }: {
     value: string;
     pagination: PaginationDto;
-    order: SortDto;
+    sort: SortDto;
     select?: string[];
   }): Promise<PermissionListResponseDto> {
-    if (pagination.page < 1 || pagination.limit < 1) {
-      throw new BadRequestException(
-        'Pagination parameters must be greater than 0',
-      );
-    }
-
-    const { page, limit } = pagination;
-
     const query = this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
       .where(`${PERMISSION_QUERY_ALIAS}.name ILIKE :value`, {
@@ -292,25 +284,21 @@ export class PermissionService {
     this.queryService.optimize({
       query,
       pagination,
-      hasAccessToUser: false,
-      hasAccessToRole: false,
-      includeCreatedBy: false,
-      includeRole: false,
       select,
-      order,
+      sort,
+      criteria: this.queryService.permissionQueryCriteria({
+        hasAccessToCreatedBy: false,
+        includeCreatedBy: false,
+        hasAccessToRole: false,
+        includeRoles: false,
+      }),
     });
 
-    const permissions = await query.getManyAndCount();
-
-    const totalCount = permissions[1];
-
-    return {
-      total: totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-      permissions: permissions[0],
-    };
+    return await this.queryService.paginatedResult({
+      query,
+      alias: 'permissions',
+      pagination,
+    });
   }
 
   /**
@@ -323,45 +311,32 @@ export class PermissionService {
    * @throws NotFoundException if the permission with the given ID does not exist
    * @throws ConflictException if the new name or code conflicts with existing permissions
    */
-  async update(id: UUID, permission: UpdatePermissionDto): Promise<Permission> {
-    if (permission.code == undefined && permission.name == undefined) {
+  async update({
+    id,
+    updatePermissionDto,
+  }: {
+    id: UUID;
+    updatePermissionDto: UpdatePermissionDto;
+  }): Promise<Permission> {
+    if (
+      updatePermissionDto.code == undefined &&
+      updatePermissionDto.name == undefined
+    ) {
       throw new BadRequestException(
-        'Permission code or name cannot be updated',
+        'No value provided to update for permission',
       );
     }
 
-    await this.findByIds({
-      ids: [id],
-      hasAccessToRole: false,
-      hasAccessToUser: false,
-      pagination: { page: 1, limit: 1 },
+    // Ensure the permission exists
+    const permission = await this.helperService.getPermissionById(id);
+
+    // Validate no conflicts with existing permissions
+    await this.helperService.findNameOrCodeConflictPermission({
+      id,
+      updatePermissionDto,
     });
 
-    const conflictQuery = this.permissionRepository
-      .createQueryBuilder(PERMISSION_QUERY_ALIAS)
-      .where(`${PERMISSION_QUERY_ALIAS}.id != :id`, { id });
-
-    conflictQuery.andWhere(
-      new Brackets((qb) => {
-        if (permission.name !== undefined) {
-          qb.where(`${PERMISSION_QUERY_ALIAS}.name = :name`, {
-            name: permission.name,
-          });
-        }
-        if (permission.code !== undefined) {
-          qb.orWhere(`${PERMISSION_QUERY_ALIAS}.code = :code`, {
-            code: permission.code,
-          });
-        }
-      }),
-    );
-
-    const conflictedRecords = await conflictQuery.getMany();
-
-    if (conflictedRecords.length > 0) {
-      throw new ConflictException('Permission name or code already exists');
-    }
-
+    // Perform the update
     await this.permissionRepository
       .createQueryBuilder()
       .update(Permission)
@@ -369,10 +344,15 @@ export class PermissionService {
       .where('id = :id', { id })
       .execute();
 
-    return this.permissionRepository
-      .createQueryBuilder(PERMISSION_QUERY_ALIAS)
-      .where(`${PERMISSION_QUERY_ALIAS}.id = :id`, { id })
-      .getOneOrFail();
+    if (updatePermissionDto.name != undefined) {
+      permission.name = updatePermissionDto.name;
+    }
+
+    if (updatePermissionDto.code != undefined) {
+      permission.code = updatePermissionDto.code;
+    }
+
+    return permission;
   }
 
   /**
@@ -389,27 +369,20 @@ export class PermissionService {
       return { deleted: 0 };
     }
 
-    const existingPermissions = await this.permissionRepository
-      .createQueryBuilder(PERMISSION_QUERY_ALIAS)
-      .where(`${PERMISSION_QUERY_ALIAS}.id IN (:...ids)`, { ids })
-      .getMany();
+    // Validate all permissions exist
+    const existingPermissions = await this.helperService.getPermissionsBy({
+      ids,
+    });
 
-    if (existingPermissions.length !== ids.length) {
-      const missingIds = ids.filter(
-        (id) => !existingPermissions.find((perm) => perm.id === id),
-      );
-      throw new EntityNotFoundError(
-        'Permissions',
-        `Could not delete permissions, because IDs [${missingIds.join(', ')}] not found`,
-      );
-    }
-
+    // Remove associations with roles to avoid foreign key constraints
     existingPermissions.forEach((permission) => {
       permission.roles = [];
     });
 
+    // Save the updated permissions
     await this.permissionRepository.save(existingPermissions);
 
+    // Delete the permissions
     const result = await this.permissionRepository
       .createQueryBuilder()
       .delete()
@@ -418,31 +391,5 @@ export class PermissionService {
       .execute();
 
     return { deleted: result.affected ?? 0 };
-  }
-
-  /**
-   * Validates the existence of roles by their IDs.
-   * Throws an EntityNotFoundError if any role ID does not exist.
-   *
-   * @param roleIds - Array of role UUIDs to validate
-   * @returns Promise resolving to void
-   * @throws EntityNotFoundError when any specified role ID doesn't exist
-   */
-  private async validateRolesExist(roleIds: UUID[]): Promise<void> {
-    const existingRoles = await this.roleRepository
-      .createQueryBuilder(ROLE_QUERY_ALIAS)
-      .where(`${ROLE_QUERY_ALIAS}.id IN (:...roleIds)`, { roleIds })
-      .getMany();
-
-    if (existingRoles.length !== roleIds.length) {
-      const existingRoleIds = existingRoles.map((role) => role.id);
-      const missingRoleIds = roleIds.filter(
-        (roleId) => !existingRoleIds.includes(roleId),
-      );
-      throw new EntityNotFoundError(
-        'Roles',
-        `Roles with IDs [${missingRoleIds.join(', ')}] not found. Cannot create permissions with non-existing roles.`,
-      );
-    }
   }
 }

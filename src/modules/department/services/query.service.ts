@@ -1,8 +1,8 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
-import { QueryService } from '@/base/service/query.service';
+import { OptimizeCriteria } from '@/base/interface/query.request';
+import { EntityQueryService } from '@/base/service/query.service';
 import { DepartmentListResponseDto } from '@/department/dto/department.dto';
 import { DepartmentQueryDto } from '@/department/dto/query.dto';
-import { Department } from '@/department/entities/department.entity';
+import { Departments } from '@/department/entities/department.entity';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
@@ -10,12 +10,8 @@ import {
 } from '@/lib/const/user.const';
 import { Injectable } from '@nestjs/common';
 
-import { SelectQueryBuilder } from 'typeorm';
-
 @Injectable()
-export class DepartmentQueryService extends QueryService {
-  private readonly userAlias = `${USER_QUERY_ALIAS}s`;
-
+export class QueryService extends EntityQueryService {
   async getDepartements(
     filters: DepartmentQueryDto,
     hasAccessToUser: boolean,
@@ -23,7 +19,7 @@ export class DepartmentQueryService extends QueryService {
     const {
       query: { ids, names, countries, userIds, createdByUserIds },
       sort,
-      pagination: { page, limit },
+      pagination,
       selectUserFields,
       selectDepartmentFields,
       selectUserCreatedByFields,
@@ -34,7 +30,7 @@ export class DepartmentQueryService extends QueryService {
     includeCreatedBy ??= hasAccessToUser;
 
     const query = this.initQuery({
-      entity: Department,
+      entity: Departments,
       alias: DEPARTMENT_QUERY_ALIAS,
     });
 
@@ -45,14 +41,14 @@ export class DepartmentQueryService extends QueryService {
       condition: 'AND',
     });
 
-    this.whereIn<Department>({
+    this.whereIn<Departments>({
       query,
       field: 'name',
       values: names,
       condition: 'AND',
     });
 
-    this.whereIn<Department>({
+    this.whereIn<Departments>({
       query,
       field: 'country',
       values: countries,
@@ -62,7 +58,7 @@ export class DepartmentQueryService extends QueryService {
     // Join user relation if specified or if IDs are provided
     this.joinEntityRelation({
       query,
-      relationAlias: this.userAlias,
+      relationAlias: USER_QUERY_ALIAS,
       shouldJoin: includeUsers && hasAccessToUser,
       condition: 'OR',
       options: {
@@ -85,89 +81,58 @@ export class DepartmentQueryService extends QueryService {
       },
     });
 
-    this.optimize({
+    this.optimize<Departments>({
       query,
-      pagination: { page, limit },
-      hasAccessToUser,
-      includeCreatedBy,
-      includeUsers,
+      pagination,
+      sort,
       select: [
         ...(selectUserFields ?? []),
         ...(selectDepartmentFields ?? []),
         ...(selectUserCreatedByFields ?? []),
       ],
-      order: sort,
+      criteria: this.departmentQueryCriteria({
+        hasAccessToUser,
+        includeCreatedBy,
+        includeUsers,
+      }),
     });
 
-    const departments = await query.getManyAndCount();
-    const totalCount = departments[1];
-
-    return {
-      total: totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-      departments: departments[0],
-    };
+    return await this.paginatedResult({
+      query,
+      alias: 'departments',
+      pagination,
+    });
   }
 
-  optimize({
-    query,
-    pagination,
+  /**
+   * Constructs query criteria for department queries based on access and inclusion flags.
+   * @param hasAccessToUser - Indicates if the requester has access to user data.
+   * @param includeUsers - Indicates if user relations should be included.
+   * @param includeCreatedBy - Indicates if created by user relations should be included.
+   * @returns A map of relation aliases to their corresponding optimization criteria.
+   */
+  departmentQueryCriteria({
     hasAccessToUser,
-    includeCreatedBy,
     includeUsers,
-    select,
-    order,
+    includeCreatedBy,
   }: {
-    query: SelectQueryBuilder<Department>;
-    pagination: PaginationDto;
     hasAccessToUser: boolean;
-    includeCreatedBy: boolean;
     includeUsers: boolean;
-    select: string[] | undefined;
-    order: SortDto | undefined;
-  }): void {
-    if (
-      select != undefined &&
-      select.length > 0 &&
-      order?.sortField !== undefined &&
-      !select.includes(order.sortField)
-    ) {
-      select.push(order.sortField);
-    }
-
-    this.validateRelationSelect<Department>({
-      query,
-      select,
-      hasAccess: hasAccessToUser && includeCreatedBy,
-      relationAlias: CREATEDBY_USER_QUERY_ALIAS,
-    });
-
-    this.validateRelationSelect<Department>({
-      query,
-      select,
-      hasAccess: hasAccessToUser && includeUsers,
-      relationAlias: this.userAlias,
-    });
-
-    this.validateSelect<Department>({ query, select });
-
-    this.validateOrder<Department>({
-      query,
-      relations: {
-        [this.userAlias]: hasAccessToUser && includeUsers,
-        [CREATEDBY_USER_QUERY_ALIAS]: hasAccessToUser && includeCreatedBy,
+    includeCreatedBy: boolean;
+  }): Record<string, OptimizeCriteria> {
+    return {
+      [DEPARTMENT_QUERY_ALIAS]: {
+        permissionAccess: true,
+        includeRelation: true,
       },
-      order,
-    });
-
-    if (select != undefined && select.length > 0) {
-      query.select(select);
-    }
-
-    this.sort<Department>({ query, order });
-
-    this.paginate<Department>({ query, pagination });
+      [USER_QUERY_ALIAS]: {
+        permissionAccess: hasAccessToUser,
+        includeRelation: includeUsers,
+      },
+      [CREATEDBY_USER_QUERY_ALIAS]: {
+        permissionAccess: hasAccessToUser,
+        includeRelation: includeCreatedBy,
+      },
+    };
   }
 }

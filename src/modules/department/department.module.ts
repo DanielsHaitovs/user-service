@@ -1,17 +1,19 @@
 import { BaseModule } from '@/base/base.module';
 import { DepartmentController } from '@/department/department.controller';
-import { Department } from '@/department/entities/department.entity';
+import { Departments } from '@/department/entities/department.entity';
 import { DepartmentService } from '@/department/services/department.service';
-import { DepartmentQueryService } from '@/department/services/query.service';
+import { QueryService } from '@/department/services/query.service';
 import { User } from '@/user/entities/user.entity';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { HelperService } from './services/helper.service';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Department, User]), BaseModule],
+  imports: [TypeOrmModule.forFeature([Departments, User]), BaseModule],
   controllers: [DepartmentController],
-  providers: [DepartmentService, DepartmentQueryService],
-  exports: [DepartmentService],
+  providers: [DepartmentService, QueryService, HelperService],
+  exports: [DepartmentService, QueryService, HelperService],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class DepartmentModule {}

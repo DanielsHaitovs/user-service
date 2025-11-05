@@ -1,5 +1,5 @@
 import { PermissionService } from '@/role/services/permission/permission.service';
-import { RoleQueryService } from '@/role/services/role/query.service';
+import { QueryService } from '@/role/services/role/query.service';
 import { RoleService } from '@/role/services/role/role.service';
 import { getSystemUserId } from '@/test/api/auth-user-api';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
@@ -26,7 +26,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
   let app: INestApplication<App>;
   let module: TestingModule;
   let roleService: RoleService;
-  let roleQueryService: RoleQueryService;
+  let roleQueryService: QueryService;
   let permissionService: PermissionService;
   let systemUserId: UUID;
 
@@ -34,7 +34,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
     ({ moduleFixture: module, app } = await bootstrapTestApp());
 
     roleService = module.get<RoleService>(RoleService);
-    roleQueryService = module.get<RoleQueryService>(RoleQueryService);
+    roleQueryService = module.get<QueryService>(QueryService);
     permissionService = module.get<PermissionService>(PermissionService);
     systemUserId = await getSystemUserId(app);
   });
@@ -48,7 +48,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
       await createRole({
         roleService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: true,
       });
     });
@@ -56,7 +56,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
       await createRole({
         roleService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: false,
       });
     });
@@ -64,7 +64,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
       await createRole({
         roleService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: true,
       });
     });
@@ -72,7 +72,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
       await createRole({
         roleService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: false,
       });
     });
@@ -84,7 +84,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: true,
       });
     });
@@ -93,7 +93,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: false,
       });
     });
@@ -102,7 +102,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: true,
       });
     });
@@ -111,7 +111,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: false,
       });
     });
@@ -123,7 +123,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: false,
       });
     });
@@ -133,7 +133,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: false,
       });
     });
@@ -143,7 +143,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: true,
       });
     });
@@ -153,7 +153,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: true,
       });
     });
@@ -165,7 +165,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: true,
       });
     });
@@ -175,7 +175,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: false,
       });
     });
@@ -185,7 +185,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: true,
       });
     });
@@ -195,7 +195,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
-          hasAccessToUser: true,
+          hasAccessToCreatedBy: true,
           hasAccessToPermissions: true,
         }),
       ).rejects.toThrow(EntityNotFoundError);
@@ -206,7 +206,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
-          hasAccessToUser: true,
+          hasAccessToCreatedBy: true,
           hasAccessToPermissions: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
@@ -217,7 +217,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
-          hasAccessToUser: false,
+          hasAccessToCreatedBy: false,
           hasAccessToPermissions: true,
         }),
       ).rejects.toThrow(EntityNotFoundError);
@@ -228,7 +228,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService.findByIds({
           ids: [uuid() as UUID],
           pagination: { page: 1, limit: 1 },
-          hasAccessToUser: false,
+          hasAccessToCreatedBy: false,
           hasAccessToPermissions: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
@@ -242,7 +242,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleQueryService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: true,
       });
     });
@@ -253,7 +253,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleQueryService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToPermissions: false,
       });
     });
@@ -264,7 +264,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleQueryService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: true,
       });
     });
@@ -275,7 +275,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleQueryService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToPermissions: false,
       });
     });
@@ -366,7 +366,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
       const searchResult = await roleService.searchFor({
         value: '****',
         pagination: { page: 1, limit: 1 },
-        order: { sortOrder: 'ASC', sortField: 'name' },
+        sort: { sortOrder: 'ASC', sortField: 'name' },
       });
 
       if (searchResult.roles.length > 0 || searchResult.total > 0) {
@@ -389,20 +389,20 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         roleService,
         createdBy: systemUserId,
         hasAccessToPermissions: false,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
       });
 
       const anotherRole = await createRole({
         roleService,
         createdBy: systemUserId,
         hasAccessToPermissions: false,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
       });
 
       await expect(
         roleService.update({
           id: role.id,
-          role: {
+          roleToUpdate: {
             name: anotherRole.name,
           },
         }),

@@ -3,9 +3,9 @@ import type {
   DepartmentListResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
-import type { Department } from '@/department/entities/department.entity';
+import type { Departments } from '@/department/entities/department.entity';
 import type { DepartmentService } from '@/department/services/department.service';
-import type { DepartmentQueryService } from '@/department/services/query.service';
+import type { QueryService } from '@/department/services/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import { getRandomCountryCode } from '@/lib/helper/country.helper';
 import {
@@ -22,7 +22,7 @@ export async function createDepartment(
   service: DepartmentService,
   createdBy: UUID,
   hasAccessToUser: boolean,
-): Promise<Department> {
+): Promise<Departments> {
   const dto: CreateDepartmentDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
     country: getRandomCountryCode(),
@@ -50,7 +50,7 @@ export async function findDepartmentsByIds(
   service: DepartmentService,
   createdBy: UUID,
   hasAccessToUser: boolean,
-): Promise<Department[]> {
+): Promise<Departments[]> {
   const department = await createDepartment(
     service,
     createdBy,
@@ -92,14 +92,13 @@ export async function searchForDepartments(
       limit: 20,
       page: 1,
     },
-    order: {
+    sort: {
       sortField: `${DEPARTMENT_QUERY_ALIAS}.name`,
       sortOrder: 'ASC',
     },
-    hasAccessToUser,
   });
 
-  const departments = res.departments as Department[];
+  const departments = res.departments as Departments[];
 
   validateDepartmentsResponse({
     departments,
@@ -107,7 +106,7 @@ export async function searchForDepartments(
     countries: [newDepartment.country],
     ids: [newDepartment.id],
     amountExpected: 1,
-    hasAccessToUser,
+    hasAccessToUser: false,
   });
 
   return res;
@@ -116,7 +115,7 @@ export async function searchForDepartments(
 export async function updateDepartmentName(
   service: DepartmentService,
   createdBy: UUID,
-): Promise<Department> {
+): Promise<Departments> {
   const department = await createDepartment(service, createdBy, false);
 
   const updateDto: UpdateDepartmentDto = {
@@ -142,7 +141,7 @@ export async function updateDepartmentName(
 export async function updateDepartmentCountry(
   service: DepartmentService,
   createdBy: UUID,
-): Promise<Department> {
+): Promise<Departments> {
   const department = await createDepartment(service, createdBy, false);
 
   const updateDto: UpdateDepartmentDto = {
@@ -167,7 +166,7 @@ export async function updateDepartmentCountry(
 
 export async function queryDepartments(
   service: DepartmentService,
-  queryService: DepartmentQueryService,
+  queryService: QueryService,
   createdBy: UUID,
   hasAccessToUser: boolean,
 ): Promise<DepartmentListResponseDto> {
@@ -224,7 +223,7 @@ export async function queryDepartments(
   );
 
   validateDepartmentsResponse({
-    departments: departments.departments as Department[],
+    departments: departments.departments as Departments[],
     ids,
     names,
     countries,

@@ -13,13 +13,13 @@ import {
   DepartmentResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
-import { Department } from '@/department/entities/department.entity';
+import { Departments } from '@/department/entities/department.entity';
 import {
   getDepartmentGenericSelectableFields,
   getDepartmentSelectableFields,
 } from '@/department/helper/department-fields.util';
 import { DepartmentService } from '@/department/services/department.service';
-import { DepartmentQueryService } from '@/department/services/query.service';
+import { QueryService } from '@/department/services/query.service';
 import { COUNTRIES } from '@/lib/const/countries.const';
 import {
   CREATE_DEPARTMENT,
@@ -34,8 +34,8 @@ import {
 } from '@/lib/const/department.const';
 import { READ_USER, USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import {
-  getCreatedBySelectableFields,
-  getUserSelectableFields,
+  getCreatedByGenericSelectableFields,
+  getUserGenericSelectableFields,
 } from '@/user/helper/user-fields.util';
 import {
   BadRequestException,
@@ -84,7 +84,7 @@ import { UUID } from 'crypto';
 export class DepartmentController {
   constructor(
     private readonly departmentService: DepartmentService,
-    private readonly queryService: DepartmentQueryService,
+    private readonly queryService: QueryService,
   ) {}
 
   @Post()
@@ -95,7 +95,7 @@ export class DepartmentController {
     description: 'Creates a new department with the provided information.',
   })
   @ApiBody({
-    description: 'Department creation data',
+    description: 'Departments creation data',
     type: CreateDepartmentDto,
     required: true,
     examples: {
@@ -110,7 +110,7 @@ export class DepartmentController {
     },
   })
   @ApiCreatedResponse({
-    description: 'Department successfully created',
+    description: 'Departments successfully created',
     type: DepartmentResponseDto,
   })
   @ApiBadRequestResponse({
@@ -148,7 +148,7 @@ export class DepartmentController {
     @Body() createDepartmentDto: CreateDepartmentDto,
     @CurrentUserId() createdBy: UUID,
     @CurrentUserPermissions() userPermissions: string[],
-  ): Promise<Department> {
+  ): Promise<Departments> {
     const hasAccessToUser = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],
@@ -173,7 +173,7 @@ export class DepartmentController {
     type: String,
     isArray: true,
     required: true,
-    description: 'Department unique identifier',
+    description: 'Departments unique identifier',
   })
   @ApiQuery({
     name: 'page',
@@ -215,7 +215,7 @@ export class DepartmentController {
     example: ['department.name'],
   })
   @ApiOkResponse({
-    description: 'Department found and returned successfully',
+    description: 'Departments found and returned successfully',
     example: {
       id: EXAMPLE_DEPARTMENT_ID,
       name: EXAMPLE_DEPARTMENT_NAME,
@@ -223,14 +223,14 @@ export class DepartmentController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Department not found',
+    description: 'Departments not found',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
         message: {
           type: 'string',
-          example: `Department with id ${EXAMPLE_DEPARTMENT_ID} not found`,
+          example: `Departments with id ${EXAMPLE_DEPARTMENT_ID} not found`,
         },
         error: { type: 'string', example: NotFoundException.name },
       },
@@ -244,7 +244,7 @@ export class DepartmentController {
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select', new ParseArrayPipe({ optional: true })) select: string[],
     @CurrentUserPermissions() userPermissions: string[],
-  ): Promise<Department[]> {
+  ): Promise<Departments[]> {
     if (page < 1 || limit < 1) {
       throw new BadRequestException(
         'Pagination parameters must be greater than 0',
@@ -260,7 +260,7 @@ export class DepartmentController {
       ids,
       pagination: { page, limit },
       select,
-      order: { sortField, sortOrder },
+      sort: { sortField, sortOrder },
       hasAccessToUser,
     });
   }
@@ -350,16 +350,10 @@ export class DepartmentController {
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
     @Query('select', ParseArrayPipe) select: string[],
-    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<DepartmentListResponseDto> {
     if (!sortField || sortField === '') {
       sortField = `${DEPARTMENT_QUERY_ALIAS}.name`;
     }
-
-    const hasAccessToUser = hasPermissions({
-      userPermissions,
-      requestedPermissions: [READ_USER],
-    });
 
     return await this.departmentService.searchFor({
       value,
@@ -367,12 +361,11 @@ export class DepartmentController {
         page,
         limit,
       },
-      order: {
+      sort: {
         sortField,
         sortOrder,
       },
       select,
-      hasAccessToUser,
     });
   }
 
@@ -384,29 +377,29 @@ export class DepartmentController {
     description: 'Updates a department with the provided information.',
   })
   @ApiBody({
-    description: 'Department update data',
+    description: 'Departments update data',
     type: UpdateDepartmentDto,
     required: true,
   })
   @ApiOkResponse({
-    description: 'Department successfully updated',
+    description: 'Departments successfully updated',
     example: {
       id: EXAMPLE_DEPARTMENT_ID,
-      name: 'Updated Department Name',
+      name: 'Updated Departments Name',
     },
   })
   @ApiNotFoundResponse({
-    description: 'Department not found',
+    description: 'Departments not found',
     example: {
       statusCode: 404,
-      message: 'Department with id department-id-1 not found',
+      message: 'Departments with id department-id-1 not found',
       error: 'NotFoundException',
     },
   })
   async updateDepartment(
     @Param('id') id: UUID,
     @Body() updateDepartmentDto: UpdateDepartmentDto,
-  ): Promise<Department> {
+  ): Promise<Departments> {
     return await this.departmentService.update({ id, updateDepartmentDto });
   }
 
@@ -423,7 +416,7 @@ export class DepartmentController {
     isArray: true,
     format: 'uuid',
     required: true,
-    description: 'Department unique identifiers',
+    description: 'Departments unique identifiers',
   })
   @ApiOkResponse({
     description: 'Departments successfully deleted',
@@ -534,7 +527,7 @@ export class DepartmentController {
     isArray: true,
     required: false,
     description: 'Select users fields',
-    enum: getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
+    enum: getUserGenericSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
   })
   @ApiQuery({
     name: 'selectDepartmentFields',
@@ -550,7 +543,7 @@ export class DepartmentController {
     isArray: true,
     required: false,
     description: 'Select users created by fields',
-    enum: getCreatedBySelectableFields(),
+    enum: getCreatedByGenericSelectableFields(),
   })
   async filterDepartments(
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],

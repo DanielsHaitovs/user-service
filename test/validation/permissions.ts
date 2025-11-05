@@ -9,7 +9,7 @@ export function validatePermissionResponse({
   ids,
   names,
   codes,
-  hasAccessToUser,
+  hasAccessToCreatedBy,
   hasAccessToRole,
 }: {
   permissions: Permission[] | PermissionResponseDto[] | undefined;
@@ -17,7 +17,7 @@ export function validatePermissionResponse({
   ids?: UUID[];
   names?: string[];
   codes?: string[];
-  hasAccessToUser?: boolean;
+  hasAccessToCreatedBy?: boolean;
   hasAccessToRole?: boolean;
 }): void {
   if (
@@ -70,7 +70,7 @@ export function validatePermissionResponse({
       expect(codes).toContain(permission.code);
     }
 
-    if (hasAccessToUser !== undefined && hasAccessToUser) {
+    if (hasAccessToCreatedBy !== undefined && hasAccessToCreatedBy) {
       expect(permission).toHaveProperty('createdBy');
       expect(permission.createdBy).toHaveProperty('id');
     }

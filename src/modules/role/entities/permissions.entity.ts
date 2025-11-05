@@ -1,5 +1,5 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { Role } from '@/role/entities/role.entity';
+import { Roles } from '@/role/entities/role.entity';
 import { User } from '@/user/entities/user.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
@@ -7,6 +7,7 @@ import { UUID } from 'crypto';
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToMany,
   ManyToOne,
@@ -14,8 +15,11 @@ import {
 } from 'typeorm';
 
 @Entity('permissions')
-@Unique('UQ_PERMISSION_NAME', ['name'])
 @Unique('UQ_PERMISSION_CODE', ['code'])
+@Unique('UQ_PERMISSION_NAME', ['name'])
+@Index('IX_PERMISSIONS_CODE_CREATEDBY', ['code', 'createdBy'])
+@Index('IX_PERMISSIONS_NAME_CREATEDBY', ['name', 'createdBy'])
+@Index('IX_PERMISSIONS_NAME_CODE_CREATEDBY', ['name', 'code', 'createdBy'])
 export class Permission extends MecBaseEntity {
   @Column({ length: 100 })
   @IsNotEmpty()
@@ -27,8 +31,8 @@ export class Permission extends MecBaseEntity {
   @IsString()
   name: string;
 
-  @ManyToMany(() => Role, (role) => role.permissions)
-  roles: Role[];
+  @ManyToMany(() => Roles, (role) => role.permissions)
+  roles: Roles[];
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })
@@ -40,7 +44,7 @@ export class Permission extends MecBaseEntity {
     updatedAt: Date,
     name: string,
     code: string,
-    roles: Role[],
+    roles: Roles[],
     createdBy: User,
   ) {
     super(id, createdAt, updatedAt);

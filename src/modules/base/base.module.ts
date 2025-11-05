@@ -1,9 +1,9 @@
-import { QueryService } from '@/base/service/query.service';
+import { EntityQueryService } from '@/base/service/query.service';
 import { Module } from '@nestjs/common';
 
 @Module({
-  providers: [QueryService],
-  exports: [QueryService],
+  providers: [EntityQueryService],
+  exports: [EntityQueryService],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class BaseModule {}

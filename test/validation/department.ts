@@ -1,10 +1,10 @@
 import type { DepartmentResponseDto } from '@/department/dto/department.dto';
-import type { Department } from '@/department/entities/department.entity';
+import type { Departments } from '@/department/entities/department.entity';
 
 import type { UUID } from 'crypto';
 
 export function validateDepartmentsResponse(response: {
-  departments: Department[] | DepartmentResponseDto[];
+  departments: Departments[] | DepartmentResponseDto[];
   ids?: UUID[] | undefined;
   names?: string[] | undefined;
   countries?: string[] | undefined;
@@ -61,9 +61,13 @@ export function validateDepartmentsResponse(response: {
       hasUser
     ) {
       expect(department).toHaveProperty('user');
-      expect((department as Department).users).toBeInstanceOf(Array);
+      expect(department.users).toBeInstanceOf(Array);
 
-      for (const user of (department as Department).users) {
+      if (department.users == undefined || department.users.length === 0) {
+        throw new Error('Department users is undefined');
+      }
+
+      for (const user of department.users) {
         expect(user).toHaveProperty('id');
         expect(user).toHaveProperty('email');
         expect(user).toHaveProperty('firstName');

@@ -1,12 +1,34 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { Department } from '@/department/entities/department.entity';
+import { Departments } from '@/department/entities/department.entity';
+import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { IsBoolean, IsDate, IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
-import { Column, Entity, JoinTable, ManyToMany, Unique } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+  Unique,
+} from 'typeorm';
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })
+@Index('IX_USER_IS_ACTIVE_EMAIL', ['isActive', 'email'])
+@Index('IX_USER_IS_EMAIL_VERIFIED_EMAIL', ['isEmailVerified', 'email'])
+@Index('IX_USER_EMAIL_FIRSTNAME', ['email', 'firstName'])
+@Index('IX_USER_EMAIL_LASTNAME', ['email', 'lastName'])
+@Index('IX_USER_FIRSTNAME_LASTNAME_EMAIL', ['firstName', 'lastName', 'email'])
+@Index('IX_USER_FIRSTNAME_LASTNAME_EMAIL_IS_ACTIVE', [
+  'firstName',
+  'lastName',
+  'email',
+  'isActive',
+])
 export class User extends MecBaseEntity {
   @Column({ length: 100 })
   @IsNotEmpty()
@@ -69,16 +91,20 @@ export class User extends MecBaseEntity {
   @Column({ nullable: true })
   twoFactorSecret: string;
 
-  @ManyToMany(() => Department, (department) => department.users)
+  @ManyToMany(() => Departments, (departments) => departments.users)
   @JoinTable({
     name: 'user_departments',
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'department_id', referencedColumnName: 'id' },
   })
-  departments: Department[];
+  departments: Departments[];
 
-  // @OneToMany(() => UserRole, (userRole) => userRole.user)
-  // userRoles: UserRole[];
+  @OneToMany(() => UserRole, (userRole) => userRole.user)
+  userRoles: UserRole[];
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'createdBy' })
+  createdBy: User;
 
   constructor(
     id: UUID,
@@ -97,8 +123,9 @@ export class User extends MecBaseEntity {
     updatedAt: Date,
     isTwoFactorEnabled: boolean,
     twoFactorSecret: string,
-    departments: Department[],
-    // userRoles: UserRole[],
+    departments: Departments[],
+    userRoles: UserRole[],
+    createdBy: User,
   ) {
     super(id, createdAt, updatedAt);
     this.id = id;
@@ -116,6 +143,7 @@ export class User extends MecBaseEntity {
     this.departments = departments;
     this.isTwoFactorEnabled = isTwoFactorEnabled;
     this.twoFactorSecret = twoFactorSecret;
-    // this.userRoles = userRoles;
+    this.userRoles = userRoles;
+    this.createdBy = createdBy;
   }
 }

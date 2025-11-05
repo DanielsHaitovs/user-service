@@ -3,8 +3,9 @@ import type {
   RoleListResponseDto,
   UpdateRoleDto,
 } from '@/role/dto/role.dto';
-import type { Role } from '@/role/entities/role.entity';
+import type { Roles } from '@/role/entities/role.entity';
 import type { PermissionService } from '@/role/services/permission/permission.service';
+import type { QueryService } from '@/role/services/role/query.service';
 import type { RoleService } from '@/role/services/role/role.service';
 import { createPermissions } from '@/test/factories/permission.factory';
 import {
@@ -17,19 +18,17 @@ import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import type { RoleQueryService } from '../../src/modules/role/services/role/query.service';
-
 export async function createRole({
   roleService,
   createdBy,
-  hasAccessToUser,
+  hasAccessToCreatedBy,
   hasAccessToPermissions,
 }: {
   roleService: RoleService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
+  hasAccessToCreatedBy: boolean;
   hasAccessToPermissions: boolean;
-}): Promise<Role> {
+}): Promise<Roles> {
   const roleDto: CreateRoleDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
   };
@@ -38,7 +37,7 @@ export async function createRole({
     roleDto,
     createdBy,
     hasAccessToPermissions,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
   });
 
   validateRoleApiResponse({
@@ -46,8 +45,8 @@ export async function createRole({
     amountExpected: 1,
     names: [roleDto.name],
     expectedPermissionAmount: 0,
-    expectsCreateByUser: hasAccessToUser,
-    createdByUserIds: hasAccessToUser ? [result.createdBy.id] : [],
+    expectsCreateByUser: hasAccessToCreatedBy,
+    createdByUserIds: hasAccessToCreatedBy ? [result.createdBy.id] : [],
   });
 
   return result;
@@ -57,20 +56,20 @@ export async function createRoleWithPermissions({
   roleService,
   permissionService,
   createdBy,
-  hasAccessToUser,
+  hasAccessToCreatedBy,
   hasAccessToPermissions,
 }: {
   roleService: RoleService;
   permissionService: PermissionService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
+  hasAccessToCreatedBy: boolean;
   hasAccessToPermissions: boolean;
-}): Promise<Role> {
+}): Promise<Roles> {
   const permissions = await createPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
   });
 
   const roleDto: CreateRoleDto = {
@@ -81,7 +80,7 @@ export async function createRoleWithPermissions({
   const role = await roleService.create({
     roleDto,
     createdBy,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     hasAccessToPermissions,
   });
 
@@ -98,8 +97,8 @@ export async function createRoleWithPermissions({
       ? permissions.map((p) => p.code)
       : [],
     permissionIds: hasAccessToPermissions ? permissions.map((p) => p.id) : [],
-    expectsCreateByUser: hasAccessToUser,
-    createdByUserIds: hasAccessToUser ? [role.createdBy.id] : [],
+    expectsCreateByUser: hasAccessToCreatedBy,
+    createdByUserIds: hasAccessToCreatedBy ? [role.createdBy.id] : [],
   });
 
   return role;
@@ -109,26 +108,26 @@ export async function addPermissionsToRole({
   roleService,
   permissionService,
   createdBy,
-  hasAccessToUser,
+  hasAccessToCreatedBy,
   hasAccessToPermissions,
 }: {
   roleService: RoleService;
   permissionService: PermissionService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
+  hasAccessToCreatedBy: boolean;
   hasAccessToPermissions: boolean;
-}): Promise<Role> {
+}): Promise<Roles> {
   const permissions = await createPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
   });
 
   const role = await createRole({
     roleService,
     createdBy,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     hasAccessToPermissions,
   });
 
@@ -139,7 +138,7 @@ export async function addPermissionsToRole({
     permissionIds,
     permissionCodes,
     roleId: role.id,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
   });
 
   validateRoleApiResponse({
@@ -147,8 +146,8 @@ export async function addPermissionsToRole({
     amountExpected: 1,
     names: [role.name],
     ids: [role.id],
-    expectsCreateByUser: hasAccessToUser,
-    createdByUserIds: hasAccessToUser ? [updatedRole.createdBy.id] : [],
+    expectsCreateByUser: hasAccessToCreatedBy,
+    createdByUserIds: hasAccessToCreatedBy ? [updatedRole.createdBy.id] : [],
     expectedPermissionAmount: hasAccessToPermissions ? permissions.length : 0,
     permissionNames: hasAccessToPermissions
       ? permissions.map((p) => p.name)
@@ -166,35 +165,35 @@ export async function findRolesByIds({
   roleService,
   permissionService,
   createdBy,
-  hasAccessToUser,
+  hasAccessToCreatedBy,
   hasAccessToPermissions,
 }: {
   roleService: RoleService;
   permissionService: PermissionService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
+  hasAccessToCreatedBy: boolean;
   hasAccessToPermissions: boolean;
-}): Promise<Role[]> {
+}): Promise<Roles[]> {
   const newRole = await createRoleWithPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     hasAccessToPermissions,
   });
 
   const roles = await roleService.findByIds({
     ids: [newRole.id],
     pagination: { page: 1, limit: 1 },
-    hasAccessToUser,
+    hasAccessToCreatedBy,
     hasAccessToPermissions,
   });
 
   validateRoleApiResponse({
     roles,
     amountExpected: 1,
-    expectsCreateByUser: hasAccessToUser,
-    createdByUserIds: hasAccessToUser ? [newRole.createdBy.id] : [],
+    expectsCreateByUser: hasAccessToCreatedBy,
+    createdByUserIds: hasAccessToCreatedBy ? [newRole.createdBy.id] : [],
     expectedPermissionAmount: hasAccessToPermissions
       ? newRole.permissions.length
       : 0,
@@ -224,12 +223,12 @@ export async function findRolesCreatedByUserWithId({
   permissionService: PermissionService;
   createdBy: UUID;
   hasAccessToPermissions: boolean;
-}): Promise<Role[]> {
+}): Promise<Roles[]> {
   const newRole = await createRoleWithPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasAccessToUser: true,
+    hasAccessToCreatedBy: true,
     hasAccessToPermissions,
   });
 
@@ -274,18 +273,18 @@ export async function searchForRoles({
   const role = await createRole({
     roleService,
     createdBy,
-    hasAccessToUser: false,
+    hasAccessToCreatedBy: false,
     hasAccessToPermissions: false,
   });
 
   const res = await roleService.searchFor({
     value: role.name,
     pagination: { page: 1, limit: 1 },
-    order: { sortField: 'name', sortOrder: 'ASC' },
+    sort: { sortField: 'name', sortOrder: 'ASC' },
   });
 
   validateRoleApiResponse({
-    roles: res.roles as Role[],
+    roles: res.roles as Roles[],
     expectedPermissionAmount: 0,
     amountExpected: 1,
     names: [role.name],
@@ -300,21 +299,21 @@ export async function queryRoles({
   roleQueryService,
   permissionService,
   createdBy,
-  hasAccessToUser,
+  hasAccessToCreatedBy,
   hasAccessToPermissions,
 }: {
   roleService: RoleService;
-  roleQueryService: RoleQueryService;
+  roleQueryService: QueryService;
   permissionService: PermissionService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
+  hasAccessToCreatedBy: boolean;
   hasAccessToPermissions: boolean;
 }): Promise<RoleListResponseDto> {
   const newRole = await createRoleWithPermissions({
     roleService,
     permissionService,
     createdBy,
-    hasAccessToUser: true,
+    hasAccessToCreatedBy: true,
     hasAccessToPermissions: true,
   });
 
@@ -322,7 +321,7 @@ export async function queryRoles({
     roleService,
     permissionService,
     createdBy,
-    hasAccessToUser: true,
+    hasAccessToCreatedBy: true,
     hasAccessToPermissions: true,
   });
 
@@ -356,14 +355,14 @@ export async function queryRoles({
       includePermissions: true,
     },
     hasAccessToPermissions,
-    hasAccessToUser,
+    hasAccessToCreatedBy,
   );
 
   validateRoleApiResponse({
     roles: data.roles,
     amountExpected: 2,
-    expectsCreateByUser: hasAccessToUser,
-    createdByUserIds: hasAccessToUser ? [newRole.createdBy.id] : [],
+    expectsCreateByUser: hasAccessToCreatedBy,
+    createdByUserIds: hasAccessToCreatedBy ? [newRole.createdBy.id] : [],
     expectedPermissionAmount: hasAccessToPermissions
       ? newRole.permissions.length
       : 0,
@@ -383,12 +382,12 @@ export async function updateRole({
 }: {
   roleService: RoleService;
   createdBy: UUID;
-}): Promise<Role> {
+}): Promise<Roles> {
   const role = await createRole({
     roleService,
     createdBy,
     hasAccessToPermissions: false,
-    hasAccessToUser: false,
+    hasAccessToCreatedBy: false,
   });
 
   const updateDto: UpdateRoleDto = {
@@ -397,7 +396,7 @@ export async function updateRole({
 
   const updatedRole = await roleService.update({
     id: role.id,
-    role: updateDto,
+    roleToUpdate: updateDto,
   });
 
   validateRoleApiResponse({
@@ -420,7 +419,7 @@ export async function deleteRolesByIds({
   const role = await createRole({
     roleService,
     createdBy,
-    hasAccessToUser: false,
+    hasAccessToCreatedBy: false,
     hasAccessToPermissions: false,
   });
 
@@ -432,7 +431,7 @@ export async function deleteRolesByIds({
     roleService.findByIds({
       ids: [role.id],
       pagination: { page: 1, limit: 1 },
-      hasAccessToUser: false,
+      hasAccessToCreatedBy: false,
       hasAccessToPermissions: false,
     }),
   ).rejects.toThrow(EntityNotFoundError);

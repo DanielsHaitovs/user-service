@@ -1,5 +1,5 @@
 import type { RoleResponseDto } from '@/role/dto/role.dto';
-import type { Role } from '@/role/entities/role.entity';
+import type { Roles } from '@/role/entities/role.entity';
 import { validatePermissionResponse } from '@/test/validation/permissions';
 
 import type { UUID } from 'crypto';
@@ -16,7 +16,7 @@ export function validateRoleApiResponse({
   expectsCreateByUser,
   createdByUserIds,
 }: {
-  roles: Role[] | RoleResponseDto[] | undefined;
+  roles: Roles[] | RoleResponseDto[] | undefined;
   ids?: UUID[];
   names?: string[];
   amountExpected?: number;
@@ -88,13 +88,13 @@ export function validateRoleApiResponse({
     }
 
     if (expectsCreateByUser !== undefined && expectsCreateByUser) {
-      expect(role).toHaveProperty('createdBy');
-      expect(role.createdBy).toBeDefined();
-      expect(role.createdBy).toHaveProperty('id');
-
       if (role.createdBy == undefined) {
         throw new Error('CreatedBy user is undefined');
       }
+
+      expect(role).toHaveProperty('createdBy');
+      expect(role.createdBy).toBeDefined();
+      expect(role.createdBy).toHaveProperty('id');
 
       expect(createdByUserIds).toContain(role.createdBy.id);
     }

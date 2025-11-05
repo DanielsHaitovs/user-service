@@ -3,14 +3,13 @@ import {
   ROLE_QUERY_ALIAS,
 } from '@/lib/const/role.const';
 import { Permission } from '@/role/entities/permissions.entity';
-import { Role } from '@/role/entities/role.entity';
+import { Roles } from '@/role/entities/role.entity';
+import { getCreatedByGenericSelectableFields } from '@/user/helper/user-fields.util';
 
 import { getMetadataArgsStorage } from 'typeorm';
 
-import { getCreatedBySelectableFields } from '../../user/helper/user-fields.util';
-
 /**
- * Dynamically extract all column names from the Role entity using TypeORM metadata
+ * Dynamically extract all column names from the Roles entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
 export function getRoleGenericSelectableFields({
@@ -23,7 +22,7 @@ export function getRoleGenericSelectableFields({
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity
-  const columns = metadata.columns.filter((column) => column.target === Role);
+  const columns = metadata.columns.filter((column) => column.target === Roles);
   alias ??= ROLE_QUERY_ALIAS;
 
   if (fields && fields.length > 0) {
@@ -121,6 +120,6 @@ export function getRoleSelectableFields({
       fields: permissionFields,
       alias: permissionAlias,
     }),
-    ...getCreatedBySelectableFields(createdByFields),
+    ...getCreatedByGenericSelectableFields(createdByFields),
   ];
 }

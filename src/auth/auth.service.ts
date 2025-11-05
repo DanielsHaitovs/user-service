@@ -1,10 +1,17 @@
 import { LoginDto } from '@/auth/dto/auth.dto';
 import { JWTPayload } from '@/auth/interfaces/req.interface';
-import { ROOT_ADMIN_PERMISSION } from '@/lib/const/role.const';
-import { USER_QUERY_ALIAS } from '@/lib/const/user.const';
+import {
+  PERMISSION_QUERY_ALIAS,
+  ROLE_QUERY_ALIAS,
+  ROOT_ADMIN_PERMISSION,
+} from '@/lib/const/role.const';
+import {
+  SYSTEM_USER_EMAIL,
+  USER_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
+} from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
-// import { UserRole } from '@/user/entities/userRoles.entity';
-import { getUserSelectableFields } from '@/user/helper/user-fields.util';
+import { getUserGenericSelectableFields } from '@/user/helper/user-fields.util';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectEntityManager } from '@nestjs/typeorm';
@@ -50,7 +57,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const user = await this.getUserBy({ id, email });
+    const user = await this.getUserByWithPermissions({ id, email });
+
+    if (user.email === SYSTEM_USER_EMAIL) {
+      return {
+        id: user.id,
+        permissions: [ROOT_ADMIN_PERMISSION],
+      };
+    }
 
     if (!user.isActive) {
       throw new UnauthorizedException(
@@ -72,7 +86,13 @@ export class AuthService {
       }
     }
 
-    const permissions = await this.getUserPermissions(user.id);
+    const permissions = Array.from(
+      new Set(
+        user.userRoles.flatMap((userRole) =>
+          userRole.role.permissions.map((permission) => permission.code),
+        ),
+      ),
+    );
 
     return {
       id: user.id,
@@ -80,7 +100,7 @@ export class AuthService {
     };
   }
 
-  private async getUserBy(data: {
+  private async getUserByWithPermissions(data: {
     id?: UUID | undefined;
     email?: string | undefined;
   }): Promise<User> {
@@ -97,9 +117,21 @@ export class AuthService {
     } else if (email !== undefined) {
       query.where(`${USER_QUERY_ALIAS}.email = :email`, { email });
     }
+
+    query
+      .leftJoinAndSelect(
+        `${USER_QUERY_ALIAS}.${USER_ROLE_QUERY_ALIAS}`,
+        USER_ROLE_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(`${USER_ROLE_QUERY_ALIAS}.role`, ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+        PERMISSION_QUERY_ALIAS,
+      );
+
     return await query
-      .select(
-        getUserSelectableFields({
+      .select([
+        ...getUserGenericSelectableFields({
           fields: [
             'id',
             'email',
@@ -111,44 +143,12 @@ export class AuthService {
             'password',
           ],
         }),
-      )
+        `${USER_ROLE_QUERY_ALIAS}.id`,
+        `${USER_ROLE_QUERY_ALIAS}.role`,
+        `${ROLE_QUERY_ALIAS}.id`,
+        `${PERMISSION_QUERY_ALIAS}.id`,
+        `${PERMISSION_QUERY_ALIAS}.code`,
+      ])
       .getOneOrFail();
-  }
-
-  private async getUserPermissions(userId: UUID): Promise<string[]> {
-    // const userRoleWithPermissions = await this.entityManager
-    //   .createQueryBuilder(UserRole, USER_ROLE_QUERY_ALIAS)
-    //   .leftJoinAndSelect(
-    //     `${USER_ROLE_QUERY_ALIAS}.${ROLE_QUERY_ALIAS}`,
-    //     ROLE_QUERY_ALIAS,
-    //   )
-    //   .leftJoinAndSelect(
-    //     `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
-    //     PERMISSION_QUERY_ALIAS,
-    //   )
-    //   .where(`${USER_ROLE_QUERY_ALIAS}.userId = :userId`, { userId })
-    //   .getMany();
-
-    // if (userRoleWithPermissions.length === 0) {
-    //   throw new UnauthorizedException(
-    //     'User has no roles assigned, please contact support',
-    //   );
-    // }
-
-    // const userRoles = userRoleWithPermissions.map((ur) => ur.roles);
-
-    // const permissions = userRoles.flatMap((role) =>
-    //   role.permissions.map((permission) => permission.code),
-    // );
-
-    // if (permissions.length === 0) {
-    //   throw new UnauthorizedException(
-    //     'User has no permissions assigned, please contact support',
-    //   );
-    // }
-
-    // return permissions;
-
-    return [ROOT_ADMIN_PERMISSION];
   }
 }

@@ -10,7 +10,7 @@ import { getMetadataArgsStorage } from 'typeorm';
  * Dynamically extract all column names from the User entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getUserSelectableFields({
+export function getUserGenericSelectableFields({
   fields,
   alias,
 }: {
@@ -49,7 +49,9 @@ export function getUserSelectableFields({
  * Dynamically extract all column names from the User entity using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
-export function getCreatedBySelectableFields(fields?: string[]): string[] {
+export function getCreatedByGenericSelectableFields(
+  fields?: string[],
+): string[] {
   const metadata = getMetadataArgsStorage();
 
   // Get all columns for the User entity

@@ -23,6 +23,11 @@ export const SYSTEM_USER_PASSWORD = 'VerySecurePassword!' as string;
 export const CREATEDBY_USER_QUERY_ALIAS = 'createdBy' as string;
 
 /**
+ * Standard example name used in API documentation and test fixtures.
+ */
+export const ASSIGNED_BY_USER_QUERY_ALIAS = 'assignedBy' as string;
+
+/**
  * Sample UUID v4 for user identification in tests and API documentation.
  * Format follows RFC 4122 standard for universally unique identifiers.
  */
@@ -77,7 +82,7 @@ export const EXAMPLE_USER_PASSWORD_RESET_TOKEN =
  * Alias used in TypeORM queries to refer to the user entity.
  * Ensures consistent naming across query service implementations.
  */
-export const USER_QUERY_ALIAS = 'user' as string;
+export const USER_QUERY_ALIAS = 'users' as string;
 
 /**
  *  Alias used in TypeORM queries to refer to the assignedBy entity.
@@ -89,7 +94,7 @@ export const ASSIGNED_USER_QUERY_ALIAS = 'assignedBy' as string;
  * Alias used in TypeORM queries to refer to the user role entity.
  * Ensures consistent naming across query service implementations.
  */
-export const USER_ROLE_QUERY_ALIAS = 'userRole' as string;
+export const USER_ROLE_QUERY_ALIAS = 'userRoles' as string;
 
 /**
  * Error message used when a user is not found in the database.

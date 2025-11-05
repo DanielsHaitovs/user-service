@@ -7,8 +7,8 @@ import {
   USER_QUERY_ALIAS,
 } from '@/lib/const/user.const';
 import {
-  getCreatedBySelectableFields,
-  getUserSelectableFields,
+  getCreatedByGenericSelectableFields,
+  getUserGenericSelectableFields,
 } from '@/user/helper/user-fields.util';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -159,13 +159,13 @@ export class DepartmentQueryDto {
   @ApiProperty({
     description:
       'Specific user fields to return - optimizes payload size and performance',
-    enum: getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
+    enum: getUserGenericSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
     type: String,
     isArray: true,
     required: false,
-    example: getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
+    example: getUserGenericSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
   })
-  @IsEnum(getUserSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }), {
+  @IsEnum(getUserGenericSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }), {
     each: true,
   })
   selectUserFields?: string[];
@@ -173,13 +173,13 @@ export class DepartmentQueryDto {
   @ApiProperty({
     description:
       'Specific user created by fields to return - optimizes payload size and performance',
-    enum: getCreatedBySelectableFields(),
+    enum: getCreatedByGenericSelectableFields(),
     type: String,
     isArray: true,
     required: false,
-    example: getCreatedBySelectableFields(),
+    example: getCreatedByGenericSelectableFields(),
   })
-  @IsEnum(getCreatedBySelectableFields(), { each: true })
+  @IsEnum(getCreatedByGenericSelectableFields(), { each: true })
   selectUserCreatedByFields?: string[];
 
   constructor(

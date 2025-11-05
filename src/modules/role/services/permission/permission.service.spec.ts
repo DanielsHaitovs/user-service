@@ -47,7 +47,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
       });
     });
 
@@ -56,7 +56,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
       });
     });
 
@@ -65,7 +65,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
       });
 
       const conflictpermissions = new Array<CreatePermissionDto>();
@@ -85,7 +85,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         permissionService.create({
           permissions: conflictpermissions,
           createdBy: systemUserId,
-          hasAccessToUser: true,
+          hasAccessToCreatedBy: true,
         }),
       ).rejects.toThrow(ConflictException);
     });
@@ -95,7 +95,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
       });
 
       const conflictpermissions = new Array<CreatePermissionDto>();
@@ -115,7 +115,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         permissionService.create({
           permissions: conflictpermissions,
           createdBy: systemUserId,
-          hasAccessToUser: true,
+          hasAccessToCreatedBy: true,
         }),
       ).rejects.toThrow(ConflictException);
     });
@@ -127,7 +127,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToRole: true,
         pagination: { page: 1, limit: 10 },
       });
@@ -138,7 +138,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToRole: true,
         pagination: { page: 1, limit: 10 },
       });
@@ -149,7 +149,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToRole: false,
         pagination: { page: 1, limit: 10 },
       });
@@ -159,7 +159,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       await expect(
         permissionService.findByIds({
           ids: [uuid() as UUID],
-          hasAccessToUser: true,
+          hasAccessToCreatedBy: true,
           hasAccessToRole: true,
           pagination: { page: 1, limit: 10 },
         }),
@@ -184,7 +184,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToRole: true,
         pagination: { page: 1, limit: 10 },
       });
@@ -195,7 +195,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
         hasAccessToRole: false,
         pagination: { page: 1, limit: 10 },
       });
@@ -206,7 +206,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToCreatedBy: false,
         hasAccessToRole: true,
         pagination: { page: 1, limit: 10 },
       });
@@ -216,7 +216,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       await expect(
         permissionService.findByCodes({
           codes: ['non-existing-code'],
-          hasAccessToUser: true,
+          hasAccessToCreatedBy: true,
           hasAccessToRole: true,
           pagination: { page: 1, limit: 10 },
         }),
@@ -238,7 +238,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
       });
 
       const [firstPermission, secondPermission] = permissions;
@@ -252,7 +252,10 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       };
 
       await expect(
-        permissionService.update(firstPermission.id, faulsyPermissionDto),
+        permissionService.update({
+          id: firstPermission.id,
+          updatePermissionDto: faulsyPermissionDto,
+        }),
       ).rejects.toThrow(ConflictException);
     });
     it('should throw Conflict error beacuse code of permissions already exists', async () => {
@@ -260,7 +263,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
       });
 
       const [firstPermission, secondPermission] = permissions;
@@ -274,7 +277,10 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       };
 
       await expect(
-        permissionService.update(firstPermission.id, faulsyPermissionDto),
+        permissionService.update({
+          id: firstPermission.id,
+          updatePermissionDto: faulsyPermissionDto,
+        }),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -283,7 +289,7 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
         roleService,
         permissionService,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToCreatedBy: true,
       });
 
       const [firstPermission, secondPermission] = permissions;
@@ -298,7 +304,10 @@ describe('PermissionService (Integration - PostgreSQL)', () => {
       };
 
       await expect(
-        permissionService.update(firstPermission.id, faulsyPermissionDto),
+        permissionService.update({
+          id: firstPermission.id,
+          updatePermissionDto: faulsyPermissionDto,
+        }),
       ).rejects.toThrow(ConflictException);
     });
   });

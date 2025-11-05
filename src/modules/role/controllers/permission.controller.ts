@@ -162,7 +162,7 @@ export class PermissionController {
 
     const { permissions: userPermissions, id: createdBy } = reqUser;
 
-    const hasAccessToUser = hasPermissions({
+    const hasAccessToCreatedBy = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],
     });
@@ -170,7 +170,7 @@ export class PermissionController {
     return await this.permissionService.create({
       permissions: createPermissionDto,
       createdBy,
-      hasAccessToUser,
+      hasAccessToCreatedBy,
     });
   }
 
@@ -287,7 +287,7 @@ export class PermissionController {
       );
     }
 
-    const hasAccessToUser = hasPermissions({
+    const hasAccessToCreatedBy = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],
     });
@@ -300,12 +300,12 @@ export class PermissionController {
     return await this.permissionService.findByIds({
       ids,
       hasAccessToRole,
-      hasAccessToUser,
+      hasAccessToCreatedBy,
       pagination: {
         page,
         limit,
       },
-      order: {
+      sort: {
         sortField,
         sortOrder,
       },
@@ -425,7 +425,7 @@ export class PermissionController {
       );
     }
 
-    const hasAccessToUser = hasPermissions({
+    const hasAccessToCreatedBy = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],
     });
@@ -438,12 +438,12 @@ export class PermissionController {
     return await this.permissionService.findByCodes({
       codes,
       hasAccessToRole,
-      hasAccessToUser,
+      hasAccessToCreatedBy,
       pagination: {
         page,
         limit,
       },
-      order: {
+      sort: {
         sortField,
         sortOrder,
       },
@@ -548,7 +548,7 @@ export class PermissionController {
         page,
         limit,
       },
-      order: {
+      sort: {
         sortField,
         sortOrder,
       },
@@ -661,7 +661,7 @@ export class PermissionController {
     @Body()
     updatePermissionDto: UpdatePermissionDto,
   ): Promise<Permission> {
-    return await this.permissionService.update(id, updatePermissionDto);
+    return await this.permissionService.update({ id, updatePermissionDto });
   }
 
   @Delete()

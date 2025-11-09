@@ -1,6 +1,4 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
-import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
-import { PERMISSION_QUERY_ALIAS } from '@/lib/const/role.const';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
@@ -12,7 +10,7 @@ import {
   UserListResponseDto,
 } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
-import { HelperService } from '@/user/services/helper.service';
+import { HelperService } from '@/user/helper/helper.service';
 import { QueryService } from '@/user/services/query.service';
 import {
   generateEmailVerificationToken,
@@ -28,6 +26,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
+
+import { ROLE_QUERY_ALIAS } from '../../../lib/const/role.const';
 /**
  * Service for managing user entities, including creation, retrieval,
  * updating, and deletion with comprehensive validation and error handling.
@@ -109,46 +109,28 @@ export class UserService {
 
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
-    if (ids.length > 0) {
-      this.queryService.whereIn({
-        query,
-        field: 'id',
-        values: ids,
-        condition: 'AND',
-      });
-    }
+    this.queryService.whereIn({
+      query,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
+    });
 
     this.queryService.joinRelation({
       query,
-      relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+      alias: CREATEDBY_USER_QUERY_ALIAS,
     });
 
-    if (hasAccessToDepartments) {
-      this.queryService.joinRelation({
-        query,
-        relationAlias: DEPARTMENT_QUERY_ALIAS,
-      });
-    }
+    this.queryService.filterByDepartments({
+      query,
+      hasAccessToDepartments,
+    });
 
-    if (hasAccessToRoles) {
-      this.queryService.joinRelation({
-        query,
-        relationAlias: USER_ROLE_QUERY_ALIAS,
-
-        nestedRelation: {
-          role: {
-            nestedFrom: USER_ROLE_QUERY_ALIAS,
-            hasAccess: hasAccessToRoles,
-            includeAll: true,
-          },
-          [PERMISSION_QUERY_ALIAS]: {
-            nestedFrom: 'role',
-            hasAccess: hasAccessToPermissions,
-            includeAll: true,
-          },
-        },
-      });
-    }
+    this.queryService.filterByRolePermission({
+      query,
+      hasAccessToRoles,
+      hasAccessToPermissions,
+    });
 
     this.queryService.optimize({
       query,
@@ -214,49 +196,31 @@ export class UserService {
   }): Promise<User[]> {
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
-    if (emails.length > 0) {
-      this.queryService.whereIn({
-        query,
-        field: 'email',
-        values: emails,
-        condition: 'AND',
-        relationAlias: USER_QUERY_ALIAS,
-      });
-    }
+    this.queryService.whereIn({
+      query,
+      field: 'email',
+      values: emails,
+      condition: 'AND',
+      relationAlias: USER_QUERY_ALIAS,
+    });
 
     if (hasAccessToCreatedBy) {
       this.queryService.joinRelation({
         query,
-        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
       });
     }
 
-    if (hasAccessToDepartments) {
-      this.queryService.joinRelation({
-        query,
-        relationAlias: DEPARTMENT_QUERY_ALIAS,
-      });
-    }
+    this.queryService.filterByDepartments({
+      query,
+      hasAccessToDepartments,
+    });
 
-    if (hasAccessToRoles) {
-      this.queryService.joinRelation({
-        query,
-        relationAlias: USER_ROLE_QUERY_ALIAS,
-
-        nestedRelation: {
-          role: {
-            nestedFrom: USER_ROLE_QUERY_ALIAS,
-            hasAccess: hasAccessToRoles,
-            includeAll: true,
-          },
-          [PERMISSION_QUERY_ALIAS]: {
-            nestedFrom: 'role',
-            hasAccess: hasAccessToPermissions,
-            includeAll: true,
-          },
-        },
-      });
-    }
+    this.queryService.filterByRolePermission({
+      query,
+      hasAccessToRoles,
+      hasAccessToPermissions,
+    });
 
     this.queryService.optimize({
       query,
@@ -316,12 +280,6 @@ export class UserService {
     sort: SortDto;
     select?: string[];
   }): Promise<UserListResponseDto> {
-    if (pagination.page < 1 || pagination.limit < 1) {
-      throw new ConflictException(
-        'Pagination parameters must be greater than 0',
-      );
-    }
-
     const query = this.userRepository
       .createQueryBuilder(USER_QUERY_ALIAS)
       .where(`${USER_QUERY_ALIAS}.firstName ILIKE :value`, {
@@ -469,10 +427,13 @@ export class UserService {
 
     // Comprehensive existence validation before any deletion
     const existingUsers = await this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.userRoles', 'userRole')
-      .leftJoinAndSelect('userRole.role', 'role')
-      .where('user.id IN (:...ids)', { ids })
+      .createQueryBuilder(USER_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${USER_QUERY_ALIAS}.${USER_ROLE_QUERY_ALIAS}`,
+        USER_ROLE_QUERY_ALIAS,
+      )
+      .leftJoinAndSelect(`${USER_ROLE_QUERY_ALIAS}.role`, ROLE_QUERY_ALIAS)
+      .where(`${USER_QUERY_ALIAS}.id IN (:...ids)`, { ids })
       .getMany();
 
     // Fail-fast validation with detailed error reporting

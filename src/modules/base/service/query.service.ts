@@ -3,7 +3,7 @@ import {
   PaginationDto,
   SortDto,
 } from '@/base/dto/pagination.dto';
-import { QueryRequest } from '@/base/interface/query.request';
+import { OptimizeCriteria, QueryRequest } from '@/base/interface/query.request';
 import { ForbiddenException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
@@ -66,6 +66,35 @@ export class EntityQueryService {
     }
   }
 
+  where<T extends ObjectLiteral>({
+    query,
+    field,
+    value,
+    condition,
+    relationAlias,
+  }: {
+    query: SelectQueryBuilder<T>;
+    field: string;
+    value: unknown;
+    condition: 'OR' | 'AND';
+    relationAlias?: string;
+  }): void {
+    if (value == undefined) return;
+
+    const alias = relationAlias ?? query.alias;
+    const fieldPath = `${alias}.${field}`;
+
+    if (condition === 'OR') {
+      query.orWhere(`${fieldPath} = :${alias}_${field}_to`, {
+        [`${alias}_${field}_to`]: value,
+      });
+    } else {
+      query.andWhere(`${fieldPath} = :${alias}_${field}_to`, {
+        [`${alias}_${field}_to`]: value,
+      });
+    }
+  }
+
   /**
    * Filters records where the specified date field is after the given date.
    *
@@ -80,17 +109,28 @@ export class EntityQueryService {
     field,
     date,
     relationAlias,
+    condition,
   }: {
     query: SelectQueryBuilder<T>;
     field: string;
-    date: Date;
+    date: Date | undefined;
+    condition: 'OR' | 'AND';
     relationAlias?: string;
   }): void {
+    if (date == undefined) return;
     const alias = relationAlias ?? query.alias;
     const fieldPath = `${alias}.${field}`;
 
-    query.andWhere(`${fieldPath} > :${alias}_${field}`, {
-      [`${alias}_${field}`]: date,
+    if (condition === 'OR') {
+      query.orWhere(`${fieldPath} > :${alias}_${field}_from`, {
+        [`${alias}_${field}_from`]: date,
+      });
+
+      return;
+    }
+
+    query.andWhere(`${fieldPath} > :${alias}_${field}_from`, {
+      [`${alias}_${field}_from`]: date,
     });
   }
 
@@ -107,15 +147,27 @@ export class EntityQueryService {
     query,
     field,
     date,
+    condition,
     relationAlias,
   }: {
     query: SelectQueryBuilder<T>;
     field: string;
-    date: Date;
+    date: Date | undefined;
+    condition: 'OR' | 'AND';
     relationAlias?: string;
   }): void {
+    if (date == undefined) return;
+
     const alias = relationAlias ?? query.alias;
     const fieldPath = `${alias}.${field}`;
+
+    if (condition === 'OR') {
+      query.orWhere(`${fieldPath} < :${alias}_${field}`, {
+        [`${alias}_${field}`]: date,
+      });
+
+      return;
+    }
 
     query.andWhere(`${fieldPath} < :${alias}_${field}`, {
       [`${alias}_${field}`]: date,
@@ -217,9 +269,7 @@ export class EntityQueryService {
     }
 
     if (hasAccess && hasFieldFromRelation) {
-      if (!this.isLeftJoinPresent({ query, relationAlias })) {
-        this.joinRelation<T>({ query, relationAlias });
-      }
+      this.joinRelation<T>({ query, alias: relationAlias });
 
       if (!select.includes(`${relationAlias}.id`)) {
         select.push(`${relationAlias}.id`);
@@ -260,61 +310,36 @@ export class EntityQueryService {
           `Cannot order by field ${sort.sortField} without access`,
         );
       } else if (sort.sortField.includes(relationAlias) && hasAccess === true) {
-        if (!this.isLeftJoinPresent({ query, relationAlias })) {
-          this.joinRelation<T>({ query, relationAlias });
-        }
+        this.joinRelation<T>({ query, alias: relationAlias });
       }
     });
   }
 
-  /**
-   * Joins a related entity using a left join if not already present.
-   *
-   * Ensures that the specified relation is included in the query without
-   * duplicating joins, which can lead to performance issues or incorrect results.
-   *
-   * @param queryBuilder - The query builder to modify
-   * @param alias - Alias for the join relation
-   * @param targetAlias - Target entity alias to join
-   */
   joinRelation<T extends ObjectLiteral>({
     query,
+    nestedFrom,
+    alias,
     relationAlias,
-    nestedRelation,
   }: {
     query: SelectQueryBuilder<T>;
-    relationAlias: string;
-    nestedRelation?: Record<
-      string,
-      { nestedFrom: string; hasAccess: boolean; includeAll?: boolean }
-    >;
+    nestedFrom?: string;
+    alias: string;
+    relationAlias?: string;
   }): void {
-    if (!this.isLeftJoinPresent({ query, relationAlias })) {
-      query.leftJoinAndSelect(`${query.alias}.${relationAlias}`, relationAlias);
-    }
-
-    if (nestedRelation !== undefined) {
-      const nestedEntries = Object.entries(nestedRelation);
-      nestedEntries.forEach(
-        ([nestedAlias, { nestedFrom, hasAccess, includeAll }]) => {
-          if (!hasAccess) return;
-
-          if (!this.isLeftJoinPresent({ query, relationAlias: nestedAlias })) {
-            query.leftJoinAndSelect(
-              `${nestedFrom}.${nestedAlias}`,
-              nestedAlias,
-            );
-          }
-
-          if (includeAll == undefined || includeAll) {
-            const filterAlias = `${nestedAlias}_filter`;
-            if (
-              !this.isLeftJoinPresent({ query, relationAlias: filterAlias })
-            ) {
-              query.leftJoin(`${nestedFrom}.${nestedAlias}`, filterAlias);
-            }
-          }
-        },
+    if (nestedFrom != undefined) {
+      if (!this.isJoinPresent({ query, relationAlias: nestedFrom })) {
+        query.leftJoinAndSelect(
+          `${query.alias}.${alias}`,
+          relationAlias ?? alias,
+        );
+      }
+      query.leftJoinAndSelect(`${nestedFrom}.${alias}`, relationAlias ?? alias);
+    } else if (
+      !this.isJoinPresent({ query, relationAlias: relationAlias ?? alias })
+    ) {
+      query.leftJoinAndSelect(
+        `${query.alias}.${relationAlias ?? alias}`,
+        relationAlias ?? alias,
       );
     }
   }
@@ -331,22 +356,24 @@ export class EntityQueryService {
     shouldJoin,
     condition,
     options,
+    nestedFrom,
   }: {
     query: SelectQueryBuilder<T>;
     relationAlias: string;
     shouldJoin: boolean;
-    condition: 'OR' | 'AND';
-    options?: {
-      filters?: Record<string, unknown[] | undefined> | undefined;
-    };
+    condition?: 'OR' | 'AND';
+    options?: { filters: Record<string, unknown[] | undefined> };
+    nestedFrom?: string;
   }): void {
     const filters = options?.filters ?? {};
 
     if (!shouldJoin) return;
 
-    if (!this.isLeftJoinPresent({ query, relationAlias })) {
-      this.joinRelation({ query, relationAlias });
-    }
+    this.joinRelation({ query, alias: nestedFrom ?? relationAlias });
+
+    if (options?.filters == undefined) return;
+
+    condition ??= 'AND';
 
     Object.entries(filters).forEach(([field, values]) => {
       if (Array.isArray(values) && values.length > 0) {
@@ -371,20 +398,26 @@ export class EntityQueryService {
    * @param alias - The alias of the join to check
    * @returns True if the leftJoin is present, false otherwise
    */
-  isLeftJoinPresent<T extends ObjectLiteral>({
+  isJoinPresent<T extends ObjectLiteral>({
     query,
     relationAlias,
   }: {
     query: SelectQueryBuilder<T>;
     relationAlias: string;
   }): boolean {
+    // return query.expressionMap.joinAttributes.some(
+    //   (join) => join.alias.name === relationAlias && join.alias.type === 'join',
+    // );
+    // (TypeORM stores all joins in expressionMap.joinAttributes)
     return query.expressionMap.joinAttributes.some(
-      (join) => join.alias.name === relationAlias && join.alias.type === 'join',
+      (j) => j.alias.name === relationAlias,
     );
   }
 
   optimize<T extends ObjectLiteral>(queryCriteria: QueryRequest<T>): void {
     const { query, pagination, sort, select, criteria } = queryCriteria;
+
+    this.paginate<T>({ query, pagination });
 
     if (
       select != undefined &&
@@ -396,12 +429,13 @@ export class EntityQueryService {
     }
 
     const relations: Record<string, boolean> = {};
+    const relationsNestedFrom: Record<string, string> = {};
 
     Object.entries(criteria).forEach(
       ([relationAlias, { permissionAccess, includeRelation, nestedFrom }]) => {
         const hasAccess = permissionAccess && includeRelation;
 
-        if (query.alias !== relationAlias && nestedFrom === undefined) {
+        if (query.alias !== relationAlias) {
           this.validateRelationSelect<T>({
             query,
             select,
@@ -409,11 +443,13 @@ export class EntityQueryService {
             relationAlias,
           });
           relations[relationAlias] = hasAccess;
+
+          if (nestedFrom !== undefined) {
+            relationsNestedFrom[relationAlias] = nestedFrom;
+          }
         }
       },
     );
-
-    this.validateSelect<T>({ query, select });
 
     this.validateOrder<T>({
       query,
@@ -421,13 +457,13 @@ export class EntityQueryService {
       sort,
     });
 
-    if (select != undefined && select.length > 0) {
-      query.select(select);
-    }
+    this.validateResponseSelectPayload<T>({
+      query,
+      select,
+      criteria,
+    });
 
     this.sort<T>({ query, sort });
-
-    this.paginate<T>({ query, pagination });
   }
 
   async paginatedResult<T extends ObjectLiteral, K extends string>({
@@ -451,5 +487,66 @@ export class EntityQueryService {
       totalPages: Math.ceil(totalCount / limit),
       [alias]: items,
     } as PaginatedResponseDto & Record<K, T[]>;
+  }
+
+  private validateResponseSelectPayload<T extends ObjectLiteral>({
+    query,
+    select,
+    criteria,
+  }: {
+    query: SelectQueryBuilder<T>;
+    select: string[] | undefined;
+    criteria: Record<string, OptimizeCriteria>;
+  }): void {
+    if (select == undefined || select.length === 0) return;
+    this.validateSelect<T>({ query, select });
+
+    for (const key of Object.keys(query.getParameters())) {
+      const [alias] = key.split('_');
+      if (alias == undefined) continue;
+      this.ensureSelectChainIds(alias, criteria, select);
+    }
+
+    query.select(select);
+  }
+
+  private ensureSelectChainIds(
+    fromKey: string,
+    criteria: Record<string, OptimizeCriteria>,
+    select: string[],
+    mutate = true,
+  ): string[] {
+    const visited = new Set<string>();
+    const chainLeafToRoot: string[] = [];
+
+    let cur: string | undefined = fromKey;
+    while (cur) {
+      if (visited.has(cur)) {
+        break;
+      }
+      visited.add(cur);
+      chainLeafToRoot.push(cur);
+
+      const parent: string | undefined = criteria[cur]?.nestedFrom;
+      if (parent == undefined) break;
+      cur = parent;
+    }
+
+    const chainRootToLeaf = chainLeafToRoot.slice().reverse();
+
+    const chainIds = new Set(chainRootToLeaf.map((a) => `${a}.id`));
+
+    const existingOther = select.filter((s) => !chainIds.has(s));
+
+    const orderedChain = Array.from(chainIds);
+    const nextSelect = [...orderedChain, ...existingOther];
+
+    if (mutate) {
+      select.length = 0;
+      nextSelect.forEach((s) => select.push(s));
+      return select;
+    }
+
+    return nextSelect;
   }
 }

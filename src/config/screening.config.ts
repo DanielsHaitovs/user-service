@@ -8,6 +8,8 @@ export const sensitiveDataScreeningConfig = {
     'authorization',
     'referer',
     'x-forwarded-for',
+    'passwordResetToken',
+    'emailVerificationToken',
   ],
   partiallyScreen: ['email', 'user-agent'],
 };

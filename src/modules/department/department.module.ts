@@ -7,7 +7,7 @@ import { User } from '@/user/entities/user.entity';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { HelperService } from './services/helper.service';
+import { HelperService } from './helper/helper.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Departments, User]), BaseModule],

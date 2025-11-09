@@ -12,8 +12,8 @@ import {
 } from '@/role/dto/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
+import { HelperService } from '@/role/helper/helper.service';
 import { QueryService } from '@/role/services/permission/query.service';
-import { HelperService } from '@/role/services/role/helper.service';
 import { User } from '@/user/entities/user.entity';
 import {
   BadRequestException,
@@ -123,14 +123,14 @@ export class PermissionService {
     if (hasAccessToRole) {
       this.queryService.joinRelation<Permission>({
         query,
-        relationAlias: ROLE_QUERY_ALIAS,
+        alias: ROLE_QUERY_ALIAS,
       });
     }
 
     if (hasAccessToCreatedBy) {
       this.queryService.joinRelation<Permission>({
         query,
-        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
       });
     }
 
@@ -198,14 +198,14 @@ export class PermissionService {
     if (hasAccessToRole) {
       this.queryService.joinRelation<Permission>({
         query,
-        relationAlias: ROLE_QUERY_ALIAS,
+        alias: ROLE_QUERY_ALIAS,
       });
     }
 
     if (hasAccessToCreatedBy) {
       this.queryService.joinRelation<Permission>({
         query,
-        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
       });
     }
 

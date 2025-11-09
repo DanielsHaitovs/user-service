@@ -1,25 +1,23 @@
 import { EntityQueryService } from '@/base/service/query.service';
-import { HelperService as DepartmentHelperService } from '@/department/services/helper.service';
-import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
-import {
-  USER_QUERY_ALIAS,
-  USER_ROLE_QUERY_ALIAS,
-} from '@/lib/const/user.const';
+import { Departments } from '@/department/entities/department.entity';
+import { HelperService as DepartmentHelperService } from '@/department/helper/helper.service';
+import { USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { Roles } from '@/role/entities/role.entity';
-import { HelperService as RoleHelperService } from '@/role/services/role/helper.service';
+import { HelperService as RoleHelperService } from '@/role/helper/helper.service';
 import { User } from '@/user/entities/user.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
+import { QueryService } from '@/user/services/query.service';
 import { ConflictException, Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
-import { EntityManager, EntityNotFoundError } from 'typeorm';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class HelperService extends EntityQueryService {
   constructor(
     private readonly departmentsService: DepartmentHelperService,
     private readonly roleService: RoleHelperService,
+    private readonly userQuery: QueryService,
     protected userEntity: EntityManager,
   ) {
     super(userEntity);
@@ -90,31 +88,17 @@ export class HelperService extends EntityQueryService {
       alias: USER_QUERY_ALIAS,
     });
 
-    if (includeDepartments === true) {
-      this.joinRelation<User>({
-        query,
-        relationAlias: DEPARTMENT_QUERY_ALIAS,
-      });
-    }
+    this.userQuery.filterByDepartments({
+      query,
+      hasAccessToDepartments: includeDepartments ?? false,
+    });
 
-    if (includeRoles === true) {
-      this.joinRelation<User>({
-        query,
-        relationAlias: USER_ROLE_QUERY_ALIAS,
-      });
+    this.userQuery.filterByRolePermission({
+      query,
+      hasAccessToRoles: includeRoles ?? false,
+      hasAccessToPermissions: false,
+    });
 
-      this.joinRelation<User>({
-        query,
-        relationAlias: ROLE_QUERY_ALIAS,
-        nestedRelation: {
-          [USER_ROLE_QUERY_ALIAS]: {
-            nestedFrom: USER_ROLE_QUERY_ALIAS,
-            hasAccess: true,
-            includeAll: false,
-          },
-        },
-      });
-    }
     this.whereIn<User>({ query, field: 'id', values: [id], condition: 'AND' });
 
     return await query.getOneOrFail();
@@ -125,6 +109,7 @@ export class HelperService extends EntityQueryService {
       entity: User,
       alias: USER_QUERY_ALIAS,
     });
+
     this.whereIn<User>({
       query,
       field: 'email',
@@ -133,22 +118,6 @@ export class HelperService extends EntityQueryService {
     });
 
     return await query.getOneOrFail();
-  }
-
-  async findManyByIdsOrFail(ids: UUID[]): Promise<void> {
-    const existingUsers = await this.entityManager
-      .createQueryBuilder(User, USER_QUERY_ALIAS)
-      .where(`${USER_QUERY_ALIAS}.id IN (:...ids)`, { ids })
-      .getMany();
-
-    if (existingUsers.length !== ids.length) {
-      const existingIds = existingUsers.map((role) => role.id);
-      const missingIds = ids.filter((userId) => !existingIds.includes(userId));
-      throw new EntityNotFoundError(
-        'User',
-        `Users with IDs [${missingIds.join(', ')}] not found.`,
-      );
-    }
   }
 
   async findEmailConflicts({
@@ -173,5 +142,15 @@ export class HelperService extends EntityQueryService {
         `User with email "${email}" already exists. Please choose a different email.`,
       );
     }
+  }
+
+  async findManyDeaprtmentsOrFail(
+    departmentIds: UUID[],
+  ): Promise<Departments[]> {
+    return await this.departmentsService.getManyByIdsOrFail(departmentIds);
+  }
+
+  async findManyRolesOrFail(roleIds: UUID[]): Promise<Roles[]> {
+    return await this.roleService.getManyByIdsOrFail(roleIds);
   }
 }

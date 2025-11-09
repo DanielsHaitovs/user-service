@@ -48,6 +48,8 @@ import {
   Param,
   ParseArrayPipe,
   ParseBoolPipe,
+  ParseDatePipe,
+  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -71,6 +73,8 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+
+import { DateFilterParam } from '../../../lib/enum/query/filter.enum';
 
 @ApiTags('Roles')
 @TraceController()
@@ -808,6 +812,27 @@ export class RolesController {
     description: 'Filter by permissions codes',
   })
   @ApiQuery({
+    name: 'dateFrom',
+    type: Date,
+    required: false,
+    description: 'Filter results created from this date',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    type: Date,
+    required: false,
+    description: 'Filter results created up to this date',
+    example: '2023-12-31T23:59:59.999Z',
+  })
+  @ApiQuery({
+    name: 'dateFilterParam',
+    enum: DateFilterParam,
+    required: false,
+    description: 'Additional date filter parameter for custom filtering logic',
+    example: DateFilterParam.CREATED_AT,
+  })
+  @ApiQuery({
     name: 'page',
     type: Number,
     required: true,
@@ -877,6 +902,15 @@ export class RolesController {
     permissionNames: string[],
     @Query('permissionCodes', new ParseArrayPipe({ optional: true }))
     permissionCodes: string[],
+    @Query('dateFrom', new ParseDatePipe({ optional: true }))
+    dateFrom: Date | undefined,
+    @Query('dateTo', new ParseDatePipe({ optional: true }))
+    dateTo: Date | undefined,
+    @Query(
+      'dateFilterParam',
+      new ParseEnumPipe(DateFilterParam, { optional: true }),
+    )
+    dateFilterParam: DateFilterParam | undefined,
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
@@ -913,6 +947,9 @@ export class RolesController {
         },
         includePermissions,
         includeCreatedBy,
+        dateFrom,
+        dateTo,
+        dateFilterParam,
         pagination: {
           page,
           limit,

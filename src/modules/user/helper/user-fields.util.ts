@@ -1,10 +1,13 @@
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
 } from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
 
 import { getMetadataArgsStorage } from 'typeorm';
+
+import { UserRole } from '../entities/userRoles.entity';
 
 /**
  * Dynamically extract all column names from the User entity using TypeORM metadata
@@ -22,6 +25,43 @@ export function getUserGenericSelectableFields({
   // Get all columns for the User entity
   const columns = metadata.columns.filter((column) => column.target === User);
   alias ??= USER_QUERY_ALIAS;
+
+  if (fields && fields.length > 0) {
+    return [
+      ...fields
+        .filter((field) =>
+          columns.some((column) => column.propertyName === field),
+        )
+        .flatMap((field) => `${alias}.${field}`),
+      `${alias}.id`,
+      `${alias}.createdAt`,
+      `${alias}.updatedAt`,
+    ];
+  }
+
+  // Extract column property names
+  return [
+    `${alias}.id`,
+    `${alias}.createdAt`,
+    `${alias}.updatedAt`,
+    ...columns.map((column) => `${alias}.${column.propertyName}`),
+  ];
+}
+
+export function getUserRoleGenericSelectableFields({
+  fields,
+  alias,
+}: {
+  fields?: string[] | undefined;
+  alias?: string | undefined;
+}): string[] {
+  const metadata = getMetadataArgsStorage();
+
+  // Get all columns for the User entity
+  const columns = metadata.columns.filter(
+    (column) => column.target === UserRole,
+  );
+  alias ??= USER_ROLE_QUERY_ALIAS;
 
   if (fields && fields.length > 0) {
     return [

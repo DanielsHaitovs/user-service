@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { IsNumber, Min } from 'class-validator';
 
@@ -122,5 +122,57 @@ export class SortDto {
   constructor(sortField: string, sortOrder: 'ASC' | 'DESC') {
     this.sortField = sortField;
     this.sortOrder = sortOrder;
+  }
+}
+
+export class QueryRequestDto {
+  @ApiProperty({
+    description:
+      'Pagination parameters to control page size and number of results',
+    type: () => PaginationDto,
+    required: true,
+  })
+  pagination: PaginationDto;
+
+  @ApiProperty({
+    description: 'Sorting configuration for result ordering',
+    type: () => SortDto,
+    required: false,
+  })
+  sort?: SortDto | undefined;
+
+  @ApiPropertyOptional({
+    description: 'Filter results created from this date onwards',
+    type: Date,
+    required: false,
+  })
+  dateFrom?: Date | undefined;
+
+  @ApiPropertyOptional({
+    description: 'Filter results created up to this date',
+    type: Date,
+    required: false,
+  })
+  dateTo?: Date | undefined;
+
+  @ApiPropertyOptional({
+    description: 'Additional date filter parameter for custom filtering logic',
+    type: String,
+    required: false,
+  })
+  dateFilterParam?: string | undefined;
+
+  constructor(
+    pagination: PaginationDto,
+    sort?: SortDto,
+    dateFrom?: Date,
+    dateTo?: Date,
+    dateFilterParam?: string,
+  ) {
+    this.pagination = pagination;
+    this.sort = sort;
+    this.dateFrom = dateFrom;
+    this.dateTo = dateTo;
+    this.dateFilterParam = dateFilterParam;
   }
 }

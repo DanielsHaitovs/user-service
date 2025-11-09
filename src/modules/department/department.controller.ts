@@ -51,6 +51,8 @@ import {
   Param,
   ParseArrayPipe,
   ParseBoolPipe,
+  ParseDatePipe,
+  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -75,6 +77,8 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+
+import { DateFilterParam } from '../../lib/enum/query/filter.enum';
 
 @ApiTags('Departments')
 @Controller('departments')
@@ -493,6 +497,27 @@ export class DepartmentController {
     description: 'Add CreatedBy information to the response',
   })
   @ApiQuery({
+    name: 'dateFrom',
+    type: Date,
+    required: false,
+    description: 'Filter results created from this date',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    type: Date,
+    required: false,
+    description: 'Filter results created up to this date',
+    example: '2023-12-31T23:59:59.999Z',
+  })
+  @ApiQuery({
+    name: 'dateFilterParam',
+    enum: DateFilterParam,
+    required: false,
+    description: 'Additional date filter parameter for custom filtering logic',
+    example: DateFilterParam.CREATED_AT,
+  })
+  @ApiQuery({
     name: 'page',
     type: Number,
     required: true,
@@ -512,7 +537,7 @@ export class DepartmentController {
     type: String,
     required: false,
     description: 'Filter users by sort order',
-    enum: getDepartmentSelectableFields({ userAlias: `${USER_QUERY_ALIAS}s` }),
+    enum: getDepartmentSelectableFields({ userAlias: USER_QUERY_ALIAS }),
   })
   @ApiQuery({
     name: 'sortOrder',
@@ -527,7 +552,7 @@ export class DepartmentController {
     isArray: true,
     required: false,
     description: 'Select users fields',
-    enum: getUserGenericSelectableFields({ alias: `${USER_QUERY_ALIAS}s` }),
+    enum: getUserGenericSelectableFields({ alias: USER_QUERY_ALIAS }),
   })
   @ApiQuery({
     name: 'selectDepartmentFields',
@@ -564,6 +589,15 @@ export class DepartmentController {
     includeCreatedBy: boolean,
     @Query('selectUserCreatedByFields', new ParseArrayPipe({ optional: true }))
     selectUserCreatedByFields: string[],
+    @Query('dateFrom', new ParseDatePipe({ optional: true }))
+    dateFrom: Date | undefined,
+    @Query('dateTo', new ParseDatePipe({ optional: true }))
+    dateTo: Date | undefined,
+    @Query(
+      'dateFilterParam',
+      new ParseEnumPipe(DateFilterParam, { optional: true }),
+    )
+    dateFilterParam: DateFilterParam | undefined,
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
@@ -586,6 +620,9 @@ export class DepartmentController {
         },
         includeCreatedBy,
         includeUsers,
+        dateFrom,
+        dateTo,
+        dateFilterParam,
         pagination: {
           page,
           limit,

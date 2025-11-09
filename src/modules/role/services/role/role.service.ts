@@ -10,7 +10,7 @@ import {
   UpdateRoleDto,
 } from '@/role/dto/role.dto';
 import { Roles } from '@/role/entities/role.entity';
-import { HelperService } from '@/role/services/role/helper.service';
+import { HelperService } from '@/role/helper/helper.service';
 import { QueryService } from '@/role/services/role/query.service';
 import { User } from '@/user/entities/user.entity';
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -104,13 +104,13 @@ export class RoleService {
 
     this.queryService.joinRelation<Roles>({
       query,
-      relationAlias: PERMISSION_QUERY_ALIAS,
+      alias: PERMISSION_QUERY_ALIAS,
     });
 
     if (hasAccessToCreatedBy) {
       this.queryService.joinRelation<Roles>({
         query,
-        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
       });
     }
 
@@ -170,14 +170,14 @@ export class RoleService {
     if (hasAccessToPermissions) {
       this.queryService.joinRelation<Roles>({
         query,
-        relationAlias: PERMISSION_QUERY_ALIAS,
+        alias: PERMISSION_QUERY_ALIAS,
       });
     }
 
     if (hasAccessToCreatedBy) {
       this.queryService.joinRelation<Roles>({
         query,
-        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
       });
     }
 
@@ -243,13 +243,13 @@ export class RoleService {
     if (hasAccessToPermissions) {
       this.queryService.joinRelation<Roles>({
         query,
-        relationAlias: PERMISSION_QUERY_ALIAS,
+        alias: PERMISSION_QUERY_ALIAS,
       });
     }
 
     this.queryService.joinRelation<Roles>({
       query,
-      relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+      alias: CREATEDBY_USER_QUERY_ALIAS,
     });
 
     this.queryService.whereIn<Roles>({

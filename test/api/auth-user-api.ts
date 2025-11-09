@@ -1,32 +1,35 @@
-import {
-  SYSTEM_USER_EMAIL,
-  SYSTEM_USER_PASSWORD,
-} from '@/lib/const/user.const';
+/* eslint-disable @typescript-eslint/require-await */
+
+/* eslint-disable unused-imports/no-unused-vars */
+// import {
+//   SYSTEM_USER_EMAIL,
+//   SYSTEM_USER_PASSWORD,
+// } from '@/lib/const/user.const';
 import type { INestApplication } from '@nestjs/common';
 
 import type { UUID } from 'crypto';
-import type { Server } from 'http';
-import * as request from 'supertest';
+// import type { Server } from 'http';
+// import * as request from 'supertest';
 
-export async function systemUserAuthToken(
-  app: INestApplication,
-): Promise<string> {
-  const httpServer = app.getHttpServer() as Server;
-  const res = await request(httpServer)
-    .post('/auth/login')
-    .send({
-      email: SYSTEM_USER_EMAIL,
-      password: SYSTEM_USER_PASSWORD,
-    })
-    .expect(200);
+// export async function systemUserAuthToken(
+//   app: INestApplication,
+// ): Promise<string> {
+//   const httpServer = app.getHttpServer() as Server;
+//   const res = await request(httpServer)
+//     .post('/auth/login')
+//     .send({
+//       email: SYSTEM_USER_EMAIL,
+//       password: SYSTEM_USER_PASSWORD,
+//     })
+//     .expect(200);
 
-  return res.body.access_token as string;
-}
+//   return res.body.access_token as string;
+// }
 
 export async function getSystemUserId(app: INestApplication): Promise<UUID> {
-  const accessToken = await systemUserAuthToken(app);
+  // const accessToken = await systemUserAuthToken(app);
 
-  const httpServer = app.getHttpServer() as Server;
+  // const httpServer = app.getHttpServer() as Server;
 
   // const res = await request(httpServer)
   //   .get(`/user/email/${SYSTEM_USER_EMAIL}`)

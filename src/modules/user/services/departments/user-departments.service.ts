@@ -1,6 +1,5 @@
-import { HelperService as DepartmentHelperService } from '@/department/services/helper.service';
 import { User } from '@/user/entities/user.entity';
-import { HelperService } from '@/user/services/helper.service';
+import { HelperService } from '@/user/helper/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -13,7 +12,6 @@ export class UserDepartmentsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly helperService: HelperService,
-    private readonly departmentHelperService: DepartmentHelperService,
   ) {}
 
   /**
@@ -45,7 +43,7 @@ export class UserDepartmentsService {
     }
 
     const department =
-      await this.departmentHelperService.getManyByIdsOrFail(departmentIds);
+      await this.helperService.findManyDeaprtmentsOrFail(departmentIds);
 
     user.departments.push(...department);
     await this.userRepository.save(user);
@@ -73,7 +71,7 @@ export class UserDepartmentsService {
       includeRoles: false,
     });
 
-    await this.departmentHelperService.getManyByIdsOrFail(departmentIds);
+    await this.helperService.findManyDeaprtmentsOrFail(departmentIds);
 
     user.departments = user.departments.filter(
       (dept) => !departmentIds.includes(dept.id),

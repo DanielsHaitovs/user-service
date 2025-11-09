@@ -6,7 +6,7 @@ import {
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
 import { Departments } from '@/department/entities/department.entity';
-import { HelperService } from '@/department/services/helper.service';
+import { HelperService } from '@/department/helper/helper.service';
 import { QueryService } from '@/department/services/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
@@ -113,7 +113,7 @@ export class DepartmentService {
     if (hasAccessToUser) {
       this.queryService.joinRelation({
         query,
-        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
       });
     }
 

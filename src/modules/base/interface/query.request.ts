@@ -15,3 +15,10 @@ export interface QueryRequest<T extends ObjectLiteral> {
   select: string[] | undefined;
   criteria: Record<string, OptimizeCriteria>;
 }
+
+export interface QueryJoinOptions {
+  filters: Record<
+    string,
+    { key: unknown[] | undefined; condition: 'AND' | 'OR' }
+  >;
+}

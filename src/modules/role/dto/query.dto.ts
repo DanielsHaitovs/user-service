@@ -1,4 +1,8 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import {
+  PaginationDto,
+  QueryRequestDto,
+  SortDto,
+} from '@/base/dto/pagination.dto';
 import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
@@ -143,7 +147,7 @@ export class PermissionQueryParametersDto {
  * pagination controls, sorting options, and selective field retrieval for optimal
  * performance and flexible API responses.
  */
-export class RolesQueryDto {
+export class RolesQueryDto extends QueryRequestDto {
   @ApiProperty({
     description: 'Search criteria and filters for matching roles',
     type: RoleQueryParametersDto,
@@ -177,24 +181,6 @@ export class RolesQueryDto {
   })
   @Type(() => PermissionQueryParametersDto)
   permissionsQuery: PermissionQueryParametersDto;
-
-  @ApiProperty({
-    description:
-      'Page number and result limit configuration for response size control',
-    type: PaginationDto,
-    required: false,
-  })
-  @Type(() => PaginationDto)
-  pagination: PaginationDto;
-
-  @ApiProperty({
-    description:
-      'Field and direction for result ordering - ensures predictable output',
-    type: SortDto,
-    required: false,
-  })
-  @Type(() => SortDto)
-  sort?: SortDto;
 
   @ApiProperty({
     description:
@@ -235,20 +221,22 @@ export class RolesQueryDto {
   constructor(
     rolesQuery: RoleQueryParametersDto,
     permissionsQuery: PermissionQueryParametersDto,
-    pagination: PaginationDto,
     includePermissions: boolean,
     includeCreatedBy: boolean,
-    sort: SortDto,
     selectRoles: string[],
     selectPermissions: string[],
     selectCreatedBy: string[],
+    pagination: PaginationDto,
+    sort: SortDto,
+    dateFrom?: Date,
+    dateTo?: Date,
+    dateFilterParam?: string,
   ) {
+    super(pagination, sort, dateFrom, dateTo, dateFilterParam);
     this.rolesQuery = rolesQuery;
     this.permissionsQuery = permissionsQuery;
     this.includePermissions = includePermissions;
     this.includeCreatedBy = includeCreatedBy;
-    this.pagination = pagination;
-    this.sort = sort;
     this.selectRoles = selectRoles;
     this.selectPermissions = selectPermissions;
     this.selectCreatedBy = selectCreatedBy;

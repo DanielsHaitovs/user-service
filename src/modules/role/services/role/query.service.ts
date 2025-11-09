@@ -26,6 +26,9 @@ export class QueryService extends EntityQueryService {
       },
       sort,
       pagination,
+      dateFilterParam,
+      dateFrom,
+      dateTo,
       selectRoles,
       selectPermissions,
       selectCreatedBy,
@@ -38,13 +41,25 @@ export class QueryService extends EntityQueryService {
     const query = this.initQuery({ entity: Roles, alias: ROLE_QUERY_ALIAS });
 
     // Initialize the query builder with the base role entity
-    if (ids && ids.length > 0) {
-      this.whereIn({ query, field: 'id', values: ids, condition: 'AND' });
-    }
+    this.whereIn({ query, field: 'id', values: ids, condition: 'AND' });
 
     // Filter by last names - supports partial name-based searches
-    if (names && names.length > 0) {
-      this.whereIn({ query, field: 'name', values: names, condition: 'AND' });
+    this.whereIn({ query, field: 'name', values: names, condition: 'AND' });
+
+    if (dateFilterParam != undefined) {
+      this.dateGreaterThan({
+        query,
+        field: dateFilterParam,
+        date: dateFrom,
+        condition: 'AND',
+      });
+
+      this.dateLessThan({
+        query,
+        field: dateFilterParam,
+        date: dateTo,
+        condition: 'AND',
+      });
     }
 
     // Join permission relation if specified or if IDs are provided

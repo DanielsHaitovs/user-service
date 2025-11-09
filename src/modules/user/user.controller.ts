@@ -40,7 +40,10 @@ import {
   UserResponseDto,
 } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
-import { getUserGenericSelectableFields } from '@/user/helper/user-fields.util';
+import {
+  getUserGenericSelectableFields,
+  getUserRoleGenericSelectableFields,
+} from '@/user/helper/user-fields.util';
 import { QueryService } from '@/user/services/query.service';
 import { UserService } from '@/user/services/user.service';
 import { generateUserFriendlyPassword } from '@/utils/token-generator.util';
@@ -58,6 +61,9 @@ import {
   NotFoundException,
   Param,
   ParseArrayPipe,
+  ParseBoolPipe,
+  ParseDatePipe,
+  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -86,6 +92,15 @@ import {
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
+
+import { COUNTRIES } from '../../lib/const/countries.const';
+import { SORT_DESCRIPTION } from '../../lib/const/system.const';
+import { DateFilterParam } from '../../lib/enum/query/filter.enum';
+import { getDepartmentGenericSelectableFields } from '../department/helper/department-fields.util';
+import {
+  getPermissionsGenericSelectableFields,
+  getRoleGenericSelectableFields,
+} from '../role/helper/role-fields.util';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -431,7 +446,7 @@ export class UserController {
     name: 'sortField',
     type: String,
     required: false,
-    description: 'Filter users by sort order',
+    description: SORT_DESCRIPTION,
     enum: getUserGenericSelectableFields({}),
     example: 'name',
   })
@@ -439,7 +454,7 @@ export class UserController {
     name: 'sortOrder',
     type: String,
     required: false,
-    description: 'Filter users by sort order',
+    description: SORT_DESCRIPTION,
     enum: ['ASC', 'DESC'],
   })
   @ApiQuery({
@@ -545,7 +560,7 @@ export class UserController {
     name: 'sortField',
     type: String,
     required: false,
-    description: 'Filter users by sort order',
+    description: SORT_DESCRIPTION,
     enum: getUserGenericSelectableFields({}),
     example: 'name',
   })
@@ -553,7 +568,7 @@ export class UserController {
     name: 'sortOrder',
     type: String,
     required: false,
-    description: 'Filter users by sort order',
+    description: SORT_DESCRIPTION,
     enum: ['ASC', 'DESC'],
   })
   @ApiQuery({
@@ -993,193 +1008,301 @@ export class UserController {
    * Designed for administrative interfaces, reporting systems, and complex user
    * management scenarios requiring fine-grained data access control.
    */
-  // @Get('query/filter')
-  // @Permissions(READ_USER, READ_DEPARTMENT, READ_ROLE, READ_USER_ROLE)
-  // @ApiQuery({
-  //   name: 'ids',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter users by ID',
-  // })
-  // @ApiQuery({
-  //   name: 'firstNames',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter users by first name',
-  // })
-  // @ApiQuery({
-  //   name: 'lastNames',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter users by last name',
-  // })
-  // @ApiQuery({
-  //   name: 'emails',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter users by email',
-  // })
-  // @ApiQuery({
-  //   name: 'isActive',
-  //   type: Boolean,
-  //   required: false,
-  //   description: 'Filter users by active status',
-  // })
-  // @ApiQuery({
-  //   name: 'isEmailVerified',
-  //   type: Boolean,
-  //   required: false,
-  //   description: 'Filter users by email verification status',
-  // })
-  // @ApiQuery({
-  //   name: 'departmentIds',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter users by departments ID',
-  // })
-  // @ApiQuery({
-  //   name: 'departmentCountries',
-  //   type: String,
-  //   enum: COUNTRIES,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter users by departments Countries',
-  // })
-  // @ApiQuery({
-  //   name: 'includeDepartment',
-  //   type: Boolean,
-  //   required: false,
-  //   description: 'Add department information to the response',
-  // })
-  // @ApiQuery({
-  //   name: 'roleIds',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Filter users by roles ID',
-  // })
-  // @ApiQuery({
-  //   name: 'includeRoles',
-  //   type: Boolean,
-  //   required: false,
-  //   description: 'Add reoles information to the response',
-  // })
-  // @ApiQuery({
-  //   name: 'page',
-  //   type: Number,
-  //   required: true,
-  //   description: 'Filter users by page number',
-  //   example: 1,
-  // })
-  // @ApiQuery({
-  //   name: 'limit',
-  //   type: Number,
-  //   required: true,
-  //   description: 'Filter users by limit of results per page',
-  //   example: 10,
-  //   maximum: 500,
-  // })
-  // @ApiQuery({
-  //   name: 'sortField',
-  //   type: String,
-  //   required: false,
-  //   description: 'Filter users by sort order',
-  //   enum: getUserGenericSelectableFields({}),
-  // })
-  // @ApiQuery({
-  //   name: 'sortOrder',
-  //   type: String,
-  //   required: false,
-  //   description: 'Filter users by sort order',
-  //   enum: ['ASC', 'DESC'],
-  // })
-  // @ApiQuery({
-  //   name: 'selectUserFields',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Select users fields',
-  //   enum: getUserGenericSelectableFields({}),
-  // })
-  // @ApiQuery({
-  //   name: 'selectDepartmentFields',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Select users department fields',
-  //   enum: getDepartmentSelectableFields({}),
-  // })
-  // @ApiQuery({
-  //   name: 'selectRoleFields',
-  //   type: String,
-  //   isArray: true,
-  //   required: false,
-  //   description: 'Select users roles fields',
-  //   enum: getRoleGenericSelectableFields({}),
-  // })
-  // async filterUsers(
-  //   @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
-  //   @Query('firstNames', new ParseArrayPipe({ optional: true }))
-  //   firstNames: string[],
-  //   @Query('lastNames', new ParseArrayPipe({ optional: true }))
-  //   lastNames: string[],
-  //   @Query('emails', new ParseArrayPipe({ optional: true })) emails: string[],
-  //   @Query('isActive', new ParseBoolPipe({ optional: true }))
-  //   isActive: boolean,
-  //   @Query('isEmailVerified', new ParseBoolPipe({ optional: true }))
-  //   isEmailVerified: boolean,
-  //   @Query('departmentIds', new ParseArrayPipe({ optional: true }))
-  //   departmentIds: UUID[],
-  //   @Query('departmentCountries', new ParseArrayPipe({ optional: true }))
-  //   departmentCountries: string[],
-  //   @Query('includeDepartment', new ParseBoolPipe({ optional: true }))
-  //   includeDepartment: boolean,
-  //   @Query('roleIds', new ParseArrayPipe({ optional: true }))
-  //   roleIds: UUID[],
-  //   @Query('includeRoles', new ParseBoolPipe({ optional: true }))
-  //   includeRoles: boolean,
-  //   @Query('page', ParseIntPipe) page: number,
-  //   @Query('limit', ParseIntPipe) limit: number,
-  //   @Query('sortField') sortField: string,
-  //   @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-  //   @Query('selectUserFields', new ParseArrayPipe({ optional: true }))
-  //   selectUserFields: string[],
-  //   @Query('selectDepartmentFields', new ParseArrayPipe({ optional: true }))
-  //   selectDepartmentFields: string[],
-  //   @Query('selectRoleFields', new ParseArrayPipe({ optional: true }))
-  //   selectRoleFields: string[],
-  // ): Promise<UserListResponseDto> {
-  //   // Construct comprehensive query object from individual parameters
-  //   return await this.queryService.getUsers({
-  //     query: {
-  //       ids,
-  //       firstNames,
-  //       lastNames,
-  //       emails,
-  //       isActive,
-  //       isEmailVerified,
-  //       departmentIds,
-  //       departmentCountries,
-  //       roleIds,
-  //     },
-  //     includeDepartment,
-  //     includeRoles,
-  //     pagination: {
-  //       page,
-  //       limit,
-  //     },
-  //     sort: {
-  //       sortField,
-  //       sortOrder,
-  //     },
-  //     selectUserFields,
-  //     selectDepartmentFields,
-  //     selectRoleFields,
-  //   });
-  // }
+  @Get('query')
+  @Permissions(READ_USER, READ_DEPARTMENT, READ_ROLE, READ_USER_ROLE)
+  @ApiQuery({
+    name: 'ids',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by ID',
+  })
+  @ApiQuery({
+    name: 'firstNames',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by first name',
+  })
+  @ApiQuery({
+    name: 'lastNames',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by last name',
+  })
+  @ApiQuery({
+    name: 'emails',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by email',
+  })
+  @ApiQuery({
+    name: 'phoneNumbers',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by phone number',
+  })
+  @ApiQuery({
+    name: 'isActive',
+    type: Boolean,
+    required: false,
+    description: 'Filter users by active status',
+  })
+  @ApiQuery({
+    name: 'isEmailVerified',
+    type: Boolean,
+    required: false,
+    description: 'Filter users by email verification status',
+  })
+  @ApiQuery({
+    name: 'includeDepartments',
+    type: Boolean,
+    required: false,
+    description: 'Add department information to the response',
+  })
+  @ApiQuery({
+    name: 'departmentIds',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by departments ID',
+  })
+  @ApiQuery({
+    name: 'departmentCountries',
+    type: String,
+    enum: COUNTRIES,
+    isArray: true,
+    required: false,
+    description: 'Filter users by departments Countries',
+  })
+  @ApiQuery({
+    name: 'includeRoles',
+    type: Boolean,
+    required: false,
+    description: 'Add reoles information to the response',
+  })
+  @ApiQuery({
+    name: 'roleIds',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by roles ID',
+  })
+  @ApiQuery({
+    name: 'roleNames',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by roles name',
+  })
+  @ApiQuery({
+    name: 'includePermissions',
+    type: Boolean,
+    required: false,
+    description: 'Add permissions information to the response',
+  })
+  @ApiQuery({
+    name: 'permissionIds',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by permissions ID',
+  })
+  @ApiQuery({
+    name: 'permissionCodes',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Filter users by permissions codes',
+  })
+  @ApiQuery({
+    name: 'dateFrom',
+    type: Date,
+    required: false,
+    description: 'Filter results created from this date',
+    example: '2023-01-01T00:00:00.000Z',
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    type: Date,
+    required: false,
+    description: 'Filter results created up to this date',
+    example: '2023-12-31T23:59:59.999Z',
+  })
+  @ApiQuery({
+    name: 'dateFilterParam',
+    enum: DateFilterParam,
+    required: false,
+    description: 'Additional date filter parameter for custom filtering logic',
+    example: DateFilterParam.CREATED_AT,
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter users by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter users by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: SORT_DESCRIPTION,
+    enum: getUserGenericSelectableFields({}),
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: SORT_DESCRIPTION,
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'selectUserFields',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Select users fields',
+    enum: getUserGenericSelectableFields({}),
+  })
+  @ApiQuery({
+    name: 'selectDepartmentFields',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Select users department fields',
+    enum: getDepartmentGenericSelectableFields({}),
+  })
+  @ApiQuery({
+    name: 'selectUserRoleFields',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Select users roles fields',
+    enum: getUserRoleGenericSelectableFields({}),
+  })
+  @ApiQuery({
+    name: 'selectRoleFields',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Select roles fields',
+    enum: getRoleGenericSelectableFields({}),
+  })
+  @ApiQuery({
+    name: 'selectPermissionFields',
+    type: String,
+    isArray: true,
+    required: false,
+    description: 'Select users permissions fields',
+    enum: getPermissionsGenericSelectableFields({}),
+  })
+  async filterUsers(
+    @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
+    @Query('firstNames', new ParseArrayPipe({ optional: true }))
+    firstNames: string[],
+    @Query('lastNames', new ParseArrayPipe({ optional: true }))
+    lastNames: string[],
+    @Query('emails', new ParseArrayPipe({ optional: true })) emails: string[],
+    @Query('phoneNumbers', new ParseArrayPipe({ optional: true }))
+    phoneNumbers: string[],
+    @Query('isActive', new ParseBoolPipe({ optional: true }))
+    isActive: boolean,
+    @Query('isEmailVerified', new ParseBoolPipe({ optional: true }))
+    isEmailVerified: boolean,
+    @Query('departmentIds', new ParseArrayPipe({ optional: true }))
+    departmentIds: UUID[],
+    @Query('departmentCountries', new ParseArrayPipe({ optional: true }))
+    departmentCountries: string[],
+    @Query('includeDepartments', new ParseBoolPipe({ optional: true }))
+    includeDepartments: boolean,
+    @Query('roleIds', new ParseArrayPipe({ optional: true }))
+    roleIds: UUID[],
+    @Query('roleNames', new ParseArrayPipe({ optional: true }))
+    roleNames: string[],
+    @Query('includeRoles', new ParseBoolPipe({ optional: true }))
+    includeRoles: boolean,
+    @Query('permissionIds', new ParseArrayPipe({ optional: true }))
+    permissionIds: UUID[],
+    @Query('permissionCodes', new ParseArrayPipe({ optional: true }))
+    permissionCodes: string[],
+    @Query('includePermissions', new ParseBoolPipe({ optional: true }))
+    includePermissions: boolean,
+    @Query('dateFrom', new ParseDatePipe({ optional: true }))
+    dateFrom: Date | undefined,
+    @Query('dateTo', new ParseDatePipe({ optional: true }))
+    dateTo: Date | undefined,
+    @Query(
+      'dateFilterParam',
+      new ParseEnumPipe(DateFilterParam, { optional: true }),
+    )
+    dateFilterParam: DateFilterParam | undefined,
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('selectUserFields', new ParseArrayPipe({ optional: true }))
+    selectUserFields: string[],
+    @Query('selectDepartmentFields', new ParseArrayPipe({ optional: true }))
+    selectDepartmentFields: string[],
+    @Query('selectUserRoleFields', new ParseArrayPipe({ optional: true }))
+    selectUserRoleFields: string[],
+    @Query('selectRoleFields', new ParseArrayPipe({ optional: true }))
+    selectRoleFields: string[],
+    @Query('selectPermissionFields', new ParseArrayPipe({ optional: true }))
+    selectPermissionFields: string[],
+  ): Promise<UserListResponseDto> {
+    return await this.queryService.getUsers({
+      filters: {
+        query: {
+          ids,
+          firstNames,
+          lastNames,
+          emails,
+          phoneNumbers,
+          isActive,
+          isEmailVerified,
+          departmentIds,
+          departmentCountries,
+          roleIds,
+          roleNames,
+          permissionIds,
+          permissionCodes,
+        },
+        dateFrom,
+        dateTo,
+        dateFilterParam,
+        pagination: {
+          page,
+          limit,
+        },
+        sort: {
+          sortField,
+          sortOrder,
+        },
+        includeDepartments,
+        includeRoles,
+        includePermissions,
+        selectUserFields,
+        selectDepartmentFields,
+        selectUserRoleFields,
+        selectRoleFields,
+        selectPermissionFields,
+      },
+      hasAccessToDepartments: true,
+      hasAccessToPermissions: true,
+      hasAccessToRoles: true,
+    });
+  }
 }

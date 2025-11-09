@@ -1,7 +1,6 @@
-import { HelperService as RoleHelperService } from '@/role/services/role/helper.service';
 import { AssignRoleIdsDto } from '@/user/dto/userRole.dto';
 import { UserRole } from '@/user/entities/userRoles.entity';
-import { HelperService } from '@/user/services/helper.service';
+import { HelperService } from '@/user/helper/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -13,7 +12,6 @@ export class UserRoleService {
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
     private readonly helperService: HelperService,
-    private readonly roleHelperService: RoleHelperService,
   ) {}
 
   /**
@@ -38,7 +36,7 @@ export class UserRoleService {
       includeRoles: false,
     });
 
-    const roles = await this.roleHelperService.getManyByIdsOrFail(roleIds);
+    const roles = await this.helperService.findManyRolesOrFail(roleIds);
 
     const userRoles = roles.map((role) => {
       return this.userRoleRepository.create({
@@ -68,7 +66,7 @@ export class UserRoleService {
       includeRoles: false,
     });
 
-    await this.roleHelperService.getManyByIdsOrFail(roleIds);
+    await this.helperService.findManyRolesOrFail(roleIds);
 
     const result = await this.userRoleRepository
       .createQueryBuilder()

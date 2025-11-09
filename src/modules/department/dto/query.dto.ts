@@ -1,4 +1,8 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import {
+  PaginationDto,
+  QueryRequestDto,
+  SortDto,
+} from '@/base/dto/pagination.dto';
 import { getDepartmentSelectableFields } from '@/department/helper/department-fields.util';
 import {
   EXAMPLE_USER_FIRST_NAME,
@@ -99,7 +103,7 @@ export class DepartmentQueryParametersDto {
   }
 }
 
-export class DepartmentQueryDto {
+export class DepartmentQueryDto extends QueryRequestDto {
   @ApiProperty({
     description: 'Search criteria and filters for matching users',
     type: () => DepartmentQueryParametersDto,
@@ -125,24 +129,6 @@ export class DepartmentQueryDto {
   })
   @IsBoolean()
   includeCreatedBy?: boolean;
-
-  @ApiProperty({
-    description:
-      'Page number and result limit configuration for response size control',
-    type: () => PaginationDto,
-    required: false,
-  })
-  @Type(() => PaginationDto)
-  pagination: PaginationDto;
-
-  @ApiProperty({
-    description:
-      'Field and direction for result ordering - ensures predictable output',
-    type: () => SortDto,
-    required: false,
-  })
-  @Type(() => SortDto)
-  sort?: SortDto;
 
   @ApiProperty({
     description:
@@ -191,10 +177,12 @@ export class DepartmentQueryDto {
     selectRoleFields: string[],
     includeCreatedBy: boolean,
     includeUsers: boolean,
+    dateFrom?: Date,
+    dateTo?: Date,
+    dateFilterParam?: string,
   ) {
+    super(pagination, sort, dateFrom, dateTo, dateFilterParam);
     this.query = query;
-    this.pagination = pagination;
-    this.sort = sort;
     this.selectUserFields = selectUserFields;
     this.selectDepartmentFields = selectDepartmentFields;
     this.selectUserCreatedByFields = selectRoleFields;

@@ -20,6 +20,7 @@ import {
   UPDATE_ROLE,
 } from '@/lib/const/role.const';
 import { READ_USER } from '@/lib/const/user.const';
+import { DateFilterParam } from '@/lib/enum/query/filter.enum';
 import {
   AssignPermissionsToRoleDto,
   CreateRoleDto,
@@ -73,8 +74,6 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { DateFilterParam } from '../../../lib/enum/query/filter.enum';
 
 @ApiTags('Roles')
 @TraceController()

@@ -263,9 +263,12 @@ export class EntityQueryService {
     );
 
     if (!hasAccess && hasFieldFromRelation) {
-      throw new ForbiddenException(
-        `Cannot select fields from ${query.alias} with relation ${relationAlias} without access`,
+      const filtered = select.filter(
+        (field) => !field.startsWith(`${relationAlias}.`),
       );
+
+      select.splice(0, select.length, ...filtered);
+      return;
     }
 
     if (hasAccess && hasFieldFromRelation) {
@@ -300,17 +303,22 @@ export class EntityQueryService {
     relations: Record<string, boolean>;
     sort: SortDto | undefined;
   }): void {
-    if (sort?.sortField === undefined) return;
+    if (sort?.sortField == undefined) return;
 
     Object.keys(relations).forEach((relationAlias) => {
       const hasAccess = relations[relationAlias];
 
-      if (sort.sortField.includes(relationAlias) && hasAccess === false) {
-        throw new ForbiddenException(
-          `Cannot order by field ${sort.sortField} without access`,
-        );
-      } else if (sort.sortField.includes(relationAlias) && hasAccess === true) {
-        this.joinRelation<T>({ query, alias: relationAlias });
+      if (sort.sortField != undefined) {
+        if (sort.sortField.includes(relationAlias) && hasAccess === false) {
+          throw new ForbiddenException(
+            `Cannot order by field ${sort.sortField} without access`,
+          );
+        } else if (
+          sort.sortField.includes(relationAlias) &&
+          hasAccess === true
+        ) {
+          this.joinRelation<T>({ query, alias: relationAlias });
+        }
       }
     });
   }

@@ -18,11 +18,15 @@ import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-export async function createDepartment(
-  service: DepartmentService,
-  createdBy: UUID,
-  hasAccessToUser: boolean,
-): Promise<Departments> {
+export async function createDepartment({
+  service,
+  createdBy,
+  hasAccessToUser,
+}: {
+  service: DepartmentService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+}): Promise<Departments> {
   const dto: CreateDepartmentDto = {
     name: `${faker.lorem.word()}-${uuid()}`,
     country: getRandomCountryCode(),
@@ -46,16 +50,20 @@ export async function createDepartment(
   return department;
 }
 
-export async function findDepartmentsByIds(
-  service: DepartmentService,
-  createdBy: UUID,
-  hasAccessToUser: boolean,
-): Promise<Departments[]> {
-  const department = await createDepartment(
+export async function findDepartmentsByIds({
+  service,
+  createdBy,
+  hasAccessToUser,
+}: {
+  service: DepartmentService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+}): Promise<Departments[]> {
+  const department = await createDepartment({
     service,
     createdBy,
     hasAccessToUser,
-  );
+  });
 
   const departments = await service.findByIds({
     ids: [department.id],
@@ -75,16 +83,20 @@ export async function findDepartmentsByIds(
   return departments;
 }
 
-export async function searchForDepartments(
-  service: DepartmentService,
-  createdBy: UUID,
-  hasAccessToUser: boolean,
-): Promise<DepartmentListResponseDto> {
-  const newDepartment = await createDepartment(
+export async function searchForDepartments({
+  service,
+  createdBy,
+  hasAccessToUser,
+}: {
+  service: DepartmentService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+}): Promise<DepartmentListResponseDto> {
+  const newDepartment = await createDepartment({
     service,
     createdBy,
     hasAccessToUser,
-  );
+  });
 
   const res = await service.searchFor({
     value: newDepartment.name,
@@ -112,11 +124,18 @@ export async function searchForDepartments(
   return res;
 }
 
-export async function updateDepartmentName(
-  service: DepartmentService,
-  createdBy: UUID,
-): Promise<Departments> {
-  const department = await createDepartment(service, createdBy, false);
+export async function updateDepartmentName({
+  service,
+  createdBy,
+}: {
+  service: DepartmentService;
+  createdBy: UUID;
+}): Promise<Departments> {
+  const department = await createDepartment({
+    service,
+    createdBy,
+    hasAccessToUser: false,
+  });
 
   const updateDto: UpdateDepartmentDto = {
     name: `from-${department.id}-to-${faker.lorem.word()}`,
@@ -138,11 +157,18 @@ export async function updateDepartmentName(
   return updatedDepartment;
 }
 
-export async function updateDepartmentCountry(
-  service: DepartmentService,
-  createdBy: UUID,
-): Promise<Departments> {
-  const department = await createDepartment(service, createdBy, false);
+export async function updateDepartmentCountry({
+  service,
+  createdBy,
+}: {
+  service: DepartmentService;
+  createdBy: UUID;
+}): Promise<Departments> {
+  const department = await createDepartment({
+    service,
+    createdBy,
+    hasAccessToUser: false,
+  });
 
   const updateDto: UpdateDepartmentDto = {
     country: getRandomCountryCode(),
@@ -170,26 +196,26 @@ export async function queryDepartments(
   createdBy: UUID,
   hasAccessToUser: boolean,
 ): Promise<DepartmentListResponseDto> {
-  const department1 = await createDepartment(
+  const department1 = await createDepartment({
     service,
     createdBy,
     hasAccessToUser,
-  );
-  const department2 = await createDepartment(
+  });
+  const department2 = await createDepartment({
     service,
     createdBy,
     hasAccessToUser,
-  );
-  const department3 = await createDepartment(
+  });
+  const department3 = await createDepartment({
     service,
     createdBy,
     hasAccessToUser,
-  );
-  const department4 = await createDepartment(
+  });
+  const department4 = await createDepartment({
     service,
     createdBy,
     hasAccessToUser,
-  );
+  });
 
   const ids = [department1.id, department2.id, department3.id, department4.id];
 
@@ -234,11 +260,18 @@ export async function queryDepartments(
   return departments;
 }
 
-export async function deleteDepartments(
-  service: DepartmentService,
-  createdBy: UUID,
-): Promise<void> {
-  const department = await createDepartment(service, createdBy, false);
+export async function deleteDepartments({
+  service,
+  createdBy,
+}: {
+  service: DepartmentService;
+  createdBy: UUID;
+}): Promise<void> {
+  const department = await createDepartment({
+    service,
+    createdBy,
+    hasAccessToUser: false,
+  });
 
   const result = await service.deleteByIds([department.id]);
 

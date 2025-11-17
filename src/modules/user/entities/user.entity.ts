@@ -18,17 +18,11 @@ import {
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })
+@Index('IX_USER_CREATED_AT', ['createdAt'])
+@Index('IX_USER_CREATED_AT_EMAIL', ['createdAt', 'email'])
 @Index('IX_USER_IS_ACTIVE_EMAIL', ['isActive', 'email'])
-@Index('IX_USER_IS_EMAIL_VERIFIED_EMAIL', ['isEmailVerified', 'email'])
 @Index('IX_USER_EMAIL_FIRSTNAME', ['email', 'firstName'])
 @Index('IX_USER_EMAIL_LASTNAME', ['email', 'lastName'])
-@Index('IX_USER_FIRSTNAME_LASTNAME_EMAIL', ['firstName', 'lastName', 'email'])
-@Index('IX_USER_FIRSTNAME_LASTNAME_EMAIL_IS_ACTIVE', [
-  'firstName',
-  'lastName',
-  'email',
-  'isActive',
-])
 export class User extends MecBaseEntity {
   @Column({ length: 100 })
   @IsNotEmpty()

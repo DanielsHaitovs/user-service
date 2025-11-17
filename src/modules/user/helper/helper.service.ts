@@ -23,6 +23,9 @@ export class HelperService extends EntityQueryService {
     super(userEntity);
   }
 
+  /*
+   * Creates a new user with optional department and role assignments
+   */
   async createUser({
     user,
     departmentIds,
@@ -74,6 +77,9 @@ export class HelperService extends EntityQueryService {
     });
   }
 
+  /*
+   * Finds a user by ID, with optional inclusion of related departments and roles
+   */
   async findByIdOrFail({
     id,
     includeDepartments,

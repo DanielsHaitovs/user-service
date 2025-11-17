@@ -7,6 +7,8 @@ import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsUUID, ValidateNested } from 'class-validator';
 import { UUID } from 'crypto';
 
+import { GetUserDto } from './user.dto';
+
 export class AssignRoleIdsDto {
   @ApiProperty({
     type: String,
@@ -68,29 +70,19 @@ export class UserRoleResponseDto {
   })
   @Type(() => RoleResponseDto)
   @ValidateNested()
-  roles: RoleResponseDto;
+  role: RoleResponseDto;
 
-  // @ApiProperty({
-  //   title: 'User details',
-  //   description: 'Details of the user associated with this role',
-  //   isArray: true,
-  //   // type: UserResponseDto,
-  // })
-  // @Type(() => UserDto)
-  // @ValidateNested()
-  // user: UserDto;
-
-  // @ApiProperty({
-  //   title: 'Assigned By User',
-  //   description: 'Details of the user who assigned this role',
-  //   example: EXAMPLE_USER_ID,
-  //   format: 'uuid',
-  //   // type: UserResponseDto,
-  //   required: true,
-  // })
-  // @Type(() => UserResponseDto)
-  // @ValidateNested()
-  // assignedBy: UserResponseDto;
+  @ApiProperty({
+    title: 'Assigned By User',
+    description: 'Details of the user who assigned this role',
+    example: EXAMPLE_USER_ID,
+    format: 'uuid',
+    type: () => GetUserDto,
+    required: true,
+  })
+  @Type(() => GetUserDto)
+  @ValidateNested()
+  assignedBy: GetUserDto;
 
   @ApiProperty({
     description: 'Date when the user account was created',
@@ -112,16 +104,14 @@ export class UserRoleResponseDto {
 
   constructor(
     id: UUID,
-    // user: UserDto,
-    // assignedBy: UserResponseDto,
+    assignedBy: GetUserDto,
     createdAt: Date,
     updatedAt: Date,
-    roles: RoleResponseDto,
+    role: RoleResponseDto,
   ) {
     this.id = id;
-    // this.user = user;
-    // this.assignedBy = assignedBy;
-    this.roles = roles;
+    this.assignedBy = assignedBy;
+    this.role = role;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }

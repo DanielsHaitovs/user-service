@@ -18,6 +18,8 @@ import {
 } from 'class-validator';
 import { UUID } from 'crypto';
 
+import { UserRoleResponseDto } from './userRole.dto';
+
 /**
  * Base DTO containing core user information shared across multiple operations.
  *
@@ -328,16 +330,16 @@ export class UserResponseDto extends GetUserDto {
   })
   @Type(() => DepartmentResponseDto)
   @ValidateNested({ each: true })
-  department?: DepartmentResponseDto[];
+  departments?: DepartmentResponseDto[];
 
-  // @ApiProperty({
-  //   description: 'List of roles assigned to the user',
-  //   type: UserRoleResponseDto,
-  //   isArray: true,
-  // })
-  // @Type(() => UserRoleResponseDto)
-  // @ValidateNested({ each: true })
-  // userRoles: UserRoleResponseDto[];
+  @ApiProperty({
+    description: 'List of roles assigned to the user',
+    type: UserRoleResponseDto,
+    isArray: true,
+  })
+  @Type(() => UserRoleResponseDto)
+  @ValidateNested({ each: true })
+  userRoles?: UserRoleResponseDto[];
 
   constructor(
     id: UUID,
@@ -356,8 +358,8 @@ export class UserResponseDto extends GetUserDto {
     createdAt: Date,
     updatedAt: Date,
     createdBy: GetUserDto,
-    department?: DepartmentResponseDto[],
-    // userRoles: UserRoleResponseDto[],
+    departments?: DepartmentResponseDto[],
+    userRoles?: UserRoleResponseDto[],
   ) {
     super(
       id,
@@ -376,9 +378,9 @@ export class UserResponseDto extends GetUserDto {
       createdAt,
       updatedAt,
     );
-    this.department = department ?? [];
+    this.departments = departments ?? [];
     this.createdBy = createdBy;
-    // this.userRoles = userRoles;
+    this.userRoles = userRoles ?? [];
   }
 }
 

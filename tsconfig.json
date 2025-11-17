@@ -37,6 +37,7 @@
       "@/lib/*": ["src/lib/*"],
       "@/config/*": ["src/config/*"],
       "@/user/*": ["src/modules/user/*"],
+      "@/seed/*": ["src/modules/seed/*"],
       "@/role/*": ["src/modules/role/*"],
       "@/auth/*": ["src/auth/*"],
       "@/department/*": ["src/modules/department/*"]

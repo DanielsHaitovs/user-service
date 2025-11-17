@@ -111,7 +111,7 @@ export class PermissionResponseDto extends PermissionBaseDto {
 
   @ApiProperty({
     description: 'List of roles assigned to the user',
-    type: GetUserDto,
+    type: () => GetUserDto,
     isArray: false,
   })
   @Type(() => GetUserDto)

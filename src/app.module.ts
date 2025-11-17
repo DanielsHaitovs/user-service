@@ -12,6 +12,7 @@ import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './modules/app.controller';
+import { SeedModule } from './modules/seed/seed.module';
 
 @Module({
   controllers: [AppController],
@@ -55,6 +56,8 @@ import { AppController } from './modules/app.controller';
         password: configService.get('USER_DATABASE_PASSWORD') ?? 'postgres',
         database: configService.get('USER_DATABASE_NAME') ?? 'postgres',
         synchronize: configService.get('USER_DATABASE_SYNC') === 'true',
+        poolSize: 100,
+        extra: { max: 100, idleTimeoutMillis: 30000, statement_timeout: 0 },
         logging:
           configService.get('USER_DATABASE_LOGGING') === 'true'
             ? ['error']
@@ -70,6 +73,7 @@ import { AppController } from './modules/app.controller';
     RolesModule,
     DepartmentModule,
     AuthModule,
+    ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
 })
 export class AppModule implements NestModule {

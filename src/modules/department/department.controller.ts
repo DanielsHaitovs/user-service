@@ -33,6 +33,7 @@ import {
   UPDATE_DEPARTMENT,
 } from '@/lib/const/department.const';
 import { READ_USER, USER_QUERY_ALIAS } from '@/lib/const/user.const';
+import { DateFilterParam } from '@/lib/enum/query/filter.enum';
 import {
   getCreatedByGenericSelectableFields,
   getUserGenericSelectableFields,
@@ -78,8 +79,6 @@ import {
 
 import { UUID } from 'crypto';
 
-import { DateFilterParam } from '../../lib/enum/query/filter.enum';
-
 @ApiTags('Departments')
 @Controller('departments')
 @TraceController()
@@ -90,7 +89,6 @@ export class DepartmentController {
     private readonly departmentService: DepartmentService,
     private readonly queryService: QueryService,
   ) {}
-
   @Post()
   @Permissions(CREATE_DEPARTMENT, READ_DEPARTMENT)
   @HttpCode(HttpStatus.CREATED)

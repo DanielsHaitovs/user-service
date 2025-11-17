@@ -4,10 +4,9 @@ import {
   USER_ROLE_QUERY_ALIAS,
 } from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
+import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { getMetadataArgsStorage } from 'typeorm';
-
-import { UserRole } from '../entities/userRoles.entity';
 
 /**
  * Dynamically extract all column names from the User entity using TypeORM metadata
@@ -73,6 +72,7 @@ export function getUserRoleGenericSelectableFields({
       `${alias}.id`,
       `${alias}.createdAt`,
       `${alias}.updatedAt`,
+      `${alias}.assignedBy`,
     ];
   }
 
@@ -81,6 +81,7 @@ export function getUserRoleGenericSelectableFields({
     `${alias}.id`,
     `${alias}.createdAt`,
     `${alias}.updatedAt`,
+    `${alias}.assignedBy`,
     ...columns.map((column) => `${alias}.${column.propertyName}`),
   ];
 }

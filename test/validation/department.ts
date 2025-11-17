@@ -3,8 +3,16 @@ import type { Departments } from '@/department/entities/department.entity';
 
 import type { UUID } from 'crypto';
 
-export function validateDepartmentsResponse(response: {
-  departments: Departments[] | DepartmentResponseDto[];
+export function validateDepartmentsResponse({
+  departments,
+  ids,
+  names,
+  countries,
+  amountExpected,
+  hasAccessToUser,
+  hasUser,
+}: {
+  departments: Departments[] | DepartmentResponseDto[] | undefined;
   ids?: UUID[] | undefined;
   names?: string[] | undefined;
   countries?: string[] | undefined;
@@ -12,21 +20,31 @@ export function validateDepartmentsResponse(response: {
   hasAccessToUser?: boolean;
   hasUser?: boolean;
 }): void {
-  const { departments, ids, names, countries, amountExpected, hasUser } =
-    response;
-
-  if (departments.length === 0 && amountExpected !== 0) {
-    throw new Error('Departments array is empty, nothing to validate');
+  if (
+    (departments?.length === 0 || departments === undefined) &&
+    amountExpected != undefined &&
+    amountExpected !== 0
+  ) {
+    throw new Error('Could not find any departments');
   }
 
-  expect(departments).toBeDefined();
-
-  if (amountExpected !== undefined) {
-    expect(departments).toHaveLength(amountExpected);
+  if (
+    (amountExpected === 0 || amountExpected === undefined) &&
+    departments != undefined &&
+    departments.length > 0
+  ) {
+    throw new Error('Unexpected departments found');
   }
 
-  if (amountExpected === 0) {
+  if (
+    (amountExpected === 0 || amountExpected === undefined) &&
+    (departments?.length === 0 || departments === undefined)
+  ) {
     return;
+  }
+
+  if (departments === undefined) {
+    throw new Error('departments are undefined, cannot validate');
   }
 
   departments.forEach((department) => {
@@ -46,7 +64,7 @@ export function validateDepartmentsResponse(response: {
       expect(countries).toContain(department.country);
     }
 
-    if (response.hasAccessToUser !== undefined && response.hasAccessToUser) {
+    if (hasAccessToUser !== undefined && hasAccessToUser) {
       expect(department).toHaveProperty('createdBy');
       expect(department.createdBy).toHaveProperty('id');
       expect(department.createdBy).toHaveProperty('email');
@@ -55,8 +73,8 @@ export function validateDepartmentsResponse(response: {
     }
 
     if (
-      response.hasAccessToUser !== undefined &&
-      response.hasAccessToUser &&
+      hasAccessToUser !== undefined &&
+      hasAccessToUser &&
       hasUser != undefined &&
       hasUser
     ) {

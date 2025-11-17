@@ -1,6 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-import { IsNumber, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsDate,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 
 /**
  * Base response wrapper for paginated API endpoints providing metadata about result sets.
@@ -73,6 +83,8 @@ export class PaginationDto {
     minimum: 1,
     default: 1,
   })
+  @Type(() => Number)
+  @IsInt()
   @Min(1)
   @IsNumber()
   page: number;
@@ -82,11 +94,13 @@ export class PaginationDto {
     example: 10,
     type: Number,
     minimum: 1,
-    maximum: 1000,
+    maximum: 5000,
     default: 10,
   })
-  @IsNumber()
+  @Type(() => Number)
+  @IsInt()
   @Min(1)
+  @IsNumber()
   limit: number;
 
   constructor(page: number, limit: number) {
@@ -103,25 +117,53 @@ export class PaginationDto {
  * ascending and descending sort orders for flexible data presentation.
  */
 export class SortDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Entity field name to sort results by',
     example: 'createdAt',
     type: String,
   })
-  sortField: string;
+  @IsString()
+  @IsOptional()
+  sortField: string | undefined;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Sort direction for result ordering',
     example: 'ASC',
     enum: ['ASC', 'DESC'],
     type: String,
     default: 'ASC',
   })
+  @IsEnum(['ASC', 'DESC'], {
+    message: 'sortOrder must be either ASC or DESC',
+    each: true,
+  })
   sortOrder: 'ASC' | 'DESC';
 
-  constructor(sortField: string, sortOrder: 'ASC' | 'DESC') {
+  constructor(
+    sortField: string | undefined,
+    sortOrder: 'ASC' | 'DESC' | undefined,
+  ) {
     this.sortField = sortField;
-    this.sortOrder = sortOrder;
+    this.sortOrder = sortOrder ?? 'ASC';
+  }
+}
+
+export class QueryDateRequestDto {
+  @ApiPropertyOptional({ type: Date })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  dateFrom?: Date | undefined;
+
+  @ApiPropertyOptional({ type: Date })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  dateTo?: Date | undefined;
+
+  constructor(dateFrom: Date | undefined, dateTo: Date | undefined) {
+    this.dateFrom = dateFrom;
+    this.dateTo = dateTo;
   }
 }
 
@@ -129,17 +171,22 @@ export class QueryRequestDto {
   @ApiProperty({
     description:
       'Pagination parameters to control page size and number of results',
-    type: () => PaginationDto,
+    type: PaginationDto,
     required: true,
   })
+  @Type(() => PaginationDto)
+  @ValidateNested()
   pagination: PaginationDto;
 
   @ApiProperty({
-    description: 'Sorting configuration for result ordering',
-    type: () => SortDto,
-    required: false,
+    description:
+      'Pagination parameters to control page size and number of results',
+    type: SortDto,
+    required: true,
   })
-  sort?: SortDto | undefined;
+  @Type(() => SortDto)
+  @ValidateNested()
+  sort: SortDto;
 
   @ApiPropertyOptional({
     description: 'Filter results created from this date onwards',
@@ -160,19 +207,20 @@ export class QueryRequestDto {
     type: String,
     required: false,
   })
+  @IsString()
   dateFilterParam?: string | undefined;
 
   constructor(
     pagination: PaginationDto,
-    sort?: SortDto,
+    sort: SortDto,
     dateFrom?: Date,
     dateTo?: Date,
     dateFilterParam?: string,
   ) {
     this.pagination = pagination;
     this.sort = sort;
+    this.dateFilterParam = dateFilterParam;
     this.dateFrom = dateFrom;
     this.dateTo = dateTo;
-    this.dateFilterParam = dateFilterParam;
   }
 }

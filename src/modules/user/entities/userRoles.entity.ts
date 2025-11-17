@@ -3,9 +3,10 @@ import { Roles } from '@/role/entities/role.entity';
 import { User } from '@/user/entities/user.entity';
 
 import { UUID } from 'crypto';
-import { Entity, ManyToOne } from 'typeorm';
+import { Entity, Index, ManyToOne } from 'typeorm';
 
 @Entity('userRole')
+@Index('IX_USER_ROLES', ['user', 'role'])
 export class UserRole extends MecBaseEntity {
   @ManyToOne(() => Roles, (role) => role.userRoles)
   role: Roles;

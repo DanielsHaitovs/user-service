@@ -1,4 +1,5 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
@@ -26,8 +27,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
-
-import { ROLE_QUERY_ALIAS } from '../../../lib/const/role.const';
 /**
  * Service for managing user entities, including creation, retrieval,
  * updating, and deletion with comprehensive validation and error handling.
@@ -178,7 +177,6 @@ export class UserService {
   async findByEmails({
     emails,
     pagination,
-    hasAccessToCreatedBy,
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
@@ -187,7 +185,6 @@ export class UserService {
   }: {
     emails: string[];
     pagination: PaginationDto;
-    hasAccessToCreatedBy: boolean;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
@@ -203,13 +200,6 @@ export class UserService {
       condition: 'AND',
       relationAlias: USER_QUERY_ALIAS,
     });
-
-    if (hasAccessToCreatedBy) {
-      this.queryService.joinRelation({
-        query,
-        alias: CREATEDBY_USER_QUERY_ALIAS,
-      });
-    }
 
     this.queryService.filterByDepartments({
       query,

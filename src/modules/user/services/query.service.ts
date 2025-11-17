@@ -11,7 +11,7 @@ import {
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/lib/const/user.const';
-import { UserQueryDto } from '@/user/dto/query.dto';
+import { UserQuery } from '@/user/dto/query.dto';
 import { UserListResponseDto } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
 import { Injectable } from '@nestjs/common';
@@ -26,7 +26,7 @@ export class QueryService extends EntityQueryService {
     hasAccessToRoles,
     hasAccessToPermissions,
   }: {
-    filters: UserQueryDto;
+    filters: UserQuery;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
@@ -34,18 +34,17 @@ export class QueryService extends EntityQueryService {
     const {
       sort,
       pagination,
-      selectUserFields,
-      selectDepartmentFields,
-      selectUserRoleFields,
-      selectRoleFields,
-      selectPermissionFields,
+      responseParams: {
+        includeDepartments,
+        includeRoles,
+        includePermissions,
+        selectUserFields,
+        selectDepartmentFields,
+        selectUserRoleFields,
+        selectRoleFields,
+        selectPermissionFields,
+      },
     } = filters;
-
-    let { includeDepartments, includeRoles, includePermissions } = filters;
-
-    includeDepartments ??= hasAccessToDepartments;
-    includeRoles ??= hasAccessToRoles;
-    includePermissions ??= hasAccessToPermissions;
 
     const query = this.initQuery({
       entity: User,
@@ -65,11 +64,11 @@ export class QueryService extends EntityQueryService {
       pagination,
       sort,
       select: [
-        ...(selectUserFields ?? []),
-        ...(selectDepartmentFields ?? []),
-        ...(selectUserRoleFields ?? []),
-        ...(selectRoleFields ?? []),
-        ...(selectPermissionFields ?? []),
+        ...selectUserFields,
+        ...selectDepartmentFields,
+        ...selectUserRoleFields,
+        ...selectRoleFields,
+        ...selectPermissionFields,
       ],
       criteria: this.userQueryCriteria({
         hasAccessToCreatedBy: true,
@@ -126,6 +125,11 @@ export class QueryService extends EntityQueryService {
         permissionAccess: hasAccessToRoles,
         includeRelation: includeRoles,
       },
+      [ASSIGNED_BY_USER_QUERY_ALIAS]: {
+        permissionAccess: hasAccessToRoles,
+        includeRelation: includeRoles,
+        nestedFrom: USER_ROLE_QUERY_ALIAS,
+      },
       [ROLE_QUERY_ALIAS]: {
         permissionAccess: hasAccessToRoles,
         includeRelation: includeRoles,
@@ -147,7 +151,7 @@ export class QueryService extends EntityQueryService {
     hasAccessToPermissions,
   }: {
     query: SelectQueryBuilder<User>;
-    filters: UserQueryDto;
+    filters: UserQuery;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
@@ -168,12 +172,9 @@ export class QueryService extends EntityQueryService {
         permissionIds,
         permissionCodes,
       },
-      dateFilterParam,
-      dateFrom,
-      dateTo,
+      responseParams: { includeDepartments, includeRoles, includePermissions },
+      dateQuery: { dateFilterParam, dateFrom, dateTo },
     } = filters;
-
-    let { includeDepartments, includeRoles, includePermissions } = filters;
 
     this.whereIn<User>({
       query,
@@ -196,6 +197,10 @@ export class QueryService extends EntityQueryService {
       condition: 'AND',
     });
 
+    if (emails != undefined) {
+      query.useIndex('UQ_USER_EMAIL');
+    }
+
     this.whereIn<User>({
       query,
       field: 'email',
@@ -205,13 +210,13 @@ export class QueryService extends EntityQueryService {
 
     this.whereIn<User>({
       query,
-      field: 'phoneNumber',
+      field: 'phone',
       values: phoneNumbers,
       condition: 'AND',
     });
 
     if (isActive !== undefined) {
-      query.where({
+      this.where({
         query,
         field: 'isActive',
         value: isActive,
@@ -220,7 +225,7 @@ export class QueryService extends EntityQueryService {
     }
 
     if (isEmailVerified !== undefined) {
-      query.where({
+      this.where({
         query,
         field: 'isEmailVerified',
         value: isEmailVerified,
@@ -244,10 +249,6 @@ export class QueryService extends EntityQueryService {
       });
     }
 
-    includeDepartments ??= hasAccessToDepartments;
-    includeRoles ??= hasAccessToRoles;
-    includePermissions ??= hasAccessToPermissions;
-
     this.filterByDepartments({
       query,
       hasAccessToDepartments: includeDepartments && hasAccessToDepartments,
@@ -264,6 +265,14 @@ export class QueryService extends EntityQueryService {
       permissionIds,
       permissionCodes,
     });
+
+    // TO DO fix join for assignedBy field
+    // this.joinRelation<User>({
+    //   query,
+    //   alias: ASSIGNED_BY_USER_QUERY_ALIAS,
+    //   relationAlias: USER_QUERY_ALIAS,
+    //   nestedFrom: USER_ROLE_QUERY_ALIAS,
+    // });
   }
 
   filterByRolePermission({

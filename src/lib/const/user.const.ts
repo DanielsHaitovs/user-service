@@ -97,6 +97,13 @@ export const ASSIGNED_USER_QUERY_ALIAS = 'assignedBy' as string;
 export const USER_ROLE_QUERY_ALIAS = 'userRoles' as string;
 
 /**
+ * Sample UUID v4 for user identification in tests and API documentation.
+ * Format follows RFC 4122 standard for universally unique identifiers.
+ */
+export const EXAMPLE_USER_ROLE_ID =
+  '123e4567-e89b-12d3-a456-426614174134' as string;
+
+/**
  * Error message used when a user is not found in the database.
  * Provides a clear indication of the issue in API responses.
  */

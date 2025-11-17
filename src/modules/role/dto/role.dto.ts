@@ -137,31 +137,31 @@ export class RoleResponseDto extends RoleBaseDto {
   @Type(() => PermissionResponseDto)
   @ValidateNested({ each: true })
   @IsOptional()
-  permissions?: PermissionResponseDto[] | undefined;
+  permissions: PermissionResponseDto[];
 
   @ApiProperty({
     description: 'List of roles assigned to the user',
-    type: GetUserDto,
+    type: () => GetUserDto,
     isArray: false,
   })
   @Type(() => GetUserDto)
   @ValidateNested()
-  createdBy?: GetUserDto | undefined;
+  createdBy: GetUserDto;
 
   constructor(
     id: UUID,
     name: string,
     createdAt: Date,
     updatedAt: Date,
+    createdBy: GetUserDto,
     permissions?: PermissionResponseDto[],
-    createdBy?: GetUserDto,
   ) {
     super(name);
     this.id = id;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.permissions = permissions ?? [];
-    this.createdBy = createdBy ?? undefined;
+    this.createdBy = createdBy;
   }
 }
 

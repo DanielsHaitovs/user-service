@@ -309,7 +309,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         permissionService,
         createdBy: systemUserId,
         // createdBy: userIdWhoOnlyCreated1Role, Uncomment once user entity will be created
-        hasAccessToPermissions: true,
+        hasAccessToPermissions: false,
       });
     });
 
@@ -329,7 +329,7 @@ describe('RoleService (Integration - PostgreSQL)', () => {
         permissionService,
         createdBy: systemUserId,
         // createdBy: userIdWhoOnlyCreated1Role, Uncomment once user entity will be created
-        hasAccessToPermissions: true,
+        hasAccessToPermissions: false,
       });
     });
 

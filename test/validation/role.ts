@@ -88,9 +88,9 @@ export function validateRoleApiResponse({
     }
 
     if (expectsCreateByUser !== undefined && expectsCreateByUser) {
-      if (role.createdBy == undefined) {
-        throw new Error('CreatedBy user is undefined');
-      }
+      // if (role.createdBy == undefined) {
+      //   throw new Error('CreatedBy user is undefined');
+      // }
 
       expect(role).toHaveProperty('createdBy');
       expect(role.createdBy).toBeDefined();

@@ -8,14 +8,21 @@ import {
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
+  EXAMPLE_DEPARTMENT_COUNTRY,
   EXAMPLE_DEPARTMENT_ID,
+  EXAMPLE_DEPARTMENT_NAME,
   READ_DEPARTMENT,
 } from '@/lib/const/department.const';
 import {
+  EXAMPLE_PERMISSION_CODE,
+  EXAMPLE_PERMISSION_ID,
+  EXAMPLE_PERMISSION_NAME,
   EXAMPLE_ROLE_ID,
+  EXAMPLE_ROLE_NAME,
   READ_PERMISSION,
   READ_ROLE,
 } from '@/lib/const/role.const';
+import { SORT_DESCRIPTION } from '@/lib/const/system.const';
 import {
   CREATE_USER,
   CREATE_USER_ROLE,
@@ -28,6 +35,7 @@ import {
   EXAMPLE_USER_ID,
   EXAMPLE_USER_LAST_NAME,
   EXAMPLE_USER_PHONE,
+  EXAMPLE_USER_ROLE_ID,
   READ_USER,
   READ_USER_ROLE,
   UPDATE_USER,
@@ -40,10 +48,7 @@ import {
   UserResponseDto,
 } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
-import {
-  getUserGenericSelectableFields,
-  getUserRoleGenericSelectableFields,
-} from '@/user/helper/user-fields.util';
+import { getUserGenericSelectableFields } from '@/user/helper/user-fields.util';
 import { QueryService } from '@/user/services/query.service';
 import { UserService } from '@/user/services/user.service';
 import { generateUserFriendlyPassword } from '@/utils/token-generator.util';
@@ -61,9 +66,6 @@ import {
   NotFoundException,
   Param,
   ParseArrayPipe,
-  ParseBoolPipe,
-  ParseDatePipe,
-  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -93,14 +95,7 @@ import {
 import { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 
-import { COUNTRIES } from '../../lib/const/countries.const';
-import { SORT_DESCRIPTION } from '../../lib/const/system.const';
-import { DateFilterParam } from '../../lib/enum/query/filter.enum';
-import { getDepartmentGenericSelectableFields } from '../department/helper/department-fields.util';
-import {
-  getPermissionsGenericSelectableFields,
-  getRoleGenericSelectableFields,
-} from '../role/helper/role-fields.util';
+import { FilterUsersQueryDto } from './dto/query.dto';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -259,164 +254,11 @@ export class UserController {
     return await this.userService.create(createUserDto, createdBy);
   }
 
-  /**
-   * Retrieves user information by unique identifier for profile access and administration.
-   *
-   * Primary lookup method for user data access. Commonly used in authentication
-   * contexts, profile management, and administrative interfaces where the user ID
-   * is already known from previous operations or JWT tokens.
-   */
-  // @Get('id/:id')
-  // @Permissions(READ_USER)
-  // @HttpCode(HttpStatus.OK)
-  // @ApiOperation({
-  //   summary: 'Get user by ID',
-  //   description: 'Retrieves a user by their unique identifier (UUID).',
-  // })
-  // @ApiParam({
-  //   name: 'id',
-  //   type: String,
-  //   format: 'uuid',
-  //   description: 'User unique identifier',
-  //   example: EXAMPLE_USER_ID,
-  // })
-  // @ApiOkResponse({
-  //   description: 'User found and returned successfully',
-  //   type: UserResponseDto,
-  //   example: {
-  //     id: EXAMPLE_USER_ID,
-  //     firstName: EXAMPLE_USER_FIRST_NAME,
-  //     lastName: EXAMPLE_USER_LAST_NAME,
-  //     email: EXAMPLE_USER_EMAIL,
-  //     phone: EXAMPLE_USER_PHONE,
-  //     dateOfBirth: EXAMPLE_USER_DATE_OF_BIRTH,
-  //     isActive: true,
-  //     isEmailVerified: true,
-  //     emailVerificationToken: null,
-  //   },
-  // })
-  // @ApiBadRequestResponse({
-  //   description: 'Invalid UUID format provided',
-  //   schema: {
-  //     type: 'object',
-  //     properties: {
-  //       statusCode: { type: 'number', example: 400 },
-  //       message: { type: 'string', example: 'Invalid UUID format' },
-  //       error: { type: 'string', example: BadRequestException.name },
-  //     },
-  //   },
-  // })
-  // @ApiNotFoundResponse({
-  //   description: USER_NOT_FOUND_MSG,
-  //   schema: {
-  //     type: 'object',
-  //     properties: {
-  //       statusCode: { type: 'number', example: 404 },
-  //       message: { type: 'string', example: USER_NOT_FOUND_MSG },
-  //       error: { type: 'string', example: NotFoundException.name },
-  //     },
-  //   },
-  // })
-  // @ApiInternalServerErrorResponse({
-  //   description: InternalServerErrorException.name,
-  //   schema: {
-  //     type: 'object',
-  //     properties: {
-  //       statusCode: { type: 'number', example: 500 },
-  //       message: { type: 'string', example: InternalServerErrorException.name },
-  //       error: { type: 'string', example: InternalServerErrorException.name },
-  //     },
-  //   },
-  // })
-  // async getUserById(@Param('id') id: UUID): Promise<User> {
-  //   return await this.userService.findById(id);
-  // }
-
-  /**
-   * Locates user by email address for authentication and account recovery workflows.
-   *
-   * Alternative lookup method supporting email-based user identification.
-   * Essential for login processes, password recovery, and scenarios where
-   * email is the primary user identifier available to the client.
-   */
-  //   @Get('email/:email')
-  //   @Permissions(READ_USER)
-  //   @HttpCode(HttpStatus.OK)
-  //   @ApiOperation({
-  //     summary: 'Get user by email',
-  //     description: 'Retrieves a user by their email address.',
-  //   })
-  //   @ApiParam({
-  //     name: 'email',
-  //     type: String,
-  //     format: 'email',
-  //     description: 'User email address',
-  //     example: EXAMPLE_USER_EMAIL,
-  //   })
-  //   @ApiOkResponse({
-  //     description: 'User found and returned successfully',
-  //     type: UserResponseDto,
-  //     example: {
-  //       id: EXAMPLE_USER_ID,
-  //       firstName: EXAMPLE_USER_FIRST_NAME,
-  //       lastName: EXAMPLE_USER_LAST_NAME,
-  //       email: EXAMPLE_USER_EMAIL,
-  //       phone: EXAMPLE_USER_PHONE,
-  //       dateOfBirth: EXAMPLE_USER_DATE_OF_BIRTH,
-  //       isActive: true,
-  //       isEmailVerified: true,
-  //       emailVerificationToken: null,
-  //     },
-  //   })
-  //   @ApiBadRequestResponse({
-  //     description: 'Invalid email format provided',
-  //     schema: {
-  //       type: 'object',
-  //       properties: {
-  //         statusCode: { type: 'number', example: 400 },
-  //         message: { type: 'string', example: 'Invalid email format' },
-  //         error: { type: 'string', example: BadRequestException.name },
-  //       },
-  //     },
-  //   })
-  //   @ApiNotFoundResponse({
-  //     description: USER_NOT_FOUND_MSG,
-  //     schema: {
-  //       type: 'object',
-  //       properties: {
-  //         statusCode: { type: 'number', example: 404 },
-  //         message: { type: 'string', example: USER_NOT_FOUND_MSG },
-  //         error: { type: 'string', example: NotFoundException.name },
-  //       },
-  //     },
-  //   })
-  //   @ApiInternalServerErrorResponse({
-  //     description: InternalServerErrorException.name,
-  //     schema: {
-  //       type: 'object',
-  //       properties: {
-  //         statusCode: { type: 'number', example: 500 },
-  //         message: { type: 'string', example: InternalServerErrorException.name },
-  //         error: { type: 'string', example: InternalServerErrorException.name },
-  //       },
-  //     },
-  //   })
-  //   async getUserByEmail(@Param('email') email: string,
-  //     @CurrentUserPermissions() userPermissions: string[],
-  // ): Promise<User> {
-  //       const hasAccessToDepartments = hasPermissions({
-  //         userPermissions,
-  //         requestedPermissions: [READ_USER],
-  //       });
-
-  //     return await this.userService.findByEmails({ emails: [email], pa });
-  //   }
-
   @Get('attribute/ids')
   @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    description: 'Searches for permissions by firstname, lastname, email or ID',
+    description: 'Searches for users by ID',
   })
   @ApiQuery({
     name: 'ids',
@@ -424,7 +266,7 @@ export class UserController {
     isArray: true,
     format: 'uuid',
     required: true,
-    description: 'Permission unique identifiers',
+    description: 'User unique identifiers',
     example: [EXAMPLE_USER_ID],
   })
   @ApiQuery({
@@ -528,18 +370,20 @@ export class UserController {
     });
   }
 
-  @Get('search/:value')
+  @Get('attribute/emails')
   @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    description: 'Searches for permissions by firstname, lastname, email or ID',
+    description: 'Searches for users email',
   })
-  @ApiParam({
-    name: 'value',
+  @ApiQuery({
+    name: 'emails',
     type: String,
+    isArray: true,
+    format: 'uuid',
     required: true,
-    description: 'Search value for USER (firstname, lastname, email or ID)',
-    example: EXAMPLE_USER_FIRST_NAME,
+    description: 'User email',
+    example: [EXAMPLE_USER_EMAIL],
   })
   @ApiQuery({
     name: 'page',
@@ -589,6 +433,127 @@ export class UserController {
         email: EXAMPLE_USER_EMAIL,
       },
     ],
+  })
+  @ApiInternalServerErrorResponse({
+    description: InternalServerErrorException.name,
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 500 },
+        message: { type: 'string', example: InternalServerErrorException.name },
+        error: { type: 'string', example: InternalServerErrorException.name },
+      },
+    },
+  })
+  async getUsersByEmails(
+    @Query('emails', ParseArrayPipe) emails: string[],
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('sortField') sortField: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
+    @Query('select') select: string[],
+    @CurrentUserPermissions() userPermissions: string[],
+  ): Promise<User[]> {
+    const hasAccessToRoles = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_ROLE],
+    });
+
+    const hasAccessToPermissions = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_PERMISSION],
+    });
+
+    const hasAccessToDepartments = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_DEPARTMENT],
+    });
+
+    return await this.userService.findByEmails({
+      emails,
+      hasAccessToDepartments,
+      hasAccessToRoles,
+      hasAccessToPermissions,
+      pagination: {
+        page,
+        limit,
+      },
+      sort: {
+        sortField,
+        sortOrder,
+      },
+      select,
+    });
+  }
+
+  @Get('search/:value')
+  @Permissions(READ_USER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    description: 'Searches for users by firstname, lastname, email or ID',
+  })
+  @ApiParam({
+    name: 'value',
+    type: String,
+    required: true,
+    description: 'Search value for USER (firstname, lastname, email or ID)',
+    example: EXAMPLE_USER_FIRST_NAME,
+  })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: true,
+    description: 'Filter users by page number',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: true,
+    description: 'Filter users by limit of results per page',
+    example: 10,
+    maximum: 500,
+  })
+  @ApiQuery({
+    name: 'sortField',
+    type: String,
+    required: false,
+    description: SORT_DESCRIPTION,
+    enum: getUserGenericSelectableFields({}),
+    example: 'name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    type: String,
+    required: false,
+    description: SORT_DESCRIPTION,
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'select',
+    type: String,
+    required: false,
+    description: 'Selct Roles by fields',
+    enum: getUserGenericSelectableFields({}),
+    example: ['role.name'],
+  })
+  @ApiOkResponse({
+    description: 'Users found and returned successfully',
+    type: UserListResponseDto,
+    example: {
+      total: 1,
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+      users: [
+        {
+          id: EXAMPLE_USER_ID,
+          firstName: EXAMPLE_USER_FIRST_NAME,
+          lastName: EXAMPLE_USER_LAST_NAME,
+          email: EXAMPLE_USER_EMAIL,
+        },
+      ],
+    },
   })
   @ApiInternalServerErrorResponse({
     description: InternalServerErrorException.name,
@@ -1009,262 +974,103 @@ export class UserController {
    * management scenarios requiring fine-grained data access control.
    */
   @Get('query')
-  @Permissions(READ_USER, READ_DEPARTMENT, READ_ROLE, READ_USER_ROLE)
-  @ApiQuery({
-    name: 'ids',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by ID',
-  })
-  @ApiQuery({
-    name: 'firstNames',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by first name',
-  })
-  @ApiQuery({
-    name: 'lastNames',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by last name',
-  })
-  @ApiQuery({
-    name: 'emails',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by email',
-  })
-  @ApiQuery({
-    name: 'phoneNumbers',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by phone number',
-  })
-  @ApiQuery({
-    name: 'isActive',
-    type: Boolean,
-    required: false,
-    description: 'Filter users by active status',
-  })
-  @ApiQuery({
-    name: 'isEmailVerified',
-    type: Boolean,
-    required: false,
-    description: 'Filter users by email verification status',
-  })
-  @ApiQuery({
-    name: 'includeDepartments',
-    type: Boolean,
-    required: false,
-    description: 'Add department information to the response',
-  })
-  @ApiQuery({
-    name: 'departmentIds',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by departments ID',
-  })
-  @ApiQuery({
-    name: 'departmentCountries',
-    type: String,
-    enum: COUNTRIES,
-    isArray: true,
-    required: false,
-    description: 'Filter users by departments Countries',
-  })
-  @ApiQuery({
-    name: 'includeRoles',
-    type: Boolean,
-    required: false,
-    description: 'Add reoles information to the response',
-  })
-  @ApiQuery({
-    name: 'roleIds',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by roles ID',
-  })
-  @ApiQuery({
-    name: 'roleNames',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by roles name',
-  })
-  @ApiQuery({
-    name: 'includePermissions',
-    type: Boolean,
-    required: false,
-    description: 'Add permissions information to the response',
-  })
-  @ApiQuery({
-    name: 'permissionIds',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by permissions ID',
-  })
-  @ApiQuery({
-    name: 'permissionCodes',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Filter users by permissions codes',
-  })
-  @ApiQuery({
-    name: 'dateFrom',
-    type: Date,
-    required: false,
-    description: 'Filter results created from this date',
-    example: '2023-01-01T00:00:00.000Z',
-  })
-  @ApiQuery({
-    name: 'dateTo',
-    type: Date,
-    required: false,
-    description: 'Filter results created up to this date',
-    example: '2023-12-31T23:59:59.999Z',
-  })
-  @ApiQuery({
-    name: 'dateFilterParam',
-    enum: DateFilterParam,
-    required: false,
-    description: 'Additional date filter parameter for custom filtering logic',
-    example: DateFilterParam.CREATED_AT,
-  })
-  @ApiQuery({
-    name: 'page',
-    type: Number,
-    required: true,
-    description: 'Filter users by page number',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    type: Number,
-    required: true,
-    description: 'Filter users by limit of results per page',
-    example: 10,
-    maximum: 500,
-  })
-  @ApiQuery({
-    name: 'sortField',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: getUserGenericSelectableFields({}),
-  })
-  @ApiQuery({
-    name: 'sortOrder',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: ['ASC', 'DESC'],
-  })
-  @ApiQuery({
-    name: 'selectUserFields',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Select users fields',
-    enum: getUserGenericSelectableFields({}),
-  })
-  @ApiQuery({
-    name: 'selectDepartmentFields',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Select users department fields',
-    enum: getDepartmentGenericSelectableFields({}),
-  })
-  @ApiQuery({
-    name: 'selectUserRoleFields',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Select users roles fields',
-    enum: getUserRoleGenericSelectableFields({}),
-  })
-  @ApiQuery({
-    name: 'selectRoleFields',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Select roles fields',
-    enum: getRoleGenericSelectableFields({}),
-  })
-  @ApiQuery({
-    name: 'selectPermissionFields',
-    type: String,
-    isArray: true,
-    required: false,
-    description: 'Select users permissions fields',
-    enum: getPermissionsGenericSelectableFields({}),
+  @Permissions(READ_USER)
+  @ApiOkResponse({
+    description: 'Users found and returned successfully',
+    type: UserListResponseDto,
+    example: {
+      total: 1,
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+      users: [
+        {
+          id: EXAMPLE_USER_ID,
+          firstName: EXAMPLE_USER_FIRST_NAME,
+          lastName: EXAMPLE_USER_LAST_NAME,
+          email: EXAMPLE_USER_EMAIL,
+          departments: [
+            {
+              id: EXAMPLE_DEPARTMENT_ID,
+              name: EXAMPLE_DEPARTMENT_NAME,
+              country: EXAMPLE_DEPARTMENT_COUNTRY,
+            },
+          ],
+          userRoles: [
+            {
+              id: EXAMPLE_USER_ROLE_ID,
+              role: {
+                id: EXAMPLE_ROLE_ID,
+                name: EXAMPLE_ROLE_NAME,
+                permissions: [
+                  {
+                    id: EXAMPLE_PERMISSION_ID,
+                    name: EXAMPLE_PERMISSION_NAME,
+                    code: EXAMPLE_PERMISSION_CODE,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    },
   })
   async filterUsers(
-    @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
-    @Query('firstNames', new ParseArrayPipe({ optional: true }))
-    firstNames: string[],
-    @Query('lastNames', new ParseArrayPipe({ optional: true }))
-    lastNames: string[],
-    @Query('emails', new ParseArrayPipe({ optional: true })) emails: string[],
-    @Query('phoneNumbers', new ParseArrayPipe({ optional: true }))
-    phoneNumbers: string[],
-    @Query('isActive', new ParseBoolPipe({ optional: true }))
-    isActive: boolean,
-    @Query('isEmailVerified', new ParseBoolPipe({ optional: true }))
-    isEmailVerified: boolean,
-    @Query('departmentIds', new ParseArrayPipe({ optional: true }))
-    departmentIds: UUID[],
-    @Query('departmentCountries', new ParseArrayPipe({ optional: true }))
-    departmentCountries: string[],
-    @Query('includeDepartments', new ParseBoolPipe({ optional: true }))
-    includeDepartments: boolean,
-    @Query('roleIds', new ParseArrayPipe({ optional: true }))
-    roleIds: UUID[],
-    @Query('roleNames', new ParseArrayPipe({ optional: true }))
-    roleNames: string[],
-    @Query('includeRoles', new ParseBoolPipe({ optional: true }))
-    includeRoles: boolean,
-    @Query('permissionIds', new ParseArrayPipe({ optional: true }))
-    permissionIds: UUID[],
-    @Query('permissionCodes', new ParseArrayPipe({ optional: true }))
-    permissionCodes: string[],
-    @Query('includePermissions', new ParseBoolPipe({ optional: true }))
-    includePermissions: boolean,
-    @Query('dateFrom', new ParseDatePipe({ optional: true }))
-    dateFrom: Date | undefined,
-    @Query('dateTo', new ParseDatePipe({ optional: true }))
-    dateTo: Date | undefined,
-    @Query(
-      'dateFilterParam',
-      new ParseEnumPipe(DateFilterParam, { optional: true }),
-    )
-    dateFilterParam: DateFilterParam | undefined,
-    @Query('page', ParseIntPipe) page: number,
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('sortField') sortField: string,
-    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('selectUserFields', new ParseArrayPipe({ optional: true }))
-    selectUserFields: string[],
-    @Query('selectDepartmentFields', new ParseArrayPipe({ optional: true }))
-    selectDepartmentFields: string[],
-    @Query('selectUserRoleFields', new ParseArrayPipe({ optional: true }))
-    selectUserRoleFields: string[],
-    @Query('selectRoleFields', new ParseArrayPipe({ optional: true }))
-    selectRoleFields: string[],
-    @Query('selectPermissionFields', new ParseArrayPipe({ optional: true }))
-    selectPermissionFields: string[],
+    @Query() filters: FilterUsersQueryDto,
+    @CurrentUserPermissions() userPermissions: string[],
   ): Promise<UserListResponseDto> {
-    return await this.queryService.getUsers({
+    const hasAccessToRoles = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_ROLE],
+    });
+    const hasAccessToPermissions = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_PERMISSION],
+    });
+    const hasAccessToDepartments = hasPermissions({
+      userPermissions,
+      requestedPermissions: [READ_DEPARTMENT],
+    });
+    const {
+      // from UserQueryParametersDto
+      ids,
+      firstNames,
+      lastNames,
+      emails,
+      phoneNumbers,
+      isActive,
+      isEmailVerified,
+      departmentIds,
+      departmentCountries,
+      roleIds,
+      roleNames,
+      permissionIds,
+      permissionCodes,
+      // from UserDateRequestDto
+      dateFilterParam,
+      dateFrom,
+      dateTo,
+      // from UserQueruRepsonseParametersDto
+      includeDepartments,
+      includeRoles,
+      includePermissions,
+      selectUserFields,
+      selectUserRoleFields,
+      selectDepartmentFields,
+      selectRoleFields,
+      selectPermissionFields,
+      // from PaginationDto
+      page,
+      limit,
+      // from SortDto
+      sortField,
+      sortOrder,
+    } = filters;
+
+    return this.queryService.getUsers({
       filters: {
+        // you can re-group them here if your service expects the old structure
         query: {
           ids,
           firstNames,
@@ -1280,29 +1086,27 @@ export class UserController {
           permissionIds,
           permissionCodes,
         },
-        dateFrom,
-        dateTo,
-        dateFilterParam,
-        pagination: {
-          page,
-          limit,
+        dateQuery: {
+          dateFilterParam,
+          dateFrom,
+          dateTo,
         },
-        sort: {
-          sortField,
-          sortOrder,
+        responseParams: {
+          includeDepartments,
+          includeRoles,
+          includePermissions,
+          selectUserFields,
+          selectUserRoleFields,
+          selectDepartmentFields,
+          selectRoleFields,
+          selectPermissionFields,
         },
-        includeDepartments,
-        includeRoles,
-        includePermissions,
-        selectUserFields,
-        selectDepartmentFields,
-        selectUserRoleFields,
-        selectRoleFields,
-        selectPermissionFields,
+        pagination: { page, limit },
+        sort: { sortField, sortOrder },
       },
-      hasAccessToDepartments: true,
-      hasAccessToPermissions: true,
-      hasAccessToRoles: true,
+      hasAccessToDepartments,
+      hasAccessToPermissions,
+      hasAccessToRoles,
     });
   }
 }

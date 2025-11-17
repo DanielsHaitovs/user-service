@@ -22,12 +22,11 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-      PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredPermissions = this.reflector.getAllAndOverride<
+      string[] | undefined
+    >(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
 
-    if (requiredPermissions.length === 0) {
+    if (requiredPermissions == undefined || requiredPermissions.length === 0) {
       return true;
     }
 

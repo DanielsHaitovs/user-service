@@ -4,6 +4,8 @@
  * to maintain uniformity in examples and mock data.
  */
 
+import { COUNTRIES } from '@/lib/const/countries.const';
+
 // Standard email address for the system user.
 // This email is used in tests and API documentation to represent the system user.
 // It should not be used for real user accounts to avoid conflicts.
@@ -32,6 +34,12 @@ export const ASSIGNED_BY_USER_QUERY_ALIAS = 'assignedBy' as string;
  * Format follows RFC 4122 standard for universally unique identifiers.
  */
 export const EXAMPLE_USER_ID = '123e4567-e89b-12d3-a456-426614174000' as string;
+
+/**
+ * Standard example country used in API documentation and test fixtures.
+ * Represents a user's country that is commonly used for testing scenarios.
+ */
+export const EXAMPLE_USER_COUNTRY = COUNTRIES.US as string;
 
 /**
  * Standard example email address used in API documentation and test fixtures.

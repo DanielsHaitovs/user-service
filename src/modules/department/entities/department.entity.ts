@@ -1,7 +1,7 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { User } from '@/user/entities/user.entity';
 
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
 import {
   Column,
@@ -12,6 +12,8 @@ import {
   ManyToOne,
   Unique,
 } from 'typeorm';
+
+import { COUNTRIES } from '../../../lib/const/countries.const';
 
 @Entity('departments')
 @Unique('UQ_DEPARTMENT_NAME', ['name'], { deferrable: 'INITIALLY IMMEDIATE' })
@@ -29,10 +31,10 @@ export class Departments extends MecBaseEntity {
   @IsString()
   name: string;
 
-  @Column({ length: 100 })
+  @Column({ type: 'enum', enum: Object.values(COUNTRIES) })
   @IsNotEmpty()
-  @IsString()
-  country: string;
+  @IsEnum(COUNTRIES)
+  country: keyof typeof COUNTRIES;
 
   @ManyToMany(() => User, (user) => user.departments)
   users: User[];
@@ -46,7 +48,7 @@ export class Departments extends MecBaseEntity {
     createdAt: Date,
     updatedAt: Date,
     name: string,
-    country: string,
+    country: keyof typeof COUNTRIES,
     users: User[],
     createdBy: User,
   ) {

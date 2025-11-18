@@ -1,4 +1,5 @@
 import { Departments } from '@/department/entities/department.entity';
+import { RandomCountry } from '@/lib/const/countries.const';
 import { READ_DEPARTMENT } from '@/lib/const/department.const';
 import { READ_PERMISSION, READ_ROLE } from '@/lib/const/role.const';
 import {
@@ -24,8 +25,8 @@ import { v4 as uuid } from 'uuid';
 @Injectable()
 export class SeedService {
   private readonly logger = new Logger(SeedService.name);
-  private readonly batchSize = 500;
-  private readonly concurrency = 50;
+  private readonly batchSize = 1000;
+  private readonly concurrency = 100;
 
   constructor(
     @InjectEntityManager()
@@ -51,7 +52,7 @@ export class SeedService {
       lastName: faker.internet.displayName(),
       phone: faker.phone.number(),
       dateOfBirth: faker.date.past({ years: 80, refDate: new Date() }),
-
+      country: RandomCountry,
       emailVerificationToken: uuid(),
       passwordResetToken: uuid(),
       passwordResetExpires: new Date(Date.now() + 3600000),
@@ -71,7 +72,7 @@ export class SeedService {
 
     const department = this.entityManager.getRepository(Departments).create({
       name: `${faker.lorem.word()}-seed-${uuid()}`,
-      country: 'US',
+      country: RandomCountry,
       createdBy: systemUserID,
     });
 

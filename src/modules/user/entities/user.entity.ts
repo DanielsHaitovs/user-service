@@ -2,7 +2,13 @@ import { MecBaseEntity } from '@/base/mec.entity';
 import { Departments } from '@/department/entities/department.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 
-import { IsBoolean, IsDate, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsDate,
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+} from 'class-validator';
 import { UUID } from 'crypto';
 import {
   Column,
@@ -16,6 +22,8 @@ import {
   Unique,
 } from 'typeorm';
 
+import { COUNTRIES } from '../../../lib/const/countries.const';
+
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })
 @Index('IX_USER_CREATED_AT', ['createdAt'])
@@ -24,6 +32,11 @@ import {
 @Index('IX_USER_EMAIL_FIRSTNAME', ['email', 'firstName'])
 @Index('IX_USER_EMAIL_LASTNAME', ['email', 'lastName'])
 export class User extends MecBaseEntity {
+  @Column({ type: 'enum', enum: Object.values(COUNTRIES) })
+  @IsNotEmpty()
+  @IsEnum(COUNTRIES)
+  country: keyof typeof COUNTRIES;
+
   @Column({ length: 100 })
   @IsNotEmpty()
   @IsString()
@@ -102,6 +115,7 @@ export class User extends MecBaseEntity {
 
   constructor(
     id: UUID,
+    country: keyof typeof COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -123,6 +137,7 @@ export class User extends MecBaseEntity {
   ) {
     super(id, createdAt, updatedAt);
     this.id = id;
+    this.country = country;
     this.firstName = firstName;
     this.lastName = lastName;
     this.email = email;

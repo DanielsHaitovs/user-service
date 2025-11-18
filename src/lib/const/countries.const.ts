@@ -249,6 +249,11 @@ export const COUNTRIES = {
   ZW: 'ZW',
 } as const;
 
+export const RandomCountry: keyof typeof COUNTRIES = Object.keys(COUNTRIES)[
+  // eslint-disable-next-line sonarjs/pseudo-random
+  Math.floor(Math.random() * Object.keys(COUNTRIES).length)
+] as keyof typeof COUNTRIES;
+
 export const COUNTRY_TO_ISO_3 = {
   EE: 'EST',
   CY: 'CYP',

@@ -1,4 +1,5 @@
 import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
+import { COUNTRIES } from '@/lib/const/countries.const';
 import {
   EXAMPLE_DEPARTMENT_COUNTRY,
   EXAMPLE_DEPARTMENT_NAME,
@@ -9,6 +10,7 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsDate,
+  IsEnum,
   IsString,
   MaxLength,
   MinLength,
@@ -38,12 +40,12 @@ export class DepartmentBaseDto {
     maxLength: 100,
     type: String,
   })
-  @IsString()
+  @IsEnum(COUNTRIES)
   @MinLength(1)
   @MaxLength(100)
-  country: string;
+  country: keyof typeof COUNTRIES;
 
-  constructor(name: string, country: string) {
+  constructor(name: string, country: keyof typeof COUNTRIES) {
     this.name = name;
     this.country = country;
   }
@@ -99,7 +101,7 @@ export class DepartmentResponseDto extends DepartmentBaseDto {
     createdAt: Date,
     updatedAt: Date,
     name: string,
-    country: string,
+    country: keyof typeof COUNTRIES,
     createdBy: GetUserDto,
     users: GetUserDto[],
   ) {

@@ -1,7 +1,7 @@
 import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
 import { DepartmentResponseDto } from '@/department/dto/department.dto';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
-import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
+import { EXAMPLE_USER_COUNTRY, EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -9,6 +9,7 @@ import {
   IsBoolean,
   IsDate,
   IsEmail,
+  IsEnum,
   IsOptional,
   IsString,
   IsUUID,
@@ -17,6 +18,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UUID } from 'crypto';
+
+import { COUNTRIES } from '../../../lib/const/countries.const';
 
 import { UserRoleResponseDto } from './userRole.dto';
 
@@ -27,6 +30,19 @@ import { UserRoleResponseDto } from './userRole.dto';
  * consistent validation rules and API documentation across all user-related endpoints.
  */
 export class UserBaseDto {
+  @ApiProperty({
+    description: 'Country where the department is located',
+    example: EXAMPLE_USER_COUNTRY,
+    required: true,
+    minLength: 1,
+    maxLength: 100,
+    type: String,
+  })
+  @IsEnum(COUNTRIES)
+  @MinLength(1)
+  @MaxLength(100)
+  country: keyof typeof COUNTRIES;
+
   @ApiProperty({
     description: 'User first name',
     example: 'John',
@@ -98,6 +114,7 @@ export class UserBaseDto {
   dateOfBirth: Date;
 
   constructor(
+    country: keyof typeof COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -105,6 +122,7 @@ export class UserBaseDto {
     phone: string,
     dateOfBirth: Date,
   ) {
+    this.country = country;
     this.firstName = firstName;
     this.lastName = lastName;
     this.email = email;
@@ -168,6 +186,7 @@ export class CreateUserDto extends UserBaseDto {
   roleIds: UUID[];
 
   constructor(
+    country: keyof typeof COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -180,7 +199,7 @@ export class CreateUserDto extends UserBaseDto {
     departmentIds: UUID[],
     roleIds: UUID[],
   ) {
-    super(firstName, lastName, email, password, phone, dateOfBirth);
+    super(country, firstName, lastName, email, password, phone, dateOfBirth);
     this.isActive = isActive;
     // this.isEmailVerified = isEmailVerified;
     this.departmentIds = departmentIds;
@@ -280,6 +299,7 @@ export class GetUserDto extends UserBaseDto {
 
   constructor(
     id: UUID,
+    country: keyof typeof COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -295,7 +315,7 @@ export class GetUserDto extends UserBaseDto {
     createdAt: Date,
     updatedAt: Date,
   ) {
-    super(firstName, lastName, email, password, phone, dateOfBirth);
+    super(country, firstName, lastName, email, password, phone, dateOfBirth);
     this.id = id;
     this.isActive = isActive;
     this.isTwoFactorEnabled = isTwoFactorEnabled;
@@ -343,6 +363,7 @@ export class UserResponseDto extends GetUserDto {
 
   constructor(
     id: UUID,
+    country: keyof typeof COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -363,6 +384,7 @@ export class UserResponseDto extends GetUserDto {
   ) {
     super(
       id,
+      country,
       firstName,
       lastName,
       email,

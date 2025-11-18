@@ -1,3 +1,4 @@
+import { COUNTRIES } from '@/lib/const/countries.const';
 import { ROOT_ADMIN_PERMISSION } from '@/lib/const/role.const';
 import {
   SYSTEM_USER_EMAIL,
@@ -31,6 +32,7 @@ export async function ensureSystemUser(app: INestApplication): Promise<void> {
     lastName: 'User',
 
     password: await bcrypt.hash(SYSTEM_USER_PASSWORD, 10),
+    country: COUNTRIES.US,
     isActive: true,
     isEmailVerified: true,
     isTwoFactorEnabled: false,

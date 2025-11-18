@@ -29,6 +29,16 @@ export const EXAMPLE_DEPARTMENT_COUNTRY = 'United States' as string;
  */
 export const DEPARTMENT_QUERY_ALIAS = 'departments' as string;
 
+/**
+ * Standard example message used in API documentation and test fixtures.
+ * Represents a department not found message that is commonly used for testing scenarios.
+ */
+export const DEPARTMENT_NOT_FOUND_MSG = 'Department not found' as string;
+
+/**
+ * Standard example message used in API documentation and test fixtures.
+ * Represents a department name exists message that is commonly used for testing scenarios.
+ */
 export const DEPARTMENT_NAME_EXISTS_MSG =
   'Department with this name already exists' as string;
 
@@ -37,16 +47,19 @@ export const DEPARTMENT_NAME_EXISTS_MSG =
  * Represents a department description that is commonly used for testing scenarios.
  */
 export const READ_DEPARTMENT = 'department:read' as string;
+
 /**
  * Standard example description used in API documentation and test fixtures.
  * Represents a department description that is commonly used for testing scenarios.
  */
 export const CREATE_DEPARTMENT = 'department:create' as string;
+
 /**
  * Standard example description used in API documentation and test fixtures.
  * Represents a department description that is commonly used for testing scenarios.
  */
 export const UPDATE_DEPARTMENT = 'department:update' as string;
+
 /**
  * Standard example description used in API documentation and test fixtures.
  * Represents a department description that is commonly used for testing scenarios.

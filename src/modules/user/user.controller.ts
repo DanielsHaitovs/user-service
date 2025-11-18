@@ -958,7 +958,6 @@ export class UserController {
 
     const deletedCount = result.deleted.toString();
 
-    // Provide user-friendly response with proper pluralization
     return {
       deleted: result.deleted,
       message: `${deletedCount} ${result.deleted !== 1 ? 'users' : 'user'} deleted successfully`,
@@ -1024,16 +1023,18 @@ export class UserController {
       userPermissions,
       requestedPermissions: [READ_ROLE],
     });
+
     const hasAccessToPermissions = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_PERMISSION],
     });
+
     const hasAccessToDepartments = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_DEPARTMENT],
     });
+
     const {
-      // from UserQueryParametersDto
       ids,
       firstNames,
       lastNames,
@@ -1041,17 +1042,17 @@ export class UserController {
       phoneNumbers,
       isActive,
       isEmailVerified,
+      createdByIds,
       departmentIds,
       departmentCountries,
       roleIds,
       roleNames,
       permissionIds,
       permissionCodes,
-      // from UserDateRequestDto
       dateFilterParam,
       dateFrom,
       dateTo,
-      // from UserQueruRepsonseParametersDto
+      includeCreatedBy,
       includeDepartments,
       includeRoles,
       includePermissions,
@@ -1060,17 +1061,14 @@ export class UserController {
       selectDepartmentFields,
       selectRoleFields,
       selectPermissionFields,
-      // from PaginationDto
       page,
       limit,
-      // from SortDto
       sortField,
       sortOrder,
     } = filters;
 
     return this.queryService.getUsers({
       filters: {
-        // you can re-group them here if your service expects the old structure
         query: {
           ids,
           firstNames,
@@ -1079,6 +1077,7 @@ export class UserController {
           phoneNumbers,
           isActive,
           isEmailVerified,
+          createdByIds,
           departmentIds,
           departmentCountries,
           roleIds,
@@ -1092,6 +1091,7 @@ export class UserController {
           dateTo,
         },
         responseParams: {
+          includeCreatedBy,
           includeDepartments,
           includeRoles,
           includePermissions,
@@ -1105,8 +1105,8 @@ export class UserController {
         sort: { sortField, sortOrder },
       },
       hasAccessToDepartments,
-      hasAccessToPermissions,
       hasAccessToRoles,
+      hasAccessToPermissions,
     });
   }
 }

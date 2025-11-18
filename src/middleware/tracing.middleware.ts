@@ -10,7 +10,7 @@ import { NextFunction, Request, Response } from 'express';
 @Injectable()
 export class TraceMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
-    const store = startTraceId(); // creates and returns a fresh context map
+    const store = startTraceId();
 
     traceStorage.run(store, () => {
       setRequestTrace(`${req.method} ${req.url}`);

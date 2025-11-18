@@ -20,7 +20,6 @@ export function getDepartmentGenericSelectableFields({
 }): string[] {
   const metadata = getMetadataArgsStorage();
 
-  // Get all columns for the User entity
   const columns = metadata.columns.filter(
     (column) => column.target === Departments,
   );

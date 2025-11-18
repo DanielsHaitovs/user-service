@@ -56,8 +56,8 @@ import { SeedModule } from './modules/seed/seed.module';
         password: configService.get('USER_DATABASE_PASSWORD') ?? 'postgres',
         database: configService.get('USER_DATABASE_NAME') ?? 'postgres',
         synchronize: configService.get('USER_DATABASE_SYNC') === 'true',
-        poolSize: 100,
-        extra: { max: 100, idleTimeoutMillis: 30000, statement_timeout: 0 },
+        poolSize: 50,
+        extra: { max: 50, idleTimeoutMillis: 30000, statement_timeout: 0 },
         logging:
           configService.get('USER_DATABASE_LOGGING') === 'true'
             ? ['error']

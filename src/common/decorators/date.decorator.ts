@@ -23,6 +23,6 @@ export function ToDate(): PropertyDecorator {
 
       return undefined;
     },
-    { toClassOnly: true }, // 👈 makes sure it runs when plain → class
+    { toClassOnly: true },
   );
 }

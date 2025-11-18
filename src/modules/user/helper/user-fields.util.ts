@@ -21,7 +21,6 @@ export function getUserGenericSelectableFields({
 }): string[] {
   const metadata = getMetadataArgsStorage();
 
-  // Get all columns for the User entity
   const columns = metadata.columns.filter((column) => column.target === User);
   alias ??= USER_QUERY_ALIAS;
 
@@ -38,7 +37,6 @@ export function getUserGenericSelectableFields({
     ];
   }
 
-  // Extract column property names
   return [
     `${alias}.id`,
     `${alias}.createdAt`,
@@ -56,7 +54,6 @@ export function getUserRoleGenericSelectableFields({
 }): string[] {
   const metadata = getMetadataArgsStorage();
 
-  // Get all columns for the User entity
   const columns = metadata.columns.filter(
     (column) => column.target === UserRole,
   );
@@ -76,7 +73,6 @@ export function getUserRoleGenericSelectableFields({
     ];
   }
 
-  // Extract column property names
   return [
     `${alias}.id`,
     `${alias}.createdAt`,
@@ -95,7 +91,6 @@ export function getCreatedByGenericSelectableFields(
 ): string[] {
   const metadata = getMetadataArgsStorage();
 
-  // Get all columns for the User entity
   const columns = metadata.columns.filter((column) => column.target === User);
 
   if (fields && fields.length > 0) {
@@ -111,7 +106,6 @@ export function getCreatedByGenericSelectableFields(
     ];
   }
 
-  // Extract column property names
   return [
     `${CREATEDBY_USER_QUERY_ALIAS}.id`,
     `${CREATEDBY_USER_QUERY_ALIAS}.createdAt`,

@@ -9,6 +9,7 @@
  * Format follows RFC 4122 standard for universally unique identifiers.
  */
 export const EXAMPLE_ROLE_ID = '123e4567-e89b-12d3-a456-426614174000' as string;
+
 /**
  * Sample UUID v4 for permission identification in tests and API documentation.
  * Format follows RFC 4122 standard for universally unique identifiers.
@@ -77,33 +78,40 @@ export const PERMISSINO_CODE_EXISTS_MSG =
  * Standard example message used in API documentation and test fixtures.
  */
 export const READ_PERMISSION = 'permission:read' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  */
 export const CREATE_PERMISSION = 'permission:create' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  */
 export const UPDATE_PERMISSION = 'permission:update' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  */
 export const DELETE_PERMISSION = 'permission:delete' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for managing roles.
  */
 export const READ_ROLE = 'role:read' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for creating roles.
  */
 export const CREATE_ROLE = 'role:create' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for updating roles.
  */
 export const UPDATE_ROLE = 'role:update' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for deleting roles.

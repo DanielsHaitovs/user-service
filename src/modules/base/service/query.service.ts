@@ -236,8 +236,6 @@ export class EntityQueryService {
   }): void {
     if (sort?.sortField == undefined) return;
 
-    // order.sortOrder ??= 'ASC';
-
     const { sortField, sortOrder } = sort;
 
     query.orderBy(sortField, sortOrder);
@@ -413,10 +411,6 @@ export class EntityQueryService {
     query: SelectQueryBuilder<T>;
     relationAlias: string;
   }): boolean {
-    // return query.expressionMap.joinAttributes.some(
-    //   (join) => join.alias.name === relationAlias && join.alias.type === 'join',
-    // );
-    // (TypeORM stores all joins in expressionMap.joinAttributes)
     return query.expressionMap.joinAttributes.some(
       (j) => j.alias.name === relationAlias,
     );

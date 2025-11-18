@@ -4,6 +4,7 @@ import { READ_PERMISSION, READ_ROLE } from '@/lib/const/role.const';
 import {
   READ_USER,
   READ_USER_ROLE,
+  SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,
 } from '@/lib/const/user.const';
 import { Permission } from '@/role/entities/permissions.entity';
@@ -23,16 +24,24 @@ import { v4 as uuid } from 'uuid';
 @Injectable()
 export class SeedService {
   private readonly logger = new Logger(SeedService.name);
-  private readonly createdBy = {
-    id: '25dd058e-5776-4360-91df-d13d8d45529e' as UUID,
-  };
+  private readonly batchSize = 500;
+  private readonly concurrency = 50;
 
   constructor(
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
   ) {}
 
-  async seedUser(): Promise<User> {
+  async seedUser({
+    passwordHash,
+    systemUserID,
+  }: {
+    passwordHash?: string;
+    systemUserID?: { id: UUID };
+  }): Promise<User> {
+    systemUserID ??= await this.getSystemUserId();
+    passwordHash ??= await bcrypt.hash(SYSTEM_USER_PASSWORD, 10);
+
     const userRepo = this.entityManager.getRepository(User);
     const userEmail = `${uuid()}@example.com`;
 
@@ -47,36 +56,42 @@ export class SeedService {
       passwordResetToken: uuid(),
       passwordResetExpires: new Date(Date.now() + 3600000),
       twoFactorSecret: uuid(),
-      password: await bcrypt.hash(SYSTEM_USER_PASSWORD, 10),
+      password: passwordHash,
       isActive: true,
       isEmailVerified: true,
       isTwoFactorEnabled: false,
-      createdBy: this.createdBy,
+      createdBy: systemUserID,
     });
 
     return await userRepo.save(newUser);
   }
 
-  async seedDepartment(): Promise<Departments> {
+  async seedDepartment(systemUserID?: { id: UUID }): Promise<Departments> {
+    systemUserID ??= await this.getSystemUserId();
+
     const department = this.entityManager.getRepository(Departments).create({
       name: `${faker.lorem.word()}-seed-${uuid()}`,
       country: 'US',
-      createdBy: this.createdBy,
+      createdBy: systemUserID,
     });
 
     return await this.entityManager.getRepository(Departments).save(department);
   }
 
-  async seedRole(): Promise<Roles> {
+  async seedRole(systemUserID?: { id: UUID }): Promise<Roles> {
+    systemUserID ??= await this.getSystemUserId();
+
     const role = this.entityManager.getRepository(Roles).create({
       name: `seed-${uuid()}`,
-      createdBy: this.createdBy,
+      createdBy: systemUserID,
     });
 
     return await this.entityManager.getRepository(Roles).save(role);
   }
 
-  async seedPermissions(): Promise<Permission[]> {
+  async seedPermissions(systemUserID?: { id: UUID }): Promise<Permission[]> {
+    systemUserID ??= await this.getSystemUserId();
+
     const permissions = await this.entityManager
       .createQueryBuilder(Permission, 'permission')
       .where('permission.code IN (:...codes)', {
@@ -97,27 +112,27 @@ export class SeedService {
           {
             name: READ_DEPARTMENT,
             code: READ_DEPARTMENT,
-            createdBy: this.createdBy,
+            createdBy: systemUserID,
           },
           {
             name: READ_ROLE,
             code: READ_ROLE,
-            createdBy: this.createdBy,
+            createdBy: systemUserID,
           },
           {
             name: READ_PERMISSION,
             code: READ_PERMISSION,
-            createdBy: this.createdBy,
+            createdBy: systemUserID,
           },
           {
             name: READ_USER_ROLE,
             code: READ_USER_ROLE,
-            createdBy: this.createdBy,
+            createdBy: systemUserID,
           },
           {
             name: READ_USER,
             code: READ_USER,
-            createdBy: this.createdBy,
+            createdBy: systemUserID,
           },
         ]);
       return await this.entityManager
@@ -130,17 +145,28 @@ export class SeedService {
     }
   }
 
-  async seedRoleWithPermissions(): Promise<Roles> {
-    const role = await this.seedRole();
-    const permissions = await this.seedPermissions();
+  async seedRoleWithPermissions(systemUserID?: { id: UUID }): Promise<Roles> {
+    systemUserID ??= await this.getSystemUserId();
+
+    const role = await this.seedRole(systemUserID);
+    const permissions = await this.seedPermissions(systemUserID);
     role.permissions = permissions;
     return await this.entityManager.getRepository(Roles).save(role);
   }
 
-  async seedUserRelations(): Promise<User> {
-    const user = await this.seedUser();
-    const department = await this.seedDepartment();
-    const role = await this.seedRoleWithPermissions();
+  async seedUserRelations({
+    passwordHash,
+    systemUserID,
+  }: {
+    passwordHash?: string;
+    systemUserID?: { id: UUID };
+  }): Promise<User> {
+    systemUserID ??= await this.getSystemUserId();
+    passwordHash ??= await bcrypt.hash(SYSTEM_USER_PASSWORD, 10);
+
+    const user = await this.seedUser({ passwordHash, systemUserID });
+    const department = await this.seedDepartment(systemUserID);
+    const role = await this.seedRoleWithPermissions(systemUserID);
 
     user.departments = [department];
     user.userRoles = [];
@@ -148,7 +174,7 @@ export class SeedService {
     const userRole = this.entityManager.getRepository(UserRole).create({
       user,
       role,
-      assignedBy: this.createdBy,
+      assignedBy: systemUserID,
     });
 
     user.userRoles.push(userRole);
@@ -158,33 +184,50 @@ export class SeedService {
   }
 
   async seedUserRelationsBatched(amount: number): Promise<void> {
-    const batchSize = 5000;
-    const batchCount = Math.ceil(amount / batchSize);
+    const systemUserID = await this.getSystemUserId();
     const traceId = getTraceId() ?? 'N/A';
+    const passwordHash = await bcrypt.hash(SYSTEM_USER_PASSWORD, 10);
+
+    const batchCount = Math.ceil(amount / this.batchSize);
 
     this.logger.log(
       `Seeding ${amount.toString()} user relations in ${batchCount.toString()} batches... traceId: ${traceId}`,
     );
+
     for (let i = 0; i < batchCount; i++) {
-      const promises = new Array<Promise<User>>();
-
+      const currentBatchAmount = Math.min(
+        this.batchSize,
+        amount - i * this.batchSize,
+      );
       this.logger.log(
-        `Seeding batch ${(i + 1).toString()}/${batchCount.toString()}... traceId: ${traceId}`,
+        `Seeding batch ${(i + 1).toString()}/${batchCount.toString()} (${currentBatchAmount.toString()} items)... traceId: ${traceId}`,
       );
 
-      const currentBatchAmount = Math.min(batchSize, amount - i * batchSize);
-      for (let j = 0; j < currentBatchAmount; j++) {
-        promises.push(this.seedUserRelations());
-      }
+      let index = 0;
+
+      const worker = async (): Promise<void> => {
+        while (index < currentBatchAmount) {
+          index = index + 1;
+          await this.seedUserRelations({ passwordHash, systemUserID });
+        }
+      };
+
+      const workers = Array.from({ length: this.concurrency }, worker);
+      await Promise.all(workers);
 
       this.logger.log(
-        `Finished seeding batch ${(i + 1).toString()}/${batchCount.toString()} ... traceId: ${traceId}`,
+        `Finished batch ${(i + 1).toString()}/${batchCount.toString()}... traceId: ${traceId}`,
       );
-      await Promise.all(promises);
     }
 
     this.logger.log(
       `Completed batches ${batchCount.toString()} ... traceId: ${traceId}`,
     );
+  }
+
+  private async getSystemUserId(): Promise<{ id: UUID }> {
+    return await this.entityManager
+      .getRepository(User)
+      .findOneByOrFail({ email: SYSTEM_USER_EMAIL });
   }
 }

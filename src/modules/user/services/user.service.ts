@@ -323,10 +323,8 @@ export class UserService {
    * @throws ConflictException when email is already used by another user
    */
   async updateById(id: UUID, updateUserDto: UpdateUserDto): Promise<User> {
-    // Verify user existence before proceeding with update
     await this.helperService.findByIdOrFail({ id });
 
-    // Email uniqueness validation - only check if email is being changed
     if (
       updateUserDto.email !== undefined &&
       updateUserDto.email.trim() !== ''
@@ -342,7 +340,6 @@ export class UserService {
       }
     }
 
-    // Atomic update operation with parameterized query
     await this.userRepository
       .createQueryBuilder()
       .update(User)
@@ -350,7 +347,6 @@ export class UserService {
       .where('id = :id', { id })
       .execute();
 
-    // Return fresh entity state after update
     return await this.helperService.findByIdOrFail({ id });
   }
 
@@ -371,10 +367,8 @@ export class UserService {
     email: string,
     updateUserDto: UpdateUserDto,
   ): Promise<User> {
-    // Resolve email to user entity for ID extraction
     const user = await this.helperService.findByEmailOrFail(email);
 
-    // Email uniqueness validation with current user exclusion
     if (updateUserDto.email !== undefined) {
       await this.helperService.findEmailConflicts({
         email: updateUserDto.email,
@@ -382,7 +376,6 @@ export class UserService {
       });
     }
 
-    // Perform update using original email as identifier
     await this.userRepository
       .createQueryBuilder()
       .update(User)
@@ -410,12 +403,10 @@ export class UserService {
    * ```
    */
   async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
-    // Early return for empty input to avoid unnecessary database queries
     if (ids.length === 0) {
       return { deleted: 0 };
     }
 
-    // Comprehensive existence validation before any deletion
     const existingUsers = await this.userRepository
       .createQueryBuilder(USER_QUERY_ALIAS)
       .leftJoinAndSelect(
@@ -426,7 +417,6 @@ export class UserService {
       .where(`${USER_QUERY_ALIAS}.id IN (:...ids)`, { ids })
       .getMany();
 
-    // Fail-fast validation with detailed error reporting
     if (existingUsers.length !== ids.length) {
       const missingIds = ids.filter(
         (id) => !existingUsers.find((user) => user.id === id),

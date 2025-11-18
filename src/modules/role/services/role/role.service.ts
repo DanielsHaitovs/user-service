@@ -47,12 +47,10 @@ export class RoleService {
   }): Promise<Roles> {
     const { permissions, ...roleData } = roleDto;
 
-    // Check for existing role with the same name
     await this.helperService.findNameConflicts({
       name: roleData.name,
     });
 
-    // Create a new role entity
     const role = this.roleRepository.create({
       ...roleData,
       createdBy: { id: createdBy } as User,
@@ -76,7 +74,6 @@ export class RoleService {
       newRole.createdBy = {} as User;
     }
 
-    // Save the new role to the database
     return newRole;
   }
 
@@ -132,7 +129,6 @@ export class RoleService {
       (obj, index, self) => index === self.findIndex((o) => o.id === obj.id),
     );
 
-    // Associate permissions with the role
     if (role.permissions.length === 0) {
       role.permissions = permissions;
     } else {
@@ -386,15 +382,12 @@ export class RoleService {
    * @throws EntityNotFoundError if no roles with the given ids exist.
    */
   async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
-    // Early return for empty input to avoid unnecessary database queries
     if (ids.length === 0) {
       return { deleted: 0 };
     }
 
-    // Comprehensive existence validation before any deletion
     await this.helperService.getManyByIdsOrFail(ids);
 
-    // Perform deletion
     const result = await this.roleRepository
       .createQueryBuilder()
       .delete()

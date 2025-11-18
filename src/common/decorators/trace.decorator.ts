@@ -45,9 +45,7 @@ function wrapMethods(proto: GenericObject, logger: Logger): void {
       return result;
     };
 
-    // Copy metadata and name for Swagger
     for (const metaKey of Reflect.getMetadataKeys(original as object)) {
-      // ✅ Explicitly type as unknown to avoid unsafe assignment
       const meta: unknown = Reflect.getMetadata(metaKey, original as object);
       Reflect.defineMetadata(metaKey, meta, wrapped);
     }
@@ -88,7 +86,6 @@ function wrapInjectedServices(
     const value = dict[prop];
     if (value === null || typeof value !== 'object') continue;
 
-    // ✅ Explicitly type prototype as object | null
     const proto: object | null = Object.getPrototypeOf(value) as object | null;
     if (proto === null) continue;
 
@@ -119,7 +116,6 @@ function wrapInjectedServices(
                   `[Trace: ${traceId}] !! Skipped tracing ${className} -> ${String(key)}`,
                 );
               }
-              // Safe call
               return (original as (...a: unknown[]) => unknown).apply(
                 target,
                 args,

@@ -126,16 +126,19 @@ export const EMAIL_EXISTS_MSG = 'User with this email already exists' as string;
  * Represents a permission description that is commonly used for testing scenarios.
  */
 export const READ_USER_ROLE = 'user-role:read' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission description that is commonly used for testing scenarios.
  */
 export const CREATE_USER_ROLE = 'user-role:create' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission description that is commonly used for testing scenarios.
  */
 export const UPDATE_USER_ROLE = 'user-role:update' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission description that is commonly used for testing scenarios.
@@ -147,21 +150,25 @@ export const DELETE_USER_ROLE = 'user-role:delete' as string;
  * Represents a permission for assigning roles to users.
  */
 export const ASSIGN_USER_ROLE = 'user-role:assign' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for creating users.
  */
 export const CREATE_USER = 'user:create' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for reading user data.
  */
 export const READ_USER = 'user:read' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for updating user data.
  */
 export const UPDATE_USER = 'user:update' as string;
+
 /**
  * Standard example permission used in API documentation and test fixtures.
  * Represents a permission for deleting user data.

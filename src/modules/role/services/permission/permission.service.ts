@@ -327,16 +327,13 @@ export class PermissionService {
       );
     }
 
-    // Ensure the permission exists
     const permission = await this.helperService.getPermissionById(id);
 
-    // Validate no conflicts with existing permissions
     await this.helperService.findNameOrCodeConflictPermission({
       id,
       updatePermissionDto,
     });
 
-    // Perform the update
     await this.permissionRepository
       .createQueryBuilder()
       .update(Permission)
@@ -369,20 +366,16 @@ export class PermissionService {
       return { deleted: 0 };
     }
 
-    // Validate all permissions exist
     const existingPermissions = await this.helperService.getPermissionsBy({
       ids,
     });
 
-    // Remove associations with roles to avoid foreign key constraints
     existingPermissions.forEach((permission) => {
       permission.roles = [];
     });
 
-    // Save the updated permissions
     await this.permissionRepository.save(existingPermissions);
 
-    // Delete the permissions
     const result = await this.permissionRepository
       .createQueryBuilder()
       .delete()

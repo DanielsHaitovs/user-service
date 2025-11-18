@@ -226,7 +226,6 @@ export class DepartmentService {
       });
     }
 
-    // Atomic update operation with parameterized query
     await this.departmentRepository
       .createQueryBuilder()
       .update(Departments)
@@ -256,15 +255,12 @@ export class DepartmentService {
    * @throws NotFoundException when any specified department ID doesn't exist
    */
   async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
-    // Early return for empty input to avoid unnecessary database queries
     if (ids.length === 0) {
       return { deleted: 0 };
     }
 
-    // validate if request contains departments that exist
     await this.helperService.getManyByIdsOrFail(ids);
 
-    // Atomic bulk deletion with affected row tracking
     const result = await this.departmentRepository
       .createQueryBuilder()
       .delete()

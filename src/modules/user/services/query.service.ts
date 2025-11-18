@@ -165,6 +165,7 @@ export class QueryService extends EntityQueryService {
         phoneNumbers,
         isActive,
         isEmailVerified,
+        createdByIds,
         departmentIds,
         departmentCountries,
         roleIds,
@@ -172,7 +173,12 @@ export class QueryService extends EntityQueryService {
         permissionIds,
         permissionCodes,
       },
-      responseParams: { includeDepartments, includeRoles, includePermissions },
+      responseParams: {
+        includeDepartments,
+        includeRoles,
+        includePermissions,
+        includeCreatedBy,
+      },
       dateQuery: { dateFilterParam, dateFrom, dateTo },
     } = filters;
 
@@ -266,13 +272,19 @@ export class QueryService extends EntityQueryService {
       permissionCodes,
     });
 
-    // TO DO fix join for assignedBy field
-    // this.joinRelation<User>({
-    //   query,
-    //   alias: ASSIGNED_BY_USER_QUERY_ALIAS,
-    //   relationAlias: USER_QUERY_ALIAS,
-    //   nestedFrom: USER_ROLE_QUERY_ALIAS,
-    // });
+    if (includeCreatedBy) {
+      this.joinEntityRelation({
+        query,
+        relationAlias: CREATEDBY_USER_QUERY_ALIAS,
+        shouldJoin: true,
+        condition: 'AND',
+        options: {
+          filters: {
+            id: createdByIds,
+          },
+        },
+      });
+    }
   }
 
   filterByRolePermission({

@@ -4,16 +4,6 @@ import { ToBoolean } from '@/common/decorators/boolean.decorator';
 import { getDepartmentGenericSelectableFields } from '@/department/helper/department-fields.util';
 import { COUNTRIES } from '@/lib/const/countries.const';
 import {
-  EXAMPLE_PERMISSION_CODE,
-  EXAMPLE_ROLE_NAME,
-} from '@/lib/const/role.const';
-import {
-  EXAMPLE_USER_EMAIL,
-  EXAMPLE_USER_FIRST_NAME,
-  EXAMPLE_USER_LAST_NAME,
-  EXAMPLE_USER_PHONE,
-} from '@/lib/const/user.const';
-import {
   getPermissionsGenericSelectableFields,
   getRoleGenericSelectableFields,
 } from '@/role/helper/role-fields.util';
@@ -44,7 +34,6 @@ export class UserQueryParametersDto {
   @ApiPropertyOptional({
     description: 'Filter by specific user UUIDs for bulk operations',
     type: String,
-    example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
     isArray: true,
     format: 'uuid',
     uniqueItems: true,
@@ -57,7 +46,6 @@ export class UserQueryParametersDto {
   @ApiPropertyOptional({
     description:
       'Filter by first names - supports partial matching across multiple names',
-    example: [EXAMPLE_USER_FIRST_NAME],
     type: String,
     isArray: true,
     maxItems: 100,
@@ -70,7 +58,6 @@ export class UserQueryParametersDto {
   @ApiPropertyOptional({
     description:
       'Filter by last names - useful for family or surname-based searches',
-    example: [EXAMPLE_USER_LAST_NAME],
     type: String,
     isArray: true,
     maxItems: 100,
@@ -83,7 +70,6 @@ export class UserQueryParametersDto {
   @ApiPropertyOptional({
     description:
       'Filter by email addresses - commonly used for user lookup and verification',
-    example: [EXAMPLE_USER_EMAIL],
     type: String,
     isArray: true,
     format: 'email',
@@ -97,7 +83,6 @@ export class UserQueryParametersDto {
 
   @ApiPropertyOptional({
     description: 'Filter by phone numbers - supports multiple contact methods',
-    example: [EXAMPLE_USER_PHONE],
     type: String,
     isArray: true,
     format: 'phone',
@@ -112,9 +97,7 @@ export class UserQueryParametersDto {
   @ApiPropertyOptional({
     description:
       'Filter by account activation status - false excludes suspended users',
-    example: true,
     type: Boolean,
-    default: undefined,
   })
   @IsOptional()
   @ToBoolean()
@@ -124,9 +107,7 @@ export class UserQueryParametersDto {
   @ApiPropertyOptional({
     description:
       'Filter by account email verification status - false excludes unverified users',
-    example: true,
     type: Boolean,
-    default: undefined,
   })
   @IsOptional()
   @ToBoolean()
@@ -134,10 +115,24 @@ export class UserQueryParametersDto {
   isEmailVerified: boolean | undefined;
 
   @ApiPropertyOptional({
+    description: 'Filter by specific created by UUIDs for bulk operations',
+    type: String,
+    isArray: true,
+    format: 'uuid',
+    uniqueItems: true,
+  })
+  @ToArray()
+  @IsOptional()
+  @IsUUID('4', {
+    each: true,
+    message: 'Each departmentId must be a valid UUIDv4',
+  })
+  createdByIds: UUID[] | undefined;
+
+  @ApiPropertyOptional({
     description: 'Filter by specific departments UUIDs for bulk operations',
     type: String,
     isArray: true,
-    example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
     format: 'uuid',
     uniqueItems: true,
   })
@@ -153,7 +148,6 @@ export class UserQueryParametersDto {
     description: 'Filter by specific departments countries for bulk operations',
     type: String,
     isArray: true,
-    example: [COUNTRIES.DE],
     enum: COUNTRIES,
     uniqueItems: true,
   })
@@ -166,7 +160,6 @@ export class UserQueryParametersDto {
     description: 'Filter by specific role UUIDs for bulk operations',
     type: String,
     isArray: true,
-    example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
     format: 'uuid',
     uniqueItems: true,
   })
@@ -179,7 +172,6 @@ export class UserQueryParametersDto {
     description: 'Filter by specific role names for bulk operations',
     type: String,
     isArray: true,
-    example: [EXAMPLE_ROLE_NAME],
     uniqueItems: true,
   })
   @ToArray()
@@ -191,7 +183,6 @@ export class UserQueryParametersDto {
     description: 'Filter by specific permission UUIDs for bulk operations',
     type: String,
     isArray: true,
-    example: ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
     format: 'uuid',
     uniqueItems: true,
   })
@@ -207,7 +198,6 @@ export class UserQueryParametersDto {
     description: 'Filter by specific permission codes for bulk operations',
     type: String,
     isArray: true,
-    example: [EXAMPLE_PERMISSION_CODE],
     uniqueItems: true,
   })
   @ToArray()
@@ -223,6 +213,7 @@ export class UserQueryParametersDto {
     phoneNumbers?: string[],
     isActive?: boolean,
     isEmailVerified?: boolean,
+    createdByIds?: UUID[],
     departmentIds?: UUID[],
     departmentCountries?: string[],
     roleIds?: UUID[],
@@ -237,6 +228,7 @@ export class UserQueryParametersDto {
     this.emails = emails;
     this.isActive = isActive;
     this.isEmailVerified = isEmailVerified;
+    this.createdByIds = createdByIds;
     this.departmentIds = departmentIds;
     this.departmentCountries = departmentCountries;
     this.roleIds = roleIds;
@@ -247,6 +239,16 @@ export class UserQueryParametersDto {
 }
 
 export class UserQueruRepsonseParametersDto {
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: 'Include Created By in the response',
+    default: false,
+    required: false,
+  })
+  @ToBoolean()
+  @IsBoolean()
+  includeCreatedBy: boolean;
+
   @ApiPropertyOptional({
     type: Boolean,
     description: 'Include Department in the response',
@@ -363,6 +365,7 @@ export class UserQueruRepsonseParametersDto {
   selectPermissionFields: string[];
 
   constructor(
+    includeCreatedBy: boolean,
     includeDepartments: boolean,
     includeRoles: boolean,
     includePermissions: boolean,
@@ -372,6 +375,7 @@ export class UserQueruRepsonseParametersDto {
     selectRoleFields: string[] | undefined,
     selectPermissionFields: string[] | undefined,
   ) {
+    this.includeCreatedBy = includeCreatedBy;
     this.selectUserFields = selectUserFields ?? [];
     this.selectDepartmentFields = selectDepartmentFields ?? [];
     this.selectUserRoleFields = selectUserRoleFields ?? [];

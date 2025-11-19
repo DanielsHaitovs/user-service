@@ -36,7 +36,7 @@ export async function getSystemUserId(app: INestApplication): Promise<UUID> {
   //   .set('Authorization', `Bearer ${accessToken}`)
   //   .expect(200);
 
-  return '25dd058e-5776-4360-91df-d13d8d45529e';
+  return 'd1faa5a5-6de8-4d5c-bac5-d09b7974450e';
 }
 
 // export async function loginUser(

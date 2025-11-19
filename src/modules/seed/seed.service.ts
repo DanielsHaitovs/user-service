@@ -1,12 +1,33 @@
 import { Departments } from '@/department/entities/department.entity';
 import { RandomCountry } from '@/lib/const/countries.const';
-import { READ_DEPARTMENT } from '@/lib/const/department.const';
-import { READ_PERMISSION, READ_ROLE } from '@/lib/const/role.const';
 import {
+  CREATE_DEPARTMENT,
+  DELETE_DEPARTMENT,
+  READ_DEPARTMENT,
+  UPDATE_DEPARTMENT,
+} from '@/lib/const/department.const';
+import {
+  CREATE_PERMISSION,
+  CREATE_ROLE,
+  DELETE_PERMISSION,
+  DELETE_ROLE,
+  READ_PERMISSION,
+  READ_ROLE,
+  UPDATE_PERMISSION,
+  UPDATE_ROLE,
+} from '@/lib/const/role.const';
+import {
+  ASSIGN_USER_ROLE,
+  CREATE_USER,
+  CREATE_USER_ROLE,
+  DELETE_USER,
+  DELETE_USER_ROLE,
   READ_USER,
   READ_USER_ROLE,
   SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,
+  UPDATE_USER,
+  UPDATE_USER_ROLE,
 } from '@/lib/const/user.const';
 import { Permission } from '@/role/entities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
@@ -27,6 +48,29 @@ export class SeedService {
   private readonly logger = new Logger(SeedService.name);
   private readonly batchSize = 1000;
   private readonly concurrency = 100;
+  private readonly permissionMap: Record<string, string> = {
+    [READ_DEPARTMENT]: 'Read Department',
+    [CREATE_DEPARTMENT]: 'Create Department',
+    [UPDATE_DEPARTMENT]: 'Update Department',
+    [DELETE_DEPARTMENT]: 'Delete Department',
+    [READ_PERMISSION]: 'Read Permission',
+    [CREATE_PERMISSION]: 'Create Permission',
+    [UPDATE_PERMISSION]: 'Update Permission',
+    [DELETE_PERMISSION]: 'Delete Permission',
+    [READ_ROLE]: 'Read Role',
+    [CREATE_ROLE]: 'Create Role',
+    [UPDATE_ROLE]: 'Update Role',
+    [DELETE_ROLE]: 'Delete Role',
+    [READ_USER_ROLE]: 'Read User Role',
+    [CREATE_USER_ROLE]: 'Create User Role',
+    [UPDATE_USER_ROLE]: 'Update User Role',
+    [DELETE_USER_ROLE]: 'Delete User Role',
+    [ASSIGN_USER_ROLE]: 'Assign User Role',
+    [CREATE_USER]: 'Create User',
+    [UPDATE_USER]: 'Update User',
+    [DELETE_USER]: 'Delete User',
+    [READ_USER]: 'Read User',
+  };
 
   constructor(
     @InjectEntityManager()
@@ -67,7 +111,11 @@ export class SeedService {
     return await userRepo.save(newUser);
   }
 
-  async seedDepartment(systemUserID?: { id: UUID }): Promise<Departments> {
+  async seedDepartment({
+    systemUserID,
+  }: {
+    systemUserID?: { id: UUID };
+  }): Promise<Departments> {
     systemUserID ??= await this.getSystemUserId();
 
     const department = this.entityManager.getRepository(Departments).create({
@@ -79,7 +127,11 @@ export class SeedService {
     return await this.entityManager.getRepository(Departments).save(department);
   }
 
-  async seedRole(systemUserID?: { id: UUID }): Promise<Roles> {
+  async seedRole({
+    systemUserID,
+  }: {
+    systemUserID?: { id: UUID };
+  }): Promise<Roles> {
     systemUserID ??= await this.getSystemUserId();
 
     const role = this.entityManager.getRepository(Roles).create({
@@ -90,19 +142,19 @@ export class SeedService {
     return await this.entityManager.getRepository(Roles).save(role);
   }
 
-  async seedPermissions(systemUserID?: { id: UUID }): Promise<Permission[]> {
+  async seedPermissions({
+    systemUserID,
+  }: {
+    systemUserID?: { id: UUID };
+  }): Promise<Permission[]> {
     systemUserID ??= await this.getSystemUserId();
+
+    const listOfPermissionCodes = Object.keys(this.permissionMap);
 
     const permissions = await this.entityManager
       .createQueryBuilder(Permission, 'permission')
       .where('permission.code IN (:...codes)', {
-        codes: [
-          READ_DEPARTMENT,
-          READ_ROLE,
-          READ_PERMISSION,
-          READ_USER_ROLE,
-          READ_USER,
-        ],
+        codes: listOfPermissionCodes,
       })
       .getMany();
 
@@ -111,63 +163,150 @@ export class SeedService {
         .getRepository(Permission)
         .create([
           {
-            name: READ_DEPARTMENT,
+            name: 'Read Department',
             code: READ_DEPARTMENT,
             createdBy: systemUserID,
           },
           {
-            name: READ_ROLE,
-            code: READ_ROLE,
+            name: 'Create Department',
+            code: CREATE_DEPARTMENT,
             createdBy: systemUserID,
           },
           {
-            name: READ_PERMISSION,
+            name: 'Update Department',
+            code: UPDATE_DEPARTMENT,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Delete Department',
+            code: DELETE_DEPARTMENT,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Read Permission',
             code: READ_PERMISSION,
             createdBy: systemUserID,
           },
           {
-            name: READ_USER_ROLE,
+            name: 'Create Permission',
+            code: CREATE_PERMISSION,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Update Permission',
+            code: UPDATE_PERMISSION,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Delete Permission',
+            code: DELETE_PERMISSION,
+            createdBy: systemUserID,
+          },
+          { name: 'Read Role', code: READ_ROLE, createdBy: systemUserID },
+          { name: 'Create Role', code: CREATE_ROLE, createdBy: systemUserID },
+          { name: 'Update Role', code: UPDATE_ROLE, createdBy: systemUserID },
+          { name: 'Delete Role', code: DELETE_ROLE, createdBy: systemUserID },
+          {
+            name: 'Read User Role',
             code: READ_USER_ROLE,
             createdBy: systemUserID,
           },
           {
-            name: READ_USER,
-            code: READ_USER,
+            name: 'Create User Role',
+            code: CREATE_USER_ROLE,
             createdBy: systemUserID,
           },
+          {
+            name: 'Update User Role',
+            code: UPDATE_USER_ROLE,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Delete User Role',
+            code: DELETE_USER_ROLE,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Assign User Role',
+            code: ASSIGN_USER_ROLE,
+            createdBy: systemUserID,
+          },
+          { name: 'Create User', code: CREATE_USER, createdBy: systemUserID },
+          { name: 'Update User', code: UPDATE_USER, createdBy: systemUserID },
+          { name: 'Delete User', code: DELETE_USER, createdBy: systemUserID },
+          { name: 'Read User', code: READ_USER, createdBy: systemUserID },
         ]);
+
       return await this.entityManager
         .getRepository(Permission)
         .save(newPermissions);
     } else if (permissions.length === 5) {
       return permissions;
     } else {
-      throw new Error('Some required permissions are missing in the database');
+      const missingPermissions = listOfPermissionCodes.filter((code) => {
+        return !permissions.some((permission) => permission.code === code);
+      });
+      this.logger.error(
+        `Some required permissions are missing in the database: ${missingPermissions.join(
+          ', ',
+        )}`,
+      );
+
+      const newPermissions = this.entityManager
+        .getRepository(Permission)
+        .create(
+          missingPermissions.map((code) => {
+            return {
+              name: this.permissionMap[code] ?? code,
+              code,
+              createdBy: systemUserID,
+            };
+          }),
+        );
+
+      const savedPermissions = await this.entityManager
+        .getRepository(Permission)
+        .save(newPermissions);
+
+      return [...permissions, ...savedPermissions];
     }
   }
 
-  async seedRoleWithPermissions(systemUserID?: { id: UUID }): Promise<Roles> {
+  async seedRoleWithPermissions({
+    systemUserID,
+    permissions,
+  }: {
+    systemUserID?: { id: UUID };
+    permissions?: Permission[] | undefined;
+  }): Promise<Roles> {
     systemUserID ??= await this.getSystemUserId();
 
-    const role = await this.seedRole(systemUserID);
-    const permissions = await this.seedPermissions(systemUserID);
+    const role = await this.seedRole({ systemUserID });
+    permissions ??= await this.seedPermissions({ systemUserID });
+
     role.permissions = permissions;
+
     return await this.entityManager.getRepository(Roles).save(role);
   }
 
   async seedUserRelations({
     passwordHash,
     systemUserID,
+    permissions,
   }: {
     passwordHash?: string;
     systemUserID?: { id: UUID };
+    permissions?: Permission[];
   }): Promise<User> {
     systemUserID ??= await this.getSystemUserId();
     passwordHash ??= await bcrypt.hash(SYSTEM_USER_PASSWORD, 10);
 
     const user = await this.seedUser({ passwordHash, systemUserID });
-    const department = await this.seedDepartment(systemUserID);
-    const role = await this.seedRoleWithPermissions(systemUserID);
+    const department = await this.seedDepartment({ systemUserID });
+    const role = await this.seedRoleWithPermissions({
+      systemUserID,
+      permissions,
+    });
 
     user.departments = [department];
     user.userRoles = [];
@@ -186,6 +325,8 @@ export class SeedService {
 
   async seedUserRelationsBatched(amount: number): Promise<void> {
     const systemUserID = await this.getSystemUserId();
+    const permissions = await this.seedPermissions({ systemUserID });
+
     const traceId = getTraceId() ?? 'N/A';
     const passwordHash = await bcrypt.hash(SYSTEM_USER_PASSWORD, 10);
 
@@ -209,7 +350,11 @@ export class SeedService {
       const worker = async (): Promise<void> => {
         while (index < currentBatchAmount) {
           index = index + 1;
-          await this.seedUserRelations({ passwordHash, systemUserID });
+          await this.seedUserRelations({
+            passwordHash,
+            systemUserID,
+            permissions,
+          });
         }
       };
 

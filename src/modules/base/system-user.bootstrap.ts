@@ -18,29 +18,36 @@ export async function ensureSystemUser(app: INestApplication): Promise<void> {
   const dataSource = app.get(DataSource);
   const userRepo = dataSource.getRepository(User);
 
-  const existing = await userRepo.findOne({
-    where: { email: SYSTEM_USER_EMAIL },
-  });
+  try {
+    const existing = await userRepo.findOne({
+      where: { email: SYSTEM_USER_EMAIL },
+    });
 
-  if (existing != undefined) {
-    return;
+    console.log('Existing system user:');
+    console.log(existing);
+    if (existing != undefined) {
+      return;
+    }
+
+    const newUser = userRepo.create({
+      email: SYSTEM_USER_EMAIL,
+      firstName: 'System',
+      lastName: 'User',
+
+      password: await bcrypt.hash(SYSTEM_USER_PASSWORD, 10),
+      country: COUNTRIES.US,
+      isActive: true,
+      isEmailVerified: true,
+      isTwoFactorEnabled: false,
+    });
+
+    await userRepo.save(newUser);
+    await createSystemRole(dataSource, newUser.id);
+    await createUserRole(dataSource);
+  } catch (error) {
+    console.error('Error ensuring system user:', error);
+    throw error;
   }
-
-  const newUser = userRepo.create({
-    email: SYSTEM_USER_EMAIL,
-    firstName: 'System',
-    lastName: 'User',
-
-    password: await bcrypt.hash(SYSTEM_USER_PASSWORD, 10),
-    country: COUNTRIES.US,
-    isActive: true,
-    isEmailVerified: true,
-    isTwoFactorEnabled: false,
-  });
-
-  await userRepo.save(newUser);
-  await createSystemRole(dataSource, newUser.id);
-  await createUserRole(dataSource);
 }
 
 async function createSystemRole(

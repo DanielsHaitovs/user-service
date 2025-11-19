@@ -31,10 +31,10 @@ export class Departments extends MecBaseEntity {
   @IsString()
   name: string;
 
-  @Column({ type: 'enum', enum: Object.values(COUNTRIES) })
+  @Column({ type: 'enum', enum: COUNTRIES })
   @IsNotEmpty()
   @IsEnum(COUNTRIES)
-  country: keyof typeof COUNTRIES;
+  country: COUNTRIES;
 
   @ManyToMany(() => User, (user) => user.departments)
   users: User[];
@@ -48,7 +48,7 @@ export class Departments extends MecBaseEntity {
     createdAt: Date,
     updatedAt: Date,
     name: string,
-    country: keyof typeof COUNTRIES,
+    country: COUNTRIES,
     users: User[],
     createdBy: User,
   ) {

@@ -39,13 +39,14 @@ export class DepartmentBaseDto {
     minLength: 1,
     maxLength: 100,
     type: String,
+    enum: COUNTRIES,
   })
   @IsEnum(COUNTRIES)
   @MinLength(1)
   @MaxLength(100)
-  country: keyof typeof COUNTRIES;
+  country: COUNTRIES;
 
-  constructor(name: string, country: keyof typeof COUNTRIES) {
+  constructor(name: string, country: COUNTRIES) {
     this.name = name;
     this.country = country;
   }
@@ -101,7 +102,7 @@ export class DepartmentResponseDto extends DepartmentBaseDto {
     createdAt: Date,
     updatedAt: Date,
     name: string,
-    country: keyof typeof COUNTRIES,
+    country: COUNTRIES,
     createdBy: GetUserDto,
     users: GetUserDto[],
   ) {

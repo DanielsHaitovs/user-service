@@ -32,22 +32,27 @@ export async function createDepartment({
     country: getRandomCountryCode(),
   };
 
-  const department = await service.create({
-    createDepartmentDto: dto,
-    createdBy,
-    hasAccessToUser,
-  });
+  try {
+    const department = await service.create({
+      createDepartmentDto: dto,
+      createdBy,
+      hasAccessToUser,
+    });
 
-  validateDepartmentsResponse({
-    departments: [department],
-    ids: [department.id],
-    names: [department.name],
-    countries: [department.country],
-    amountExpected: 1,
-    hasAccessToUser,
-  });
+    validateDepartmentsResponse({
+      departments: [department],
+      ids: [department.id],
+      names: [department.name],
+      countries: [department.country],
+      amountExpected: 1,
+      hasAccessToUser,
+    });
 
-  return department;
+    return department;
+  } catch (error) {
+    console.error('Error creating department:', error);
+    throw error;
+  }
 }
 
 export async function findDepartmentsByIds({
@@ -243,6 +248,10 @@ export async function queryDepartments(
       pagination: {
         page: 1,
         limit: 20,
+      },
+      sort: {
+        sortField: `${DEPARTMENT_QUERY_ALIAS}.name`,
+        sortOrder: 'ASC',
       },
     },
     hasAccessToUser,

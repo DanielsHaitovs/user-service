@@ -96,7 +96,7 @@ export class SeedService {
       lastName: faker.internet.displayName(),
       phone: faker.phone.number(),
       dateOfBirth: faker.date.past({ years: 80, refDate: new Date() }),
-      country: RandomCountry,
+      country: RandomCountry(),
       emailVerificationToken: uuid(),
       passwordResetToken: uuid(),
       passwordResetExpires: new Date(Date.now() + 3600000),
@@ -120,7 +120,7 @@ export class SeedService {
 
     const department = this.entityManager.getRepository(Departments).create({
       name: `${faker.lorem.word()}-seed-${uuid()}`,
-      country: RandomCountry,
+      country: RandomCountry(),
       createdBy: systemUserID,
     });
 

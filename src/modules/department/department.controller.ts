@@ -277,7 +277,7 @@ export class DepartmentController {
     name: 'value',
     type: String,
     required: true,
-    description: 'Search value for department (name, country, or ID)',
+    description: 'Search value for department (name or ID)',
     example: EXAMPLE_DEPARTMENT_NAME,
   })
   @ApiQuery({
@@ -351,7 +351,7 @@ export class DepartmentController {
     @Query('limit', ParseIntPipe) limit: number,
     @Query('sortField') sortField: string,
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('select', ParseArrayPipe) select: string[],
+    @Query('select', new ParseArrayPipe({ optional: true })) select: string[],
   ): Promise<DepartmentListResponseDto> {
     if (!sortField || sortField === '') {
       sortField = `${DEPARTMENT_QUERY_ALIAS}.name`;

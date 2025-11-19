@@ -32,10 +32,10 @@ import { COUNTRIES } from '../../../lib/const/countries.const';
 @Index('IX_USER_EMAIL_FIRSTNAME', ['email', 'firstName'])
 @Index('IX_USER_EMAIL_LASTNAME', ['email', 'lastName'])
 export class User extends MecBaseEntity {
-  @Column({ type: 'enum', enum: Object.values(COUNTRIES) })
+  @Column({ type: 'enum', enum: COUNTRIES })
   @IsNotEmpty()
   @IsEnum(COUNTRIES)
-  country: keyof typeof COUNTRIES;
+  country: COUNTRIES;
 
   @Column({ length: 100 })
   @IsNotEmpty()
@@ -115,7 +115,7 @@ export class User extends MecBaseEntity {
 
   constructor(
     id: UUID,
-    country: keyof typeof COUNTRIES,
+    country: COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,

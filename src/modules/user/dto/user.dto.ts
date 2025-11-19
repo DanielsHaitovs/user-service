@@ -41,7 +41,7 @@ export class UserBaseDto {
   @IsEnum(COUNTRIES)
   @MinLength(1)
   @MaxLength(100)
-  country: keyof typeof COUNTRIES;
+  country: COUNTRIES;
 
   @ApiProperty({
     description: 'User first name',
@@ -114,7 +114,7 @@ export class UserBaseDto {
   dateOfBirth: Date;
 
   constructor(
-    country: keyof typeof COUNTRIES,
+    country: COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -186,7 +186,7 @@ export class CreateUserDto extends UserBaseDto {
   roleIds: UUID[];
 
   constructor(
-    country: keyof typeof COUNTRIES,
+    country: COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -299,7 +299,7 @@ export class GetUserDto extends UserBaseDto {
 
   constructor(
     id: UUID,
-    country: keyof typeof COUNTRIES,
+    country: COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
@@ -363,7 +363,7 @@ export class UserResponseDto extends GetUserDto {
 
   constructor(
     id: UUID,
-    country: keyof typeof COUNTRIES,
+    country: COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,

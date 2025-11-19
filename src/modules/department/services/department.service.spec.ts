@@ -20,6 +20,8 @@ import type { App } from 'supertest/types';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { DEPARTMENT_QUERY_ALIAS } from '../../../lib/const/department.const';
+
 describe('DepartmentService (Integration - PostgreSQL)', () => {
   let app: INestApplication<App>;
   let module: TestingModule;
@@ -121,6 +123,10 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
             pagination: {
               page: 1,
               limit: 20,
+            },
+            sort: {
+              sortField: `${DEPARTMENT_QUERY_ALIAS}.name`,
+              sortOrder: 'ASC',
             },
           },
           true,

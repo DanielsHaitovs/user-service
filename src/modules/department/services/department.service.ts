@@ -172,9 +172,6 @@ export class DepartmentService {
       .where(`${DEPARTMENT_QUERY_ALIAS}.name like :value`, {
         value: `%${value}%`,
       })
-      .orWhere(`${DEPARTMENT_QUERY_ALIAS}.country like :value`, {
-        value: `%${value}%`,
-      })
       .orWhere(`${DEPARTMENT_QUERY_ALIAS}.id::text ILIKE :value`, {
         value: `%${value}%`,
       });

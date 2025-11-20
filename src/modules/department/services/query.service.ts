@@ -119,7 +119,6 @@ export class QueryService extends EntityQueryService {
     return await this.paginatedResult({
       query,
       alias: 'departments',
-      pagination,
     });
   }
 

@@ -1,7 +1,9 @@
 import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
 import { DepartmentResponseDto } from '@/department/dto/department.dto';
+import { COUNTRIES } from '@/lib/const/countries.const';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { EXAMPLE_USER_COUNTRY, EXAMPLE_USER_ID } from '@/lib/const/user.const';
+import { UserRoleResponseDto } from '@/user/dto/userRole.dto';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -18,10 +20,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UUID } from 'crypto';
-
-import { COUNTRIES } from '../../../lib/const/countries.const';
-
-import { UserRoleResponseDto } from './userRole.dto';
 
 /**
  * Base DTO containing core user information shared across multiple operations.

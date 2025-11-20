@@ -1,13 +1,13 @@
 import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
+import { ToArray } from '@/common/decorators/array.decorator';
 import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import { RoleResponseDto } from '@/role/dto/role.dto';
+import { GetUserDto } from '@/user/dto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsUUID, ValidateNested } from 'class-validator';
 import { UUID } from 'crypto';
-
-import { GetUserDto } from './user.dto';
 
 export class AssignRoleIdsDto {
   @ApiProperty({
@@ -43,6 +43,46 @@ export class AssignRoleIdsDto {
   constructor(roleIds: UUID[], userId: UUID, assignedBy: UUID) {
     this.roleIds = roleIds;
     this.userId = userId;
+    this.assignedBy = assignedBy;
+  }
+}
+
+export class UnAssignRoleIdsDto {
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    description: 'List of role IDs to assign to the user',
+  })
+  @ToArray()
+  @IsUUID(4, { each: true })
+  @IsNotEmpty()
+  roleIds: UUID[];
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    description: 'User IDs to which role will be assigned',
+  })
+  @ToArray()
+  @IsUUID(4, { each: true })
+  @IsNotEmpty()
+  userIds: UUID[];
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: false,
+    description: 'User IDs to who assigned roles to user',
+  })
+  @IsUUID(4)
+  @IsNotEmpty()
+  assignedBy: UUID;
+
+  constructor(roleIds: UUID[], userIds: UUID[], assignedBy: UUID) {
+    this.roleIds = roleIds;
+    this.userIds = userIds;
     this.assignedBy = assignedBy;
   }
 }

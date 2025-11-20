@@ -132,7 +132,6 @@ export class DepartmentService {
     const { departments } = await this.queryService.paginatedResult({
       query,
       alias: 'departments',
-      pagination,
     });
 
     if (departments.length === 0) {
@@ -191,7 +190,6 @@ export class DepartmentService {
     return await this.queryService.paginatedResult({
       query,
       alias: 'departments',
-      pagination,
     });
   }
 

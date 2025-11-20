@@ -1,4 +1,4 @@
-import { AssignRoleIdsDto } from '@/user/dto/userRole.dto';
+import { AssignRoleIdsDto, UnAssignRoleIdsDto } from '@/user/dto/userRole.dto';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { HelperService } from '@/user/helper/helper.service';
 import { Injectable } from '@nestjs/common';
@@ -52,20 +52,15 @@ export class UserRoleService {
   /**
    * Unassigns multiple roles from a user.
    *
-   * @param data - Data transfer object containing user ID and role IDs to unassign.
+   * @param data - Data transfer object containing user ID and role IDs to unassign and user id that unassigned the roles.
    * @returns A promise resolving to an object with the count of deleted assignments.
    */
-  async unassignRolesFromUser(
-    data: AssignRoleIdsDto,
+  async unassignRolesFromUsers(
+    data: UnAssignRoleIdsDto,
   ): Promise<{ deleted: number }> {
-    const { userId, roleIds } = data;
+    const { userIds, roleIds } = data;
 
-    await this.helperService.findByIdOrFail({
-      id: userId,
-      includeDepartments: false,
-      includeRoles: false,
-    });
-
+    await this.helperService.findManyByIdsOrFail(userIds);
     await this.helperService.findManyRolesOrFail(roleIds);
 
     const result = await this.userRoleRepository
@@ -73,7 +68,7 @@ export class UserRoleService {
       .delete()
       .from(UserRole)
       .where('role.id IN (:...roleIds)', { roleIds })
-      .andWhere('user.id = :userId', { userId })
+      .andWhere('user.id IN (:...userIds)', { userIds })
       .execute();
 
     return { deleted: result.affected ?? 0 };

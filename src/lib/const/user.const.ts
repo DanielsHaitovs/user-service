@@ -5,6 +5,8 @@
  */
 
 import { COUNTRIES } from '@/lib/const/countries.const';
+import { INPUT_BAD_REQUEST_MSG } from '@/lib/const/system.const';
+import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 
 // Standard email address for the system user.
 // This email is used in tests and API documentation to represent the system user.
@@ -182,3 +184,73 @@ export const UPDATE_USER = 'user:update' as string;
  * Represents a permission for deleting user data.
  */
 export const DELETE_USER = 'user:delete' as string;
+
+export const USER_MIN_BAD_REQUEST_MSG = [
+  'Each selectUserField must be a valid user field',
+  'Each selectUserRoleField must be a valid user role field',
+  'Each selectDepartmentField must be a valid department field',
+  'Each selectRoleField must be a valid role field',
+  'Each selectPermissionField must be a valid permission field',
+  'includeCreatedBy must be a boolean value',
+  'includeDepartments must be a boolean value',
+  'includeRoles must be a boolean value',
+  'includePermissions must be a boolean value',
+  'sortField must be a valid user field',
+  ...INPUT_BAD_REQUEST_MSG,
+];
+
+export const USER_FULL_BAD_REQUEST_MSG = [
+  'Each id must be a valid UUIDv4',
+  'Each firstName must be a string',
+  'Each lastName must be a string',
+  'Each email must be an email',
+  'Each phoneNumber must be a string',
+  'isActive must be a boolean value',
+  'isEmailVerified must be a boolean value',
+  'Each createdById must be a valid UUIDv4',
+  'Each departmentId must be a valid UUIDv4',
+  'Each departmentCountry must be a valid enum value',
+  'Each roleId must be a valid UUIDv4',
+  'Each roleName must be a string',
+  'Each permissionId must be a valid UUIDv4',
+  'Each permissionCode must be a string',
+  'dateFilterParam must be a valid user date field',
+  'dateFrom must be a valid ISO 8601 date string',
+  'dateTo must be a valid ISO 8601 date string',
+  ...USER_MIN_BAD_REQUEST_MSG,
+] as string[];
+
+export const USER_NOT_FOUND_DOCUMENTATION = {
+  description: 'Users not found',
+  schema: {
+    type: 'object',
+    properties: {
+      users: {
+        type: 'array',
+        description: 'Empty array when no users match the filters',
+        example: [],
+      },
+      totalPages: { type: 'number', example: 0 },
+      total: { type: 'number', example: 0 },
+      page: { type: 'number', example: 1 },
+      limit: { type: 'number', example: 10 },
+    },
+  },
+};
+
+export const USER_API_OK_RESPONSE_MSG = 'User retrieved successfully';
+
+export const USER_CONFLICT_DOCUMENTATION = {
+  description: 'Email already exists (when updating email)',
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: { type: 'number', example: 409 },
+      message: {
+        type: 'string',
+        example: EMAIL_EXISTS_MSG,
+      },
+      error: { type: 'string', example: ConflictException.name },
+    },
+  },
+};

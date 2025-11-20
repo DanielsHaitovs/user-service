@@ -11,12 +11,17 @@ import {
   getUserGenericSelectableFields,
   getUserRoleGenericSelectableFields,
 } from '@/user/helper/user-fields.util';
-import { ApiPropertyOptional, IntersectionType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  IntersectionType,
+} from '@nestjs/swagger';
 
 import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -238,7 +243,120 @@ export class UserQueryParametersDto {
   }
 }
 
-export class UserQueruRepsonseParametersDto {
+export class UserSelectDto {
+  @ApiPropertyOptional({
+    description:
+      'Specific user fields to return - optimizes payload size and performance',
+    enum: getUserGenericSelectableFields({}),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getUserGenericSelectableFields({}),
+  })
+  @ToArray()
+  @IsEnum(getUserGenericSelectableFields({}), {
+    each: true,
+    message: 'Each selectUserField must be a valid user field',
+  })
+  @IsOptional()
+  selectUserFields: string[];
+
+  constructor(selectUserFields: string[] | undefined) {
+    this.selectUserFields = selectUserFields ?? [];
+  }
+}
+
+export class UserRelationSelectDto extends UserSelectDto {
+  @ApiPropertyOptional({
+    description:
+      'Specific user department fields to return - optimizes payload size and performance',
+    enum: getDepartmentGenericSelectableFields({}),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getDepartmentGenericSelectableFields({}),
+  })
+  @ToArray()
+  @IsEnum(getDepartmentGenericSelectableFields({}), {
+    each: true,
+    message: 'Each selectDepartmentField must be a valid department field',
+  })
+  @IsOptional()
+  selectDepartmentFields: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Specific user fields to return - optimizes payload size and performance',
+    enum: getUserRoleGenericSelectableFields({}),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getUserRoleGenericSelectableFields({}),
+  })
+  @ToArray()
+  @IsEnum(getUserRoleGenericSelectableFields({}), {
+    each: true,
+    message: 'Each selectUserRoleField must be a valid user role field',
+  })
+  @IsOptional()
+  selectUserRoleFields: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Specific user roles fields to return - optimizes payload size and performance',
+    enum: getRoleGenericSelectableFields({}),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getRoleGenericSelectableFields({}),
+  })
+  @ToArray()
+  @IsEnum(getRoleGenericSelectableFields({}), {
+    each: true,
+    message: 'Each selectRoleField must be a valid role field',
+  })
+  @IsOptional()
+  selectRoleFields: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Specific role permission fields to return - optimizes payload size and performance',
+    enum: getPermissionsGenericSelectableFields({}),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getPermissionsGenericSelectableFields({}),
+  })
+  @IsOptional()
+  @ToArray()
+  @IsEnum(getPermissionsGenericSelectableFields({}), {
+    each: true,
+    message: 'Each selectPermissionField must be a valid permission field',
+  })
+  selectPermissionFields: string[];
+
+  constructor({
+    selectUserFields,
+    selectDepartmentFields,
+    selectUserRoleFields,
+    selectRoleFields,
+    selectPermissionFields,
+  }: {
+    selectUserFields: string[] | undefined;
+    selectDepartmentFields: string[] | undefined;
+    selectUserRoleFields: string[] | undefined;
+    selectRoleFields: string[] | undefined;
+    selectPermissionFields: string[] | undefined;
+  }) {
+    super(selectUserFields);
+    this.selectDepartmentFields = selectDepartmentFields ?? [];
+    this.selectUserRoleFields = selectUserRoleFields ?? [];
+    this.selectRoleFields = selectRoleFields ?? [];
+    this.selectPermissionFields = selectPermissionFields ?? [];
+  }
+}
+
+export class UserQueryResponseControlDto extends UserRelationSelectDto {
   @ApiPropertyOptional({
     type: Boolean,
     description: 'Include Created By in the response',
@@ -279,91 +397,6 @@ export class UserQueruRepsonseParametersDto {
   @IsBoolean()
   includePermissions: boolean;
 
-  @ApiPropertyOptional({
-    description:
-      'Specific user fields to return - optimizes payload size and performance',
-    enum: getUserGenericSelectableFields({}),
-    type: String,
-    isArray: true,
-    required: false,
-    example: getUserGenericSelectableFields({}),
-  })
-  @ToArray()
-  @IsEnum(getUserGenericSelectableFields({}), {
-    each: true,
-    message: 'Each selectUserField must be a valid user field',
-  })
-  @IsOptional()
-  selectUserFields: string[];
-
-  @ApiPropertyOptional({
-    description:
-      'Specific user fields to return - optimizes payload size and performance',
-    enum: getUserRoleGenericSelectableFields({}),
-    type: String,
-    isArray: true,
-    required: false,
-    example: getUserRoleGenericSelectableFields({}),
-  })
-  @ToArray()
-  @IsEnum(getUserRoleGenericSelectableFields({}), {
-    each: true,
-    message: 'Each selectUserRoleField must be a valid user role field',
-  })
-  @IsOptional()
-  selectUserRoleFields: string[];
-
-  @ApiPropertyOptional({
-    description:
-      'Specific user department fields to return - optimizes payload size and performance',
-    enum: getDepartmentGenericSelectableFields({}),
-    type: String,
-    isArray: true,
-    required: false,
-    example: getDepartmentGenericSelectableFields({}),
-  })
-  @ToArray()
-  @IsEnum(getDepartmentGenericSelectableFields({}), {
-    each: true,
-    message: 'Each selectDepartmentField must be a valid department field',
-  })
-  @IsOptional()
-  selectDepartmentFields: string[];
-
-  @ApiPropertyOptional({
-    description:
-      'Specific user roles fields to return - optimizes payload size and performance',
-    enum: getRoleGenericSelectableFields({}),
-    type: String,
-    isArray: true,
-    required: false,
-    example: getRoleGenericSelectableFields({}),
-  })
-  @ToArray()
-  @IsEnum(getRoleGenericSelectableFields({}), {
-    each: true,
-    message: 'Each selectRoleField must be a valid role field',
-  })
-  @IsOptional()
-  selectRoleFields: string[];
-
-  @ApiPropertyOptional({
-    description:
-      'Specific role permission fields to return - optimizes payload size and performance',
-    enum: getPermissionsGenericSelectableFields({}),
-    type: String,
-    isArray: true,
-    required: false,
-    example: getPermissionsGenericSelectableFields({}),
-  })
-  @IsOptional()
-  @ToArray()
-  @IsEnum(getPermissionsGenericSelectableFields({}), {
-    each: true,
-    message: 'Each selectPermissionField must be a valid permission field',
-  })
-  selectPermissionFields: string[];
-
   constructor(
     includeCreatedBy: boolean,
     includeDepartments: boolean,
@@ -375,12 +408,14 @@ export class UserQueruRepsonseParametersDto {
     selectRoleFields: string[] | undefined,
     selectPermissionFields: string[] | undefined,
   ) {
+    super({
+      selectUserFields,
+      selectDepartmentFields,
+      selectUserRoleFields,
+      selectRoleFields,
+      selectPermissionFields,
+    });
     this.includeCreatedBy = includeCreatedBy;
-    this.selectUserFields = selectUserFields ?? [];
-    this.selectDepartmentFields = selectDepartmentFields ?? [];
-    this.selectUserRoleFields = selectUserRoleFields ?? [];
-    this.selectRoleFields = selectRoleFields ?? [];
-    this.selectPermissionFields = selectPermissionFields ?? [];
     this.includeDepartments = includeDepartments;
     this.includeRoles = includeRoles;
     this.includePermissions = includePermissions;
@@ -447,10 +482,69 @@ export class UserDateRequestDto extends QueryDateRequestDto {
   }
 }
 
-export interface UserQuery {
+export interface UserRequestI {
+  responseControl: UserQueryResponseControlDto;
+  sort: UserSortDto;
+  pagination: PaginationDto;
+}
+
+export class UserRequestDto extends IntersectionType(
+  PaginationDto,
+  UserSortDto,
+  UserQueryResponseControlDto,
+) {}
+
+export class GetUsersByIdsRequestDto extends UserRequestDto {
+  @ApiProperty({
+    description: 'Filter by specific user UUIDs for bulk operations',
+    type: String,
+    isArray: true,
+    format: 'uuid',
+    uniqueItems: true,
+    nullable: false,
+  })
+  @ToArray()
+  @IsNotEmpty()
+  @IsUUID('4', { each: true, message: 'Each id must be a valid UUIDv4' })
+  ids: UUID[];
+
+  constructor(ids: UUID[]) {
+    super();
+    this.ids = ids;
+  }
+}
+
+export class GetUsersByEmailsRequestDto extends UserRequestDto {
+  @ApiPropertyOptional({
+    description:
+      'Filter by email addresses - commonly used for user lookup and verification',
+    type: String,
+    isArray: true,
+    nullable: false,
+    format: 'email',
+    uniqueItems: true,
+    maxItems: 50,
+  })
+  @IsEmail({}, { each: true })
+  @ToArray()
+  @IsNotEmpty()
+  emails: string[];
+
+  constructor(emails: string[]) {
+    super();
+    this.emails = emails;
+  }
+}
+
+export class UserSearchRequestDto extends IntersectionType(
+  PaginationDto,
+  UserSortDto,
+  UserSelectDto,
+) {}
+
+export interface UserQuery extends UserQueryResponseControlDto {
   query: UserQueryParametersDto;
   dateQuery: UserDateRequestDto;
-  responseParams: UserQueruRepsonseParametersDto;
   sort: UserSortDto;
   pagination: PaginationDto;
 }
@@ -458,7 +552,7 @@ export interface UserQuery {
 export class FilterUsersQueryDto extends IntersectionType(
   UserQueryParametersDto,
   UserDateRequestDto,
-  UserQueruRepsonseParametersDto,
+  UserQueryResponseControlDto,
   PaginationDto,
   UserSortDto,
 ) {}

@@ -11,7 +11,7 @@ import {
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/lib/const/user.const';
-import { UserQuery } from '@/user/dto/query.dto';
+import { FilterUsersQueryDto } from '@/user/dto/query.dto';
 import { UserListResponseDto } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
 import { Injectable } from '@nestjs/common';
@@ -26,24 +26,24 @@ export class QueryService extends EntityQueryService {
     hasAccessToRoles,
     hasAccessToPermissions,
   }: {
-    filters: UserQuery;
+    filters: FilterUsersQueryDto;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
   }): Promise<UserListResponseDto> {
     const {
-      sort,
-      pagination,
-      responseParams: {
-        includeDepartments,
-        includeRoles,
-        includePermissions,
-        selectUserFields,
-        selectDepartmentFields,
-        selectUserRoleFields,
-        selectRoleFields,
-        selectPermissionFields,
-      },
+      sortField,
+      sortOrder,
+      page,
+      limit,
+      includeDepartments,
+      includeRoles,
+      includePermissions,
+      selectUserFields,
+      selectDepartmentFields,
+      selectUserRoleFields,
+      selectRoleFields,
+      selectPermissionFields,
     } = filters;
 
     const query = this.initQuery({
@@ -61,8 +61,11 @@ export class QueryService extends EntityQueryService {
 
     this.optimize<User>({
       query,
-      pagination,
-      sort,
+      pagination: { limit, page },
+      sort: {
+        sortField: sortField ?? `${USER_QUERY_ALIAS}.createdAt`,
+        sortOrder,
+      },
       select: [
         ...selectUserFields,
         ...selectDepartmentFields,
@@ -85,7 +88,6 @@ export class QueryService extends EntityQueryService {
     return await this.paginatedResult({
       query,
       alias: 'users',
-      pagination,
     });
   }
 
@@ -151,35 +153,33 @@ export class QueryService extends EntityQueryService {
     hasAccessToPermissions,
   }: {
     query: SelectQueryBuilder<User>;
-    filters: UserQuery;
+    filters: FilterUsersQueryDto;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
   }): void {
     const {
-      query: {
-        ids,
-        firstNames,
-        lastNames,
-        emails,
-        phoneNumbers,
-        isActive,
-        isEmailVerified,
-        createdByIds,
-        departmentIds,
-        departmentCountries,
-        roleIds,
-        roleNames,
-        permissionIds,
-        permissionCodes,
-      },
-      responseParams: {
-        includeDepartments,
-        includeRoles,
-        includePermissions,
-        includeCreatedBy,
-      },
-      dateQuery: { dateFilterParam, dateFrom, dateTo },
+      ids,
+      firstNames,
+      lastNames,
+      emails,
+      phoneNumbers,
+      isActive,
+      isEmailVerified,
+      createdByIds,
+      departmentIds,
+      departmentCountries,
+      roleIds,
+      roleNames,
+      permissionIds,
+      permissionCodes,
+      includeDepartments,
+      includeRoles,
+      includePermissions,
+      includeCreatedBy,
+      dateFilterParam,
+      dateFrom,
+      dateTo,
     } = filters;
 
     this.whereIn<User>({
@@ -307,6 +307,13 @@ export class QueryService extends EntityQueryService {
     if (!hasAccessToRoles) return;
 
     this.joinRelation<User>({ query, alias: USER_ROLE_QUERY_ALIAS });
+
+    this.joinRelation<User>({
+      query,
+      alias: ASSIGNED_BY_USER_QUERY_ALIAS,
+      relationAlias: ASSIGNED_BY_USER_QUERY_ALIAS,
+      nestedFrom: USER_ROLE_QUERY_ALIAS,
+    });
 
     this.joinRelation<User>({
       query,

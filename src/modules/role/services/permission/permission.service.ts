@@ -157,7 +157,6 @@ export class PermissionService {
     const { permissions } = await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
-      pagination,
     });
 
     if (permissions.length === 0) {
@@ -232,7 +231,6 @@ export class PermissionService {
     const { permissions } = await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
-      pagination,
     });
 
     if (permissions.length === 0) {
@@ -297,7 +295,6 @@ export class PermissionService {
     return await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
-      pagination,
     });
   }
 

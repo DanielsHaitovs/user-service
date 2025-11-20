@@ -200,7 +200,6 @@ export class RoleService {
     const { roles } = await this.queryService.paginatedResult({
       query,
       alias: 'roles',
-      pagination,
     });
 
     if (roles.length === 0) {
@@ -271,7 +270,6 @@ export class RoleService {
     const { roles } = await this.queryService.paginatedResult({
       query,
       alias: 'roles',
-      pagination,
     });
 
     if (roles.length === 0) {
@@ -328,7 +326,6 @@ export class RoleService {
     return await this.queryService.paginatedResult({
       query,
       alias: 'roles',
-      pagination,
     });
   }
 

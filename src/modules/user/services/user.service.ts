@@ -1,10 +1,8 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
-  USER_ROLE_QUERY_ALIAS,
 } from '@/lib/const/user.const';
+import { UserRequestDto, UserSearchRequestDto } from '@/user/dto/query.dto';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -13,15 +11,12 @@ import {
 import { User } from '@/user/entities/user.entity';
 import { HelperService } from '@/user/helper/helper.service';
 import { QueryService } from '@/user/services/query.service';
+import { UserRoleService } from '@/user/services/roles/user-role.service';
 import {
   generateEmailVerificationToken,
   generatePasswordResetToken,
 } from '@/utils/token-generator.util';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import * as bcrypt from 'bcrypt';
@@ -37,6 +32,7 @@ export class UserService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly queryService: QueryService,
+    private readonly userRoleService: UserRoleService,
     private readonly helperService: HelperService,
   ) {}
 
@@ -87,25 +83,17 @@ export class UserService {
    */
   async findByIds({
     ids,
-    pagination,
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
-    select,
-    sort,
+    control,
   }: {
-    ids: UUID[];
-    pagination: PaginationDto;
+    ids: string[];
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
-    select?: string[];
-    sort?: SortDto;
-  }): Promise<User[]> {
-    if (ids.length === 0) {
-      throw new BadRequestException('At least one ID must be provided');
-    }
-
+    control: UserRequestDto;
+  }): Promise<UserListResponseDto> {
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
     this.queryService.whereIn({
@@ -115,32 +103,59 @@ export class UserService {
       condition: 'AND',
     });
 
-    this.queryService.joinRelation({
-      query,
-      alias: CREATEDBY_USER_QUERY_ALIAS,
-    });
+    const {
+      page,
+      limit,
+      sortField,
+      sortOrder,
+      selectUserFields,
+      selectDepartmentFields,
+      selectPermissionFields,
+      selectRoleFields,
+      selectUserRoleFields,
+      includeCreatedBy,
+      includeDepartments,
+      includeRoles,
+      includePermissions,
+    } = control;
+
+    if (includeCreatedBy) {
+      this.queryService.joinRelation({
+        query,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
+      });
+    }
 
     this.queryService.filterByDepartments({
       query,
-      hasAccessToDepartments,
+      hasAccessToDepartments: hasAccessToDepartments && includeDepartments,
     });
 
     this.queryService.filterByRolePermission({
       query,
-      hasAccessToRoles,
-      hasAccessToPermissions,
+      hasAccessToRoles: hasAccessToRoles && includeRoles,
+      hasAccessToPermissions: hasAccessToPermissions && includePermissions,
     });
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { limit, page },
+      sort: {
+        sortField: sortField ?? `${USER_QUERY_ALIAS}.createdAt`,
+        sortOrder,
+      },
+      select: [
+        ...selectUserFields,
+        ...selectDepartmentFields,
+        ...selectUserRoleFields,
+        ...selectRoleFields,
+        ...selectPermissionFields,
+      ],
       criteria: this.queryService.userQueryCriteria({
-        includeCreatedBy: true,
-        includeDepartments: true,
-        includeRoles: true,
-        includePermissions: true,
+        includeCreatedBy,
+        includeDepartments,
+        includeRoles,
+        includePermissions,
         hasAccessToCreatedBy: true,
         hasAccessToDepartments,
         hasAccessToRoles,
@@ -148,20 +163,19 @@ export class UserService {
       }),
     });
 
-    const { users } = await this.queryService.paginatedResult({
+    const response = await this.queryService.paginatedResult({
       query,
       alias: 'users',
-      pagination,
     });
 
-    if (users.length === 0) {
+    if (response.users.length === 0) {
       throw new EntityNotFoundError(
         'Users',
         `Users with IDs [${ids.join(', ')}] not found`,
       );
     }
 
-    return users;
+    return response;
   }
 
   /**
@@ -176,21 +190,17 @@ export class UserService {
    */
   async findByEmails({
     emails,
-    pagination,
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
-    select,
-    sort,
+    control,
   }: {
     emails: string[];
-    pagination: PaginationDto;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
-    select?: string[];
-    sort?: SortDto;
-  }): Promise<User[]> {
+    control: UserRequestDto;
+  }): Promise<UserListResponseDto> {
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
     this.queryService.whereIn({
@@ -201,27 +211,59 @@ export class UserService {
       relationAlias: USER_QUERY_ALIAS,
     });
 
+    const {
+      page,
+      limit,
+      sortField,
+      sortOrder,
+      selectUserFields,
+      selectDepartmentFields,
+      selectPermissionFields,
+      selectRoleFields,
+      selectUserRoleFields,
+      includeCreatedBy,
+      includeDepartments,
+      includeRoles,
+      includePermissions,
+    } = control;
+
+    if (includeCreatedBy) {
+      this.queryService.joinRelation({
+        query,
+        alias: CREATEDBY_USER_QUERY_ALIAS,
+      });
+    }
+
     this.queryService.filterByDepartments({
       query,
-      hasAccessToDepartments,
+      hasAccessToDepartments: hasAccessToDepartments && includeDepartments,
     });
 
     this.queryService.filterByRolePermission({
       query,
-      hasAccessToRoles,
-      hasAccessToPermissions,
+      hasAccessToRoles: hasAccessToRoles && includeRoles,
+      hasAccessToPermissions: hasAccessToPermissions && includePermissions,
     });
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { limit, page },
+      sort: {
+        sortField: sortField ?? `${USER_QUERY_ALIAS}.createdAt`,
+        sortOrder,
+      },
+      select: [
+        ...selectUserFields,
+        ...selectDepartmentFields,
+        ...selectUserRoleFields,
+        ...selectRoleFields,
+        ...selectPermissionFields,
+      ],
       criteria: this.queryService.userQueryCriteria({
-        includeCreatedBy: true,
-        includeDepartments: true,
-        includeRoles: true,
-        includePermissions: true,
+        includeCreatedBy,
+        includeDepartments,
+        includeRoles,
+        includePermissions,
         hasAccessToCreatedBy: true,
         hasAccessToDepartments,
         hasAccessToRoles,
@@ -229,20 +271,19 @@ export class UserService {
       }),
     });
 
-    const { users } = await this.queryService.paginatedResult({
+    const response = await this.queryService.paginatedResult({
       query,
       alias: 'users',
-      pagination,
     });
 
-    if (users.length === 0) {
+    if (response.users.length === 0) {
       throw new EntityNotFoundError(
         'Users',
         `Users with emails [${emails.join(', ')}] not found`,
       );
     }
 
-    return users;
+    return response;
   }
 
   /**
@@ -261,15 +302,23 @@ export class UserService {
    */
   async searchFor({
     value,
-    pagination,
-    sort,
-    select,
+    control,
   }: {
-    value: string;
-    pagination: PaginationDto;
-    sort: SortDto;
-    select?: string[];
+    value?: string;
+    control: UserSearchRequestDto;
   }): Promise<UserListResponseDto> {
+    if (value === undefined || value.trim() === '') {
+      return {
+        users: [],
+        total: 0,
+        page: 1,
+        limit: control.limit,
+        totalPages: 0,
+      };
+    }
+
+    const { limit, page, sortField, sortOrder, selectUserFields } = control;
+
     const query = this.userRepository
       .createQueryBuilder(USER_QUERY_ALIAS)
       .where(`${USER_QUERY_ALIAS}.firstName ILIKE :value`, {
@@ -287,25 +336,27 @@ export class UserService {
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { limit, page },
+      sort: {
+        sortField: sortField ?? `${USER_QUERY_ALIAS}.createdAt`,
+        sortOrder,
+      },
+      select: selectUserFields,
       criteria: this.queryService.userQueryCriteria({
         includeCreatedBy: false,
         includeDepartments: false,
         includeRoles: false,
+        includePermissions: false,
         hasAccessToCreatedBy: false,
         hasAccessToDepartments: false,
         hasAccessToRoles: false,
         hasAccessToPermissions: false,
-        includePermissions: false,
       }),
     });
 
     return await this.queryService.paginatedResult({
       query,
       alias: 'users',
-      pagination,
     });
   }
 
@@ -322,7 +373,13 @@ export class UserService {
    * @throws NotFoundException when user ID doesn't exist
    * @throws ConflictException when email is already used by another user
    */
-  async updateById(id: UUID, updateUserDto: UpdateUserDto): Promise<User> {
+  async updateById({
+    id,
+    updateUserDto,
+  }: {
+    id: UUID;
+    updateUserDto: UpdateUserDto;
+  }): Promise<User> {
     await this.helperService.findByIdOrFail({ id });
 
     if (
@@ -363,10 +420,13 @@ export class UserService {
    * @throws EntityNotFoundError when email doesn't match any user
    * @throws ConflictException when new email conflicts with existing users
    */
-  async updateByEmail(
-    email: string,
-    updateUserDto: UpdateUserDto,
-  ): Promise<User> {
+  async updateByEmail({
+    email,
+    updateUserDto,
+  }: {
+    email: string;
+    updateUserDto: UpdateUserDto;
+  }): Promise<User> {
     const user = await this.helperService.findByEmailOrFail(email);
 
     if (updateUserDto.email !== undefined) {
@@ -396,26 +456,39 @@ export class UserService {
    * @param ids - Array of user UUID identifiers to delete
    * @returns Promise resolving to deletion count summary
    * @throws NotFoundException when any specified user ID doesn't exist
-   *
-   * @example
-   * ```typescript
-   * const result = await userService.deleteByIds(['uuid1', 'uuid2']);
-   * ```
    */
-  async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
+  async deleteByIds({
+    ids,
+    currentUserId,
+  }: {
+    ids: UUID[];
+    currentUserId: UUID;
+  }): Promise<{ deleted: number; message: string }> {
     if (ids.length === 0) {
-      return { deleted: 0 };
+      return { deleted: 0, message: 'No users deleted' };
     }
 
-    const existingUsers = await this.userRepository
-      .createQueryBuilder(USER_QUERY_ALIAS)
-      .leftJoinAndSelect(
-        `${USER_QUERY_ALIAS}.${USER_ROLE_QUERY_ALIAS}`,
-        USER_ROLE_QUERY_ALIAS,
-      )
-      .leftJoinAndSelect(`${USER_ROLE_QUERY_ALIAS}.role`, ROLE_QUERY_ALIAS)
-      .where(`${USER_QUERY_ALIAS}.id IN (:...ids)`, { ids })
-      .getMany();
+    const { users: existingUsers } = await this.findByIds({
+      ids,
+      hasAccessToRoles: true,
+      hasAccessToDepartments: false,
+      hasAccessToPermissions: false,
+      control: {
+        includeRoles: true,
+        includeDepartments: false,
+        includePermissions: false,
+        includeCreatedBy: false,
+        limit: ids.length,
+        page: 1,
+        sortField: undefined,
+        sortOrder: 'ASC',
+        selectUserFields: ['id'],
+        selectRoleFields: ['id'],
+        selectUserRoleFields: ['id'],
+        selectDepartmentFields: [],
+        selectPermissionFields: [],
+      },
+    });
 
     if (existingUsers.length !== ids.length) {
       const missingIds = ids.filter(
@@ -428,11 +501,19 @@ export class UserService {
       );
     }
 
-    // const roleIds = existingUsers.flatMap((user) =>
-    //   user.userRoles.map((userRole) => userRole.roles.id),
-    // );
+    const roleIds = existingUsers.flatMap((user) => {
+      if (user.userRoles != undefined) {
+        return user.userRoles.map((userRole) => userRole.role.id);
+      }
 
-    // await this.roleService.unassignRolesFromUsers({ userIds: ids, roleIds });
+      return [];
+    });
+
+    await this.userRoleService.unassignRolesFromUsers({
+      userIds: ids,
+      roleIds,
+      assignedBy: currentUserId,
+    });
 
     const result = await this.userRepository
       .createQueryBuilder()
@@ -441,6 +522,9 @@ export class UserService {
       .where('id IN (:...ids)', { ids })
       .execute();
 
-    return { deleted: result.affected ?? 0 };
+    return {
+      deleted: result.affected ?? 0,
+      message: `${(result.affected ?? 0).toString()} ${result.affected !== 1 ? 'users' : 'user'} deleted successfully`,
+    };
   }
 }

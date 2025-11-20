@@ -6,41 +6,38 @@ import {
   CurrentUserPermissions,
 } from '@/common/decorators/user.decorator';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
-import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
+import { COUNTRIES } from '@/lib/const/countries.const';
+import { READ_DEPARTMENT } from '@/lib/const/department.const';
+import { READ_PERMISSION, READ_ROLE } from '@/lib/const/role.const';
 import {
-  EXAMPLE_DEPARTMENT_COUNTRY,
-  EXAMPLE_DEPARTMENT_ID,
-  EXAMPLE_DEPARTMENT_NAME,
-  READ_DEPARTMENT,
-} from '@/lib/const/department.const';
-import {
-  EXAMPLE_PERMISSION_CODE,
-  EXAMPLE_PERMISSION_ID,
-  EXAMPLE_PERMISSION_NAME,
-  EXAMPLE_ROLE_ID,
-  EXAMPLE_ROLE_NAME,
-  READ_PERMISSION,
-  READ_ROLE,
-} from '@/lib/const/role.const';
-import { SORT_DESCRIPTION } from '@/lib/const/system.const';
+  BAD_REQUEST_DESCRIPTION,
+  DELETE_BAD_REQUEST_MSG,
+  INTERNAL_SERVER_ERROR_DOCUMENTATION,
+} from '@/lib/const/system.const';
 import {
   CREATE_USER,
   CREATE_USER_ROLE,
   DELETE_USER,
   EMAIL_EXISTS_MSG,
-  EXAMPLE_USER_DATE_OF_BIRTH,
   EXAMPLE_USER_EMAIL,
   EXAMPLE_USER_EMAIL_VERIFICATION_TOKEN,
-  EXAMPLE_USER_FIRST_NAME,
   EXAMPLE_USER_ID,
-  EXAMPLE_USER_LAST_NAME,
-  EXAMPLE_USER_PHONE,
-  EXAMPLE_USER_ROLE_ID,
+  EXAMPLE_USER_PASSWORD_RESET_TOKEN,
   READ_USER,
   READ_USER_ROLE,
   UPDATE_USER,
-  USER_NOT_FOUND_MSG,
+  USER_API_OK_RESPONSE_MSG,
+  USER_CONFLICT_DOCUMENTATION,
+  USER_FULL_BAD_REQUEST_MSG,
+  USER_MIN_BAD_REQUEST_MSG,
+  USER_NOT_FOUND_DOCUMENTATION,
 } from '@/lib/const/user.const';
+import {
+  FilterUsersQueryDto,
+  GetUsersByEmailsRequestDto,
+  GetUsersByIdsRequestDto,
+  UserSearchRequestDto,
+} from '@/user/dto/query.dto';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -48,10 +45,8 @@ import {
   UserResponseDto,
 } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
-import { getUserGenericSelectableFields } from '@/user/helper/user-fields.util';
 import { QueryService } from '@/user/services/query.service';
 import { UserService } from '@/user/services/user.service';
-import { generateUserFriendlyPassword } from '@/utils/token-generator.util';
 import {
   BadRequestException,
   Body,
@@ -63,10 +58,8 @@ import {
   HttpCode,
   HttpStatus,
   InternalServerErrorException,
-  NotFoundException,
   Param,
   ParseArrayPipe,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -94,8 +87,6 @@ import {
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
-
-import { FilterUsersQueryDto } from './dto/query.dto';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -141,40 +132,13 @@ export class UserController {
   @ApiBody({
     type: CreateUserDto,
     description: 'User creation data',
-    examples: {
-      'new-user': {
-        summary: 'Create a new user',
-        description: 'Example of creating a new user with all required fields',
-        value: {
-          firstName: EXAMPLE_USER_FIRST_NAME,
-          lastName: EXAMPLE_USER_LAST_NAME,
-          email: EXAMPLE_USER_EMAIL,
-          password: generateUserFriendlyPassword(),
-          phone: EXAMPLE_USER_PHONE,
-          dateOfBirth: EXAMPLE_USER_DATE_OF_BIRTH,
-          departmentIds: [EXAMPLE_DEPARTMENT_ID],
-          roleIds: [EXAMPLE_ROLE_ID],
-        },
-      },
-    },
   })
   @ApiCreatedResponse({
     description: 'User successfully created',
     type: UserResponseDto,
-    example: {
-      id: EXAMPLE_USER_ID,
-      firstName: EXAMPLE_USER_FIRST_NAME,
-      lastName: EXAMPLE_USER_LAST_NAME,
-      email: EXAMPLE_USER_EMAIL,
-      phone: EXAMPLE_USER_PHONE,
-      dateOfBirth: EXAMPLE_USER_DATE_OF_BIRTH,
-      isActive: true,
-      isEmailVerified: false,
-      emailVerificationToken: EXAMPLE_USER_EMAIL_VERIFICATION_TOKEN,
-    },
   })
   @ApiBadRequestResponse({
-    description: 'Invalid input data provided',
+    description: BAD_REQUEST_DESCRIPTION,
     schema: {
       type: 'object',
       properties: {
@@ -258,86 +222,34 @@ export class UserController {
   @Permissions(READ_USER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    description: 'Searches for users by ID',
-  })
-  @ApiQuery({
-    name: 'ids',
-    type: String,
-    isArray: true,
-    format: 'uuid',
-    required: true,
-    description: 'User unique identifiers',
-    example: [EXAMPLE_USER_ID],
-  })
-  @ApiQuery({
-    name: 'page',
-    type: Number,
-    required: true,
-    description: 'Filter users by page number',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    type: Number,
-    required: true,
-    description: 'Filter users by limit of results per page',
-    example: 10,
-    maximum: 500,
-  })
-  @ApiQuery({
-    name: 'sortField',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: getUserGenericSelectableFields({}),
-    example: 'name',
-  })
-  @ApiQuery({
-    name: 'sortOrder',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: ['ASC', 'DESC'],
-  })
-  @ApiQuery({
-    name: 'select',
-    type: String,
-    required: false,
-    description: 'Selct Roles by fields',
-    enum: getUserGenericSelectableFields({}),
-    example: ['role.name'],
+    summary: 'Searches for users by ID',
+    description: 'Searches for users by their unique identifiers',
   })
   @ApiOkResponse({
-    description: 'Users found and returned successfully',
-    example: [
-      {
-        id: EXAMPLE_USER_ID,
-        firstname: EXAMPLE_USER_FIRST_NAME,
-        lastname: EXAMPLE_USER_LAST_NAME,
-        email: EXAMPLE_USER_EMAIL,
-      },
-    ],
+    description: USER_API_OK_RESPONSE_MSG,
+    type: UserListResponseDto,
+    isArray: true,
   })
-  @ApiInternalServerErrorResponse({
-    description: InternalServerErrorException.name,
+  @ApiBadRequestResponse({
+    description: BAD_REQUEST_DESCRIPTION,
     schema: {
       type: 'object',
       properties: {
-        statusCode: { type: 'number', example: 500 },
-        message: { type: 'string', example: InternalServerErrorException.name },
-        error: { type: 'string', example: InternalServerErrorException.name },
+        statusCode: { type: 'number', example: 400 },
+        message: {
+          type: 'array',
+          items: { type: 'string' },
+          example: USER_MIN_BAD_REQUEST_MSG,
+        },
+        error: { type: 'string', example: BadRequestException.name },
       },
     },
   })
+  @ApiInternalServerErrorResponse(INTERNAL_SERVER_ERROR_DOCUMENTATION)
   async getUsersByIds(
-    @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
-    @Query('page', ParseIntPipe) page: number,
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('sortField') sortField: string,
-    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('select') select: string[],
+    @Query() query: GetUsersByIdsRequestDto,
     @CurrentUserPermissions() userPermissions: string[],
-  ): Promise<User[]> {
+  ): Promise<UserListResponseDto> {
     const hasAccessToRoles = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_ROLE],
@@ -353,20 +265,13 @@ export class UserController {
       requestedPermissions: [READ_DEPARTMENT],
     });
 
+    const { ids, ...control } = query;
     return await this.userService.findByIds({
       ids,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
-      pagination: {
-        page,
-        limit,
-      },
-      sort: {
-        sortField,
-        sortOrder,
-      },
-      select,
+      control,
     });
   }
 
@@ -376,84 +281,31 @@ export class UserController {
   @ApiOperation({
     description: 'Searches for users email',
   })
-  @ApiQuery({
-    name: 'emails',
-    type: String,
-    isArray: true,
-    format: 'uuid',
-    required: true,
-    description: 'User email',
-    example: [EXAMPLE_USER_EMAIL],
-  })
-  @ApiQuery({
-    name: 'page',
-    type: Number,
-    required: true,
-    description: 'Filter users by page number',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    type: Number,
-    required: true,
-    description: 'Filter users by limit of results per page',
-    example: 10,
-    maximum: 500,
-  })
-  @ApiQuery({
-    name: 'sortField',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: getUserGenericSelectableFields({}),
-    example: 'name',
-  })
-  @ApiQuery({
-    name: 'sortOrder',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: ['ASC', 'DESC'],
-  })
-  @ApiQuery({
-    name: 'select',
-    type: String,
-    required: false,
-    description: 'Selct Roles by fields',
-    enum: getUserGenericSelectableFields({}),
-    example: ['role.name'],
-  })
   @ApiOkResponse({
-    description: 'Users found and returned successfully',
-    example: [
-      {
-        id: EXAMPLE_USER_ID,
-        firstname: EXAMPLE_USER_FIRST_NAME,
-        lastname: EXAMPLE_USER_LAST_NAME,
-        email: EXAMPLE_USER_EMAIL,
-      },
-    ],
+    description: USER_API_OK_RESPONSE_MSG,
+    type: UserListResponseDto,
+    isArray: true,
   })
-  @ApiInternalServerErrorResponse({
-    description: InternalServerErrorException.name,
+  @ApiBadRequestResponse({
+    description: BAD_REQUEST_DESCRIPTION,
     schema: {
       type: 'object',
       properties: {
-        statusCode: { type: 'number', example: 500 },
-        message: { type: 'string', example: InternalServerErrorException.name },
-        error: { type: 'string', example: InternalServerErrorException.name },
+        statusCode: { type: 'number', example: 400 },
+        message: {
+          type: 'array',
+          items: { type: 'string' },
+          example: USER_MIN_BAD_REQUEST_MSG,
+        },
+        error: { type: 'string', example: BadRequestException.name },
       },
     },
   })
+  @ApiInternalServerErrorResponse(INTERNAL_SERVER_ERROR_DOCUMENTATION)
   async getUsersByEmails(
-    @Query('emails', ParseArrayPipe) emails: string[],
-    @Query('page', ParseIntPipe) page: number,
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('sortField') sortField: string,
-    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('select') select: string[],
+    @Query() query: GetUsersByEmailsRequestDto,
     @CurrentUserPermissions() userPermissions: string[],
-  ): Promise<User[]> {
+  ): Promise<UserListResponseDto> {
     const hasAccessToRoles = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_ROLE],
@@ -469,126 +321,57 @@ export class UserController {
       requestedPermissions: [READ_DEPARTMENT],
     });
 
+    const { emails, ...control } = query;
+
     return await this.userService.findByEmails({
       emails,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
-      pagination: {
-        page,
-        limit,
-      },
-      sort: {
-        sortField,
-        sortOrder,
-      },
-      select,
+      control,
     });
   }
 
-  @Get('search/:value')
+  @Get('search')
   @Permissions(READ_USER)
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    description: 'Searches for users by firstname, lastname, email or ID',
-  })
   @ApiParam({
     name: 'value',
     type: String,
-    required: true,
-    description: 'Search value for USER (firstname, lastname, email or ID)',
-    example: EXAMPLE_USER_FIRST_NAME,
+    description: 'Search value for users by firstname, lastname, email or ID',
+    example: EXAMPLE_USER_EMAIL.slice(0, 7),
   })
-  @ApiQuery({
-    name: 'page',
-    type: Number,
-    required: true,
-    description: 'Filter users by page number',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    type: Number,
-    required: true,
-    description: 'Filter users by limit of results per page',
-    example: 10,
-    maximum: 500,
-  })
-  @ApiQuery({
-    name: 'sortField',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: getUserGenericSelectableFields({}),
-    example: 'name',
-  })
-  @ApiQuery({
-    name: 'sortOrder',
-    type: String,
-    required: false,
-    description: SORT_DESCRIPTION,
-    enum: ['ASC', 'DESC'],
-  })
-  @ApiQuery({
-    name: 'select',
-    type: String,
-    required: false,
-    description: 'Selct Roles by fields',
-    enum: getUserGenericSelectableFields({}),
-    example: ['role.name'],
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Search for users',
+    description: 'Searches for users by firstname, lastname, email or ID',
   })
   @ApiOkResponse({
-    description: 'Users found and returned successfully',
+    description: USER_API_OK_RESPONSE_MSG,
     type: UserListResponseDto,
-    example: {
-      total: 1,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-      users: [
-        {
-          id: EXAMPLE_USER_ID,
-          firstName: EXAMPLE_USER_FIRST_NAME,
-          lastName: EXAMPLE_USER_LAST_NAME,
-          email: EXAMPLE_USER_EMAIL,
-        },
-      ],
-    },
   })
-  @ApiInternalServerErrorResponse({
-    description: InternalServerErrorException.name,
+  @ApiBadRequestResponse({
+    description: BAD_REQUEST_DESCRIPTION,
     schema: {
       type: 'object',
       properties: {
-        statusCode: { type: 'number', example: 500 },
-        message: { type: 'string', example: InternalServerErrorException.name },
-        error: { type: 'string', example: InternalServerErrorException.name },
+        statusCode: { type: 'number', example: 400 },
+        message: {
+          type: 'array',
+          items: { type: 'string' },
+          example: USER_MIN_BAD_REQUEST_MSG,
+        },
+        error: { type: 'string', example: BadRequestException.name },
       },
     },
   })
+  @ApiInternalServerErrorResponse(INTERNAL_SERVER_ERROR_DOCUMENTATION)
   async searchForUsers(
     @Param('value') value: string,
-    @Query('page', ParseIntPipe) page: number,
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('sortField') sortField: string,
-    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('select') select: string[],
+    @Query() control: UserSearchRequestDto,
   ): Promise<UserListResponseDto> {
-    if (!sortField || sortField === '') {
-      sortField = 'name';
-    }
-
     return await this.userService.searchFor({
       value,
-      pagination: {
-        page,
-        limit,
-      },
-      sort: {
-        sortField,
-        sortOrder,
-      },
-      select,
+      control,
     });
   }
 
@@ -644,11 +427,22 @@ export class UserController {
         summary: 'Full profile update',
         description: 'Example of updating multiple fields',
         value: {
+          country: COUNTRIES.AE,
           firstName: 'Jonathan',
           lastName: 'Doe',
-          email: 'jonathan.doe@newcompany.com',
+          email: 'jonathan.doe@example.com',
+          password: EXAMPLE_USER_PASSWORD_RESET_TOKEN,
           phone: '+1987654321',
+          dateOfBirth: new Date('1990-01-01'),
           isActive: true,
+          isEmailVerified: true,
+          passwordResetExpires: new Date('1990-01-01'),
+          emailVerificationToken: EXAMPLE_USER_EMAIL_VERIFICATION_TOKEN,
+          passwordResetToken: EXAMPLE_USER_PASSWORD_RESET_TOKEN,
+          createdAt: new Date('2023-01-01T12:00:00.000Z'),
+          updatedAt: new Date('2023-01-02T12:00:00.000Z'),
+          isTwoFactorEnabled: true,
+          twoFactorSecret: 'string',
         },
       },
     },
@@ -656,17 +450,6 @@ export class UserController {
   @ApiOkResponse({
     description: 'User updated successfully',
     type: UserResponseDto,
-    example: {
-      id: EXAMPLE_USER_ID,
-      firstName: EXAMPLE_USER_FIRST_NAME,
-      lastName: EXAMPLE_USER_LAST_NAME,
-      email: EXAMPLE_USER_EMAIL,
-      phone: EXAMPLE_USER_PHONE,
-      dateOfBirth: EXAMPLE_USER_DATE_OF_BIRTH,
-      isActive: true,
-      isEmailVerified: true,
-      emailVerificationToken: null,
-    },
   })
   @ApiBadRequestResponse({
     description: 'Invalid UUID format or invalid input data',
@@ -676,13 +459,26 @@ export class UserController {
         statusCode: { type: 'number', example: 400 },
         message: {
           oneOf: [
-            { type: 'string', example: 'Invalid UUID format' },
             {
               type: 'array',
               items: { type: 'string' },
               example: [
+                'country must be a valid ISO country code',
+                'firstName should not be empty',
+                'lastName should not be empty',
                 'email must be an email',
+                'password must be a string',
                 'phone must be a valid phone number',
+                'dateOfBirth must be a valid ISO 8601 date string',
+                'isActive must be a boolean value',
+                'isEmailVerified must be a boolean value',
+                'passwordResetExpires must be a valid ISO 8601 date string',
+                'emailVerificationToken must be a string',
+                'passwordResetToken must be a string',
+                'createdAt must be a valid ISO 8601 date string',
+                'updatedAt must be a valid ISO 8601 date string',
+                'isTwoFactorEnabled must be a boolean value',
+                'twoFactorSecret must be a string',
               ],
             },
           ],
@@ -691,47 +487,14 @@ export class UserController {
       },
     },
   })
-  @ApiNotFoundResponse({
-    description: USER_NOT_FOUND_MSG,
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: USER_NOT_FOUND_MSG },
-        error: { type: 'string', example: NotFoundException.name },
-      },
-    },
-  })
-  @ApiConflictResponse({
-    description: 'Email already exists (when updating email)',
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 409 },
-        message: {
-          type: 'string',
-          example: EMAIL_EXISTS_MSG,
-        },
-        error: { type: 'string', example: ConflictException.name },
-      },
-    },
-  })
-  @ApiInternalServerErrorResponse({
-    description: InternalServerErrorException.name,
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 500 },
-        message: { type: 'string', example: InternalServerErrorException.name },
-        error: { type: 'string', example: InternalServerErrorException.name },
-      },
-    },
-  })
+  @ApiNotFoundResponse(USER_NOT_FOUND_DOCUMENTATION)
+  @ApiConflictResponse(USER_CONFLICT_DOCUMENTATION)
+  @ApiInternalServerErrorResponse(INTERNAL_SERVER_ERROR_DOCUMENTATION)
   async updateUserById(
     @Param('id') id: UUID,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
-    return await this.userService.updateById(id, updateUserDto);
+    return await this.userService.updateById({ id, updateUserDto });
   }
 
   /**
@@ -760,19 +523,48 @@ export class UserController {
     type: UpdateUserDto,
     description: 'User update data (partial)',
     examples: {
-      'update-name-by-email': {
-        summary: 'Update user name by email',
-        description: 'Example of updating user name using email lookup',
+      'update-name': {
+        summary: 'Update user name',
+        description: 'Example of updating only the user name',
         value: {
           firstName: 'Jonathan',
-          lastName: 'Smith',
+          lastName: 'Doe',
         },
       },
-      'update-phone-by-email': {
-        summary: 'Update phone by email',
-        description: 'Example of updating phone number using email lookup',
+      'update-email': {
+        summary: 'Update user email',
+        description: 'Example of updating user email',
         value: {
-          phone: '+1555123456',
+          email: 'jonathan.doe@example.com',
+        },
+      },
+      'update-status': {
+        summary: 'Update user status',
+        description: 'Example of updating user active status',
+        value: {
+          isActive: false,
+        },
+      },
+      'full-update': {
+        summary: 'Full profile update',
+        description: 'Example of updating multiple fields',
+        value: {
+          country: COUNTRIES.AE,
+          firstName: 'Jonathan',
+          lastName: 'Doe',
+          email: 'jonathan.doe@example.com',
+          password: EXAMPLE_USER_PASSWORD_RESET_TOKEN,
+          phone: '+1987654321',
+          dateOfBirth: new Date('1990-01-01'),
+          isActive: true,
+          isEmailVerified: true,
+          passwordResetExpires: new Date('1990-01-01'),
+          emailVerificationToken: EXAMPLE_USER_EMAIL_VERIFICATION_TOKEN,
+          passwordResetToken: EXAMPLE_USER_PASSWORD_RESET_TOKEN,
+          createdAt: new Date('2023-01-01T12:00:00.000Z'),
+          updatedAt: new Date('2023-01-02T12:00:00.000Z'),
+          isTwoFactorEnabled: true,
+          twoFactorSecret: 'string',
         },
       },
     },
@@ -780,17 +572,6 @@ export class UserController {
   @ApiOkResponse({
     description: 'User updated successfully',
     type: UserResponseDto,
-    example: {
-      id: EXAMPLE_USER_ID,
-      firstName: EXAMPLE_USER_FIRST_NAME,
-      lastName: EXAMPLE_USER_LAST_NAME,
-      email: EXAMPLE_USER_EMAIL,
-      phone: EXAMPLE_USER_PHONE,
-      dateOfBirth: EXAMPLE_USER_DATE_OF_BIRTH,
-      isActive: true,
-      isEmailVerified: true,
-      emailVerificationToken: null,
-    },
   })
   @ApiBadRequestResponse({
     description: 'Invalid email format or invalid input data',
@@ -815,47 +596,14 @@ export class UserController {
       },
     },
   })
-  @ApiNotFoundResponse({
-    description: USER_NOT_FOUND_MSG,
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: USER_NOT_FOUND_MSG },
-        error: { type: 'string', example: NotFoundException.name },
-      },
-    },
-  })
-  @ApiConflictResponse({
-    description: 'Email already exists (when updating email)',
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 409 },
-        message: {
-          type: 'string',
-          example: EMAIL_EXISTS_MSG,
-        },
-        error: { type: 'string', example: ConflictException.name },
-      },
-    },
-  })
-  @ApiInternalServerErrorResponse({
-    description: InternalServerErrorException.name,
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 500 },
-        message: { type: 'string', example: InternalServerErrorException.name },
-        error: { type: 'string', example: InternalServerErrorException.name },
-      },
-    },
-  })
+  @ApiNotFoundResponse(USER_NOT_FOUND_DOCUMENTATION)
+  @ApiConflictResponse(USER_CONFLICT_DOCUMENTATION)
+  @ApiInternalServerErrorResponse(INTERNAL_SERVER_ERROR_DOCUMENTATION)
   async updateUserByEmail(
     @Param('email') email: string,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User> {
-    return await this.userService.updateByEmail(email, updateUserDto);
+    return await this.userService.updateByEmail({ email, updateUserDto });
   }
 
   /**
@@ -883,85 +631,37 @@ export class UserController {
   })
   @ApiOkResponse({
     description: 'Users deleted successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        deleted: {
-          type: 'number',
-          description: 'Number of users deleted',
-          example: 2,
-        },
-        message: {
-          type: 'string',
-          description: 'Success message',
-          example: '2 users deleted successfully',
-        },
-      },
-    },
-    examples: {
-      'single-deletion': {
-        summary: 'Single user deleted',
-        value: {
-          deleted: 1,
-          message: '1 user deleted successfully',
-        },
-      },
-      'multiple-deletion': {
-        summary: 'Multiple users deleted',
-        value: {
-          deleted: 5,
-          message: '5 users deleted successfully',
-        },
-      },
+    example: {
+      deleted: 3,
+      message: '3 users have been deleted successfully',
     },
   })
   @ApiNoContentResponse({
     description: 'No users to delete (empty IDs list)',
   })
-  @ApiBadRequestResponse({
-    description: 'Invalid UUID format in one or more IDs',
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 400 },
-        message: { type: 'string', example: 'Invalid UUID format' },
-        error: { type: 'string', example: BadRequestException.name },
-      },
-    },
-  })
+  @ApiBadRequestResponse(DELETE_BAD_REQUEST_MSG)
   @ApiNotFoundResponse({
-    description: 'One or more users not found',
+    description: 'Users not found',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'One or more users not found' },
-        error: { type: 'string', example: NotFoundException.name },
+        message: {
+          oneOf: [
+            { type: 'string', example: 'Users with Ids ... not found' },
+            { type: 'string', example: 'Roles with Ids ... not found' },
+          ],
+        },
+        error: { type: 'string', example: EntityNotFoundError.name },
       },
     },
   })
-  @ApiInternalServerErrorResponse({
-    description: InternalServerErrorException.name,
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 500 },
-        message: { type: 'string', example: InternalServerErrorException.name },
-        error: { type: 'string', example: InternalServerErrorException.name },
-      },
-    },
-  })
+  @ApiInternalServerErrorResponse(INTERNAL_SERVER_ERROR_DOCUMENTATION)
   async deleteUsersByIds(
     @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
+    @CurrentUserId() currentUserId: UUID,
   ): Promise<{ deleted: number; message: string }> {
-    const result = await this.userService.deleteByIds(ids);
-
-    const deletedCount = result.deleted.toString();
-
-    return {
-      deleted: result.deleted,
-      message: `${deletedCount} ${result.deleted !== 1 ? 'users' : 'user'} deleted successfully`,
-    };
+    return await this.userService.deleteByIds({ ids, currentUserId });
   }
 
   /**
@@ -974,47 +674,32 @@ export class UserController {
    */
   @Get('query')
   @Permissions(READ_USER)
+  @ApiOperation({
+    summary: 'Filter and retrieve users',
+    description:
+      'Filters users based on various criteria and returns a paginated list of users.',
+  })
   @ApiOkResponse({
-    description: 'Users found and returned successfully',
+    description: USER_API_OK_RESPONSE_MSG,
     type: UserListResponseDto,
-    example: {
-      total: 1,
-      page: 1,
-      limit: 10,
-      totalPages: 1,
-      users: [
-        {
-          id: EXAMPLE_USER_ID,
-          firstName: EXAMPLE_USER_FIRST_NAME,
-          lastName: EXAMPLE_USER_LAST_NAME,
-          email: EXAMPLE_USER_EMAIL,
-          departments: [
-            {
-              id: EXAMPLE_DEPARTMENT_ID,
-              name: EXAMPLE_DEPARTMENT_NAME,
-              country: EXAMPLE_DEPARTMENT_COUNTRY,
-            },
-          ],
-          userRoles: [
-            {
-              id: EXAMPLE_USER_ROLE_ID,
-              role: {
-                id: EXAMPLE_ROLE_ID,
-                name: EXAMPLE_ROLE_NAME,
-                permissions: [
-                  {
-                    id: EXAMPLE_PERMISSION_ID,
-                    name: EXAMPLE_PERMISSION_NAME,
-                    code: EXAMPLE_PERMISSION_CODE,
-                  },
-                ],
-              },
-            },
-          ],
+  })
+  @ApiBadRequestResponse({
+    description: BAD_REQUEST_DESCRIPTION,
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: {
+          type: 'array',
+          items: { type: 'string' },
+          example: USER_FULL_BAD_REQUEST_MSG,
         },
-      ],
+        error: { type: 'string', example: BadRequestException.name },
+      },
     },
   })
+  @ApiNotFoundResponse(USER_NOT_FOUND_DOCUMENTATION)
+  @ApiInternalServerErrorResponse(INTERNAL_SERVER_ERROR_DOCUMENTATION)
   async filterUsers(
     @Query() filters: FilterUsersQueryDto,
     @CurrentUserPermissions() userPermissions: string[],
@@ -1034,76 +719,8 @@ export class UserController {
       requestedPermissions: [READ_DEPARTMENT],
     });
 
-    const {
-      ids,
-      firstNames,
-      lastNames,
-      emails,
-      phoneNumbers,
-      isActive,
-      isEmailVerified,
-      createdByIds,
-      departmentIds,
-      departmentCountries,
-      roleIds,
-      roleNames,
-      permissionIds,
-      permissionCodes,
-      dateFilterParam,
-      dateFrom,
-      dateTo,
-      includeCreatedBy,
-      includeDepartments,
-      includeRoles,
-      includePermissions,
-      selectUserFields,
-      selectUserRoleFields,
-      selectDepartmentFields,
-      selectRoleFields,
-      selectPermissionFields,
-      page,
-      limit,
-      sortField,
-      sortOrder,
-    } = filters;
-
     return this.queryService.getUsers({
-      filters: {
-        query: {
-          ids,
-          firstNames,
-          lastNames,
-          emails,
-          phoneNumbers,
-          isActive,
-          isEmailVerified,
-          createdByIds,
-          departmentIds,
-          departmentCountries,
-          roleIds,
-          roleNames,
-          permissionIds,
-          permissionCodes,
-        },
-        dateQuery: {
-          dateFilterParam,
-          dateFrom,
-          dateTo,
-        },
-        responseParams: {
-          includeCreatedBy,
-          includeDepartments,
-          includeRoles,
-          includePermissions,
-          selectUserFields,
-          selectUserRoleFields,
-          selectDepartmentFields,
-          selectRoleFields,
-          selectPermissionFields,
-        },
-        pagination: { page, limit },
-        sort: { sortField, sortOrder },
-      },
+      filters,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,

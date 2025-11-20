@@ -419,8 +419,6 @@ export class EntityQueryService {
   optimize<T extends ObjectLiteral>(queryCriteria: QueryRequest<T>): void {
     const { query, pagination, sort, select, criteria } = queryCriteria;
 
-    this.paginate<T>({ query, pagination });
-
     if (
       select != undefined &&
       select.length > 0 &&
@@ -436,7 +434,6 @@ export class EntityQueryService {
     Object.entries(criteria).forEach(
       ([relationAlias, { permissionAccess, includeRelation, nestedFrom }]) => {
         const hasAccess = permissionAccess && includeRelation;
-
         if (query.alias !== relationAlias) {
           this.validateRelationSelect<T>({
             query,
@@ -466,19 +463,19 @@ export class EntityQueryService {
     });
 
     this.sort<T>({ query, sort });
+
+    this.paginate<T>({ query, pagination });
   }
 
   async paginatedResult<T extends ObjectLiteral, K extends string>({
     query,
     alias,
-    pagination,
   }: {
     query: SelectQueryBuilder<T>;
     alias: K;
-    pagination?: PaginationDto;
   }): Promise<PaginatedResponseDto & Record<K, T[]>> {
-    const page = pagination?.page ?? 1;
-    const limit = pagination?.limit ?? 10;
+    const page = query.expressionMap.skip ?? 1;
+    const limit = query.expressionMap.take ?? 10;
 
     const [items, totalCount] = await query.getManyAndCount();
 

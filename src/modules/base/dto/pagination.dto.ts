@@ -85,7 +85,7 @@ export class PaginationDto {
   })
   @Type(() => Number)
   @IsInt()
-  @Min(1)
+  @Min(1, { message: 'Page number must be at least 1' })
   @IsNumber()
   page: number;
 
@@ -99,7 +99,7 @@ export class PaginationDto {
   })
   @Type(() => Number)
   @IsInt()
-  @Min(1)
+  @Min(1, { message: 'Pagelimit must be at least 1' })
   @IsNumber()
   limit: number;
 

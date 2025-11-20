@@ -7,10 +7,14 @@ import { HelperService as RoleHelperService } from '@/role/helper/helper.service
 import { User } from '@/user/entities/user.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { QueryService } from '@/user/services/query.service';
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 
 import { UUID } from 'crypto';
-import { EntityManager } from 'typeorm';
+import { EntityManager, EntityNotFoundError } from 'typeorm';
 
 @Injectable()
 export class HelperService extends EntityQueryService {
@@ -148,6 +152,39 @@ export class HelperService extends EntityQueryService {
         `User with email "${email}" already exists. Please choose a different email.`,
       );
     }
+  }
+
+  async findManyByIdsOrFail(ids?: UUID[]): Promise<User[]> {
+    if (ids == undefined || ids.length === 0) {
+      throw new BadRequestException('No user ids provided');
+    }
+
+    const query = this.initQuery({
+      entity: User,
+      alias: USER_QUERY_ALIAS,
+    });
+
+    this.whereIn({
+      query,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
+      relationAlias: USER_QUERY_ALIAS,
+    });
+
+    const users = await query.getMany();
+
+    if (users.length !== ids.length) {
+      const existingIds = users.map((user) => user.id);
+      const missingIds = ids.filter((userId) => !existingIds.includes(userId));
+
+      throw new EntityNotFoundError(
+        'Users',
+        `Users with IDs [${missingIds.join(', ')}] not found.`,
+      );
+    }
+
+    return users;
   }
 
   async findManyDeaprtmentsOrFail(

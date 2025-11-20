@@ -111,7 +111,6 @@ export class QueryService extends EntityQueryService {
     return await this.paginatedResult({
       query,
       alias: 'roles',
-      pagination,
     });
   }
 

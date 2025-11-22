@@ -22,6 +22,9 @@ import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class AuthService {
+  private readonly unauthorizedException = 'Invalid credentials';
+  private readonly invalidCredentialsException = 'Invalid credentials';
+
   constructor(
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
@@ -54,7 +57,7 @@ export class AuthService {
     const { email, id, password, checkPassword } = data;
 
     if (email === undefined && id === undefined) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(this.unauthorizedException);
     }
 
     const user = await this.getUserByWithPermissions({ id, email });
@@ -78,11 +81,11 @@ export class AuthService {
 
     if (checkPassword !== undefined && checkPassword) {
       if (password === undefined) {
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException(this.unauthorizedException);
       }
 
       if (!(await bcrypt.compare(password, user.password))) {
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException(this.unauthorizedException);
       }
     }
 
@@ -104,10 +107,18 @@ export class AuthService {
     id?: UUID | undefined;
     email?: string | undefined;
   }): Promise<User> {
+    if (
+      process.env.REQUIRE_AUTH === 'false' &&
+      process.env.NODE_ENV === 'development'
+    ) {
+      data.email = SYSTEM_USER_EMAIL;
+      delete data.id;
+    }
+
     const { id, email } = data;
 
     if (id == undefined && email == undefined) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(this.invalidCredentialsException);
     }
 
     const query = this.entityManager.createQueryBuilder(User, USER_QUERY_ALIAS);
@@ -116,6 +127,8 @@ export class AuthService {
       query.where(`${USER_QUERY_ALIAS}.id = :id`, { id });
     } else if (email !== undefined) {
       query.where(`${USER_QUERY_ALIAS}.email = :email`, { email });
+    } else {
+      throw new UnauthorizedException(this.invalidCredentialsException);
     }
 
     query

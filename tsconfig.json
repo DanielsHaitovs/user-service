@@ -43,6 +43,12 @@
       "@/department/*": ["src/modules/department/*"]
     }
   },
-  "include": ["src/**/*", "test/**/*", "*.config.ts", "jest.setup.ts"],
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "*.config.ts",
+    "jest.setup.ts",
+    "../.tmp/user/user-deprecated.controller.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

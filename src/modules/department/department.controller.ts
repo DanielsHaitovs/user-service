@@ -2,9 +2,10 @@ import { hasPermissions } from '@/auth/helper/permission.helper';
 import { Permissions } from '@/common/decorators/permission.decorator';
 import { TraceController } from '@/common/decorators/trace.decorator';
 import {
-  CurrentUserId,
+  CurrentUser,
   CurrentUserPermissions,
 } from '@/common/decorators/user.decorator';
+import { AuthenticationGuard } from '@/common/guards/auth.guard';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
@@ -60,7 +61,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -79,11 +79,13 @@ import {
 
 import { UUID } from 'crypto';
 
+import { JWTPayload } from '../../auth/interfaces/req.interface';
+
 @ApiTags('Departments')
 @Controller('departments')
 @TraceController()
 @ApiBearerAuth('JWT-auth')
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@UseGuards(AuthenticationGuard, PermissionsGuard)
 export class DepartmentController {
   constructor(
     private readonly departmentService: DepartmentService,
@@ -148,9 +150,10 @@ export class DepartmentController {
   })
   async createDepartment(
     @Body() createDepartmentDto: CreateDepartmentDto,
-    @CurrentUserId() createdBy: UUID,
-    @CurrentUserPermissions() userPermissions: string[],
+    @CurrentUser() createdByUser: JWTPayload,
   ): Promise<Departments> {
+    const { permissions: userPermissions, id: createdBy } = createdByUser;
+
     const hasAccessToUser = hasPermissions({
       userPermissions,
       requestedPermissions: [READ_USER],

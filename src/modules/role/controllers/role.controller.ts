@@ -6,6 +6,7 @@ import {
   CurrentUser,
   CurrentUserPermissions,
 } from '@/common/decorators/user.decorator';
+import { AuthenticationGuard } from '@/common/guards/auth.guard';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import {
@@ -57,7 +58,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -79,7 +79,7 @@ import { UUID } from 'crypto';
 @TraceController()
 @Controller('roles')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@UseGuards(AuthenticationGuard, PermissionsGuard)
 export class RolesController {
   constructor(
     private readonly roleService: RoleService,

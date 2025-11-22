@@ -474,14 +474,16 @@ export class EntityQueryService {
     query: SelectQueryBuilder<T>;
     alias: K;
   }): Promise<PaginatedResponseDto & Record<K, T[]>> {
-    const page = query.expressionMap.skip ?? 1;
+    const page = query.expressionMap.skip ?? 0;
     const limit = query.expressionMap.take ?? 10;
+
+    query.distinct(true);
 
     const [items, totalCount] = await query.getManyAndCount();
 
     return {
       total: totalCount,
-      page,
+      page: page / limit + 1,
       limit,
       totalPages: Math.ceil(totalCount / limit),
       [alias]: items,

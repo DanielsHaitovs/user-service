@@ -16,7 +16,10 @@ import { UserListResponseDto } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
 import { Injectable } from '@nestjs/common';
 
+import { UUID } from 'crypto';
 import { SelectQueryBuilder } from 'typeorm';
+
+import { hashObject } from '../../../utils/token-generator.util';
 
 @Injectable()
 export class QueryService extends EntityQueryService {
@@ -25,11 +28,13 @@ export class QueryService extends EntityQueryService {
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
+    userId,
   }: {
     filters: FilterUsersQueryDto;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
+    userId: UUID;
   }): Promise<UserListResponseDto> {
     const {
       sortField,
@@ -84,6 +89,16 @@ export class QueryService extends EntityQueryService {
         includePermissions,
       }),
     });
+
+    const cacheKey = hashObject({
+      filters,
+      userId,
+      hasAccessToDepartments,
+      hasAccessToRoles,
+      hasAccessToPermissions,
+    });
+
+    query.cache(cacheKey, 60000);
 
     return await this.paginatedResult({
       query,

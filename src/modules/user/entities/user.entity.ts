@@ -1,5 +1,6 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { Departments } from '@/department/entities/department.entity';
+import { COUNTRIES } from '@/lib/const/countries.const';
 import { UserRole } from '@/user/entities/userRoles.entity';
 
 import {
@@ -21,8 +22,6 @@ import {
   OneToMany,
   Unique,
 } from 'typeorm';
-
-import { COUNTRIES } from '../../../lib/const/countries.const';
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })

@@ -1,4 +1,5 @@
 import { MecBaseEntity } from '@/base/mec.entity';
+import { COUNTRIES } from '@/lib/const/countries.const';
 import { User } from '@/user/entities/user.entity';
 
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
@@ -12,8 +13,6 @@ import {
   ManyToOne,
   Unique,
 } from 'typeorm';
-
-import { COUNTRIES } from '../../../lib/const/countries.const';
 
 @Entity('departments')
 @Unique('UQ_DEPARTMENT_NAME', ['name'], { deferrable: 'INITIALLY IMMEDIATE' })

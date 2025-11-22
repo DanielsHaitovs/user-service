@@ -104,6 +104,15 @@ export function hashToken(token: string): string {
 }
 
 /**
+ *
+ * @param obj - The object to hash
+ * @returns SHA-256 hash of the object
+ */
+export function hashObject(obj: unknown): string {
+  return createHash('sha256').update(JSON.stringify(obj)).digest('hex');
+}
+
+/**
  * Generates a token with expiration time
  * @param expirationMinutes - Expiration time in minutes (default: 15)
  * @returns Object containing token and expiration date

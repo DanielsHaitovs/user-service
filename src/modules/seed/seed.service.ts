@@ -240,12 +240,13 @@ export class SeedService {
       return await this.entityManager
         .getRepository(Permission)
         .save(newPermissions);
-    } else if (permissions.length === 5) {
+    } else if (permissions.length === listOfPermissionCodes.length) {
       return permissions;
     } else {
       const missingPermissions = listOfPermissionCodes.filter((code) => {
         return !permissions.some((permission) => permission.code === code);
       });
+
       this.logger.error(
         `Some required permissions are missing in the database: ${missingPermissions.join(
           ', ',

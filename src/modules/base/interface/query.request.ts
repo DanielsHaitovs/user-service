@@ -22,3 +22,26 @@ export interface QueryJoinOptions {
     { key: unknown[] | undefined; condition: 'AND' | 'OR' }
   >;
 }
+
+export interface UserAccessPermissions {
+  hasAccessToRoles: boolean;
+  canEditRoles: boolean;
+  canDeleteRoles: boolean;
+  canCreateRoles: boolean;
+  hasAccessToPermissions: boolean;
+  canEditPermissions: boolean;
+  canDeletePermissions: boolean;
+  canCreatePermissions: boolean;
+  hasAccessToDepartments: boolean;
+  canEditDepartments: boolean;
+  canDeleteDepartments: boolean;
+  canCreateDepartments: boolean;
+  hasAccessToUsers: boolean;
+  canEditUsers: boolean;
+  canDeleteUsers: boolean;
+  canCreateUsers: boolean;
+  hasAccessToUserRoles: boolean;
+  canEditUserRoles: boolean;
+  canDeleteUserRoles: boolean;
+  canCreateUserRoles: boolean;
+}

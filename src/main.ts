@@ -3,7 +3,7 @@ import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
 import { ResponseTimeInterceptor } from '@/interceptors/response-time.interceptor';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -56,6 +56,8 @@ async function bootstrap(): Promise<void> {
       'JWT-auth',
     );
 
+  const logger = new Logger(bootstrap.name);
+
   if (process.env.NODE_ENV === 'development') {
     config.addTag('Seed', 'Seed operations');
   }
@@ -66,6 +68,14 @@ async function bootstrap(): Promise<void> {
 
   const port = Number(process.env.USER_API_PORT) || 3000;
   await app.listen(port);
+
+  if (process.env.NODE_ENV === 'development') {
+    logger.warn('You are in development mode');
+
+    if (process.env.REQUIRE_AUTH === 'false') {
+      logger.warn('Authentication is disabled');
+    }
+  }
 }
 
 void bootstrap();

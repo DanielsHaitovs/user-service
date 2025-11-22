@@ -1,6 +1,7 @@
 import type { UpdateDepartmentDto } from '@/department/dto/department.dto';
 import { DepartmentService } from '@/department/services/department.service';
 import { QueryService } from '@/department/services/query.service';
+import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import { getSystemUserId } from '@/test/api/auth-user-api';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import {
@@ -19,8 +20,6 @@ import type { UUID } from 'crypto';
 import type { App } from 'supertest/types';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
-
-import { DEPARTMENT_QUERY_ALIAS } from '../../../lib/const/department.const';
 
 describe('DepartmentService (Integration - PostgreSQL)', () => {
   let app: INestApplication<App>;

@@ -47,7 +47,13 @@ export class UserService {
    * @returns Promise resolving to the created user entity
    * @throws ConflictException when email address is already registered
    */
-  async create(createUserDto: CreateUserDto, createdBy: UUID): Promise<User> {
+  async create({
+    createUserDto,
+    createdBy,
+  }: {
+    createUserDto: CreateUserDto;
+    createdBy: UUID;
+  }): Promise<User> {
     await this.helperService.findEmailConflicts({
       email: createUserDto.email,
     });

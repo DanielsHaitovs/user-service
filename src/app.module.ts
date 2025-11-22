@@ -50,6 +50,10 @@ import { SeedModule } from './modules/seed/seed.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
+        cache: {
+          type: 'database',
+          duration: 600000,
+        },
         host: configService.get('USER_DATABASE_HOST') ?? 'localhost',
         port: parseInt(configService.get('USER_DATABASE_PORT') ?? '5432', 10),
         username: configService.get('USER_DATABASE_USERNAME') ?? 'postgres',

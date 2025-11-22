@@ -6,7 +6,6 @@
 
 import { COUNTRIES } from '@/lib/const/countries.const';
 import { INPUT_BAD_REQUEST_MSG } from '@/lib/const/system.const';
-import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 
 // Standard email address for the system user.
 // This email is used in tests and API documentation to represent the system user.
@@ -185,7 +184,26 @@ export const UPDATE_USER = 'user:update' as string;
  */
 export const DELETE_USER = 'user:delete' as string;
 
-export const USER_MIN_BAD_REQUEST_MSG = [
+export const USER_GENERIC_BAD_REQUEST_MSG = [
+  'country must be a valid ISO country code',
+  'firstName should not be empty',
+  'lastName should not be empty',
+  'email must be an email',
+  'password must be a string',
+  'phone must be a valid phone number',
+  'dateOfBirth must be a valid ISO 8601 date string',
+  'isActive must be a boolean value',
+  'isEmailVerified must be a boolean value',
+  'passwordResetExpires must be a valid ISO 8601 date string',
+  'emailVerificationToken must be a string',
+  'passwordResetToken must be a string',
+  'createdAt must be a valid ISO 8601 date string',
+  'updatedAt must be a valid ISO 8601 date string',
+  'isTwoFactorEnabled must be a boolean value',
+  'twoFactorSecret must be a string',
+];
+
+export const USER_MIN_OPERATION_BAD_REQUEST_MSG = [
   'Each selectUserField must be a valid user field',
   'Each selectUserRoleField must be a valid user role field',
   'Each selectDepartmentField must be a valid department field',
@@ -217,40 +235,7 @@ export const USER_FULL_BAD_REQUEST_MSG = [
   'dateFilterParam must be a valid user date field',
   'dateFrom must be a valid ISO 8601 date string',
   'dateTo must be a valid ISO 8601 date string',
-  ...USER_MIN_BAD_REQUEST_MSG,
+  ...USER_MIN_OPERATION_BAD_REQUEST_MSG,
 ] as string[];
 
-export const USER_NOT_FOUND_DOCUMENTATION = {
-  description: 'Users not found',
-  schema: {
-    type: 'object',
-    properties: {
-      users: {
-        type: 'array',
-        description: 'Empty array when no users match the filters',
-        example: [],
-      },
-      totalPages: { type: 'number', example: 0 },
-      total: { type: 'number', example: 0 },
-      page: { type: 'number', example: 1 },
-      limit: { type: 'number', example: 10 },
-    },
-  },
-};
-
 export const USER_API_OK_RESPONSE_MSG = 'User retrieved successfully';
-
-export const USER_CONFLICT_DOCUMENTATION = {
-  description: 'Email already exists (when updating email)',
-  schema: {
-    type: 'object',
-    properties: {
-      statusCode: { type: 'number', example: 409 },
-      message: {
-        type: 'string',
-        example: EMAIL_EXISTS_MSG,
-      },
-      error: { type: 'string', example: ConflictException.name },
-    },
-  },
-};

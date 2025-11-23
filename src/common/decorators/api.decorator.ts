@@ -31,7 +31,7 @@ export interface ApiOkListOptions {
     summary: string;
     description: string;
   };
-  okOperartion?: {
+  okOperation?: {
     type: Type<unknown>;
     description: string;
     isArray: boolean;
@@ -54,6 +54,10 @@ export interface ApiOkListOptions {
   noContent?: {
     description: string;
   };
+  notFound?: {
+    description: string;
+    example?: string;
+  };
 }
 
 export const ApiOkList = (options: ApiOkListOptions): MethodDecorator => {
@@ -73,6 +77,7 @@ export const ApiOkList = (options: ApiOkListOptions): MethodDecorator => {
       ApiBody({
         description: options.body.description,
         type: options.body.type,
+        required: true,
       }),
     );
   }
@@ -86,12 +91,12 @@ export const ApiOkList = (options: ApiOkListOptions): MethodDecorator => {
     );
   }
 
-  if (options.okOperartion) {
+  if (options.okOperation) {
     decorators.push(
       ApiOkResponse({
-        description: options.okOperartion.description,
-        type: options.okOperartion.type,
-        isArray: options.okOperartion.isArray,
+        description: options.okOperation.description,
+        type: options.okOperation.type,
+        isArray: options.okOperation.isArray,
       }),
     );
   }
@@ -119,6 +124,25 @@ export const ApiOkList = (options: ApiOkListOptions): MethodDecorator => {
     decorators.push(
       ApiNoContentResponse({
         description: options.noContent.description,
+      }),
+    );
+  }
+
+  if (options.notFound) {
+    decorators.push(
+      ApiNotFoundResponse({
+        description: options.notFound.description,
+        schema: {
+          type: 'object',
+          properties: {
+            statusCode: { type: 'number', example: 404 },
+            message: {
+              type: 'string',
+              example: options.notFound.example ?? 'Entity not found',
+            },
+            error: { type: 'string', example: EntityNotFoundError.name },
+          },
+        },
       }),
     );
   }

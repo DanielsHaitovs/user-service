@@ -3,22 +3,24 @@ import type { Departments } from '@/department/entities/department.entity';
 
 import type { UUID } from 'crypto';
 
+import { USER_QUERY_ALIAS } from '../../src/lib/const/user.const';
+
 export function validateDepartmentsResponse({
   departments,
   ids,
   names,
   countries,
   amountExpected,
-  hasAccessToUser,
-  hasUser,
+  hasCreatedBy,
+  hasUsers,
 }: {
   departments: Departments[] | DepartmentResponseDto[] | undefined;
   ids?: UUID[] | undefined;
   names?: string[] | undefined;
   countries?: string[] | undefined;
   amountExpected?: number | undefined;
-  hasAccessToUser?: boolean;
-  hasUser?: boolean;
+  hasCreatedBy?: boolean;
+  hasUsers?: boolean;
 }): void {
   if (
     (departments?.length === 0 || departments === undefined) &&
@@ -64,7 +66,7 @@ export function validateDepartmentsResponse({
       expect(countries).toContain(department.country);
     }
 
-    if (hasAccessToUser !== undefined && hasAccessToUser) {
+    if (hasCreatedBy !== undefined && hasCreatedBy) {
       expect(department).toHaveProperty('createdBy');
       expect(department.createdBy).toHaveProperty('id');
       expect(department.createdBy).toHaveProperty('email');
@@ -73,15 +75,16 @@ export function validateDepartmentsResponse({
     }
 
     if (
-      hasAccessToUser !== undefined &&
-      hasAccessToUser &&
-      hasUser != undefined &&
-      hasUser
+      hasCreatedBy !== undefined &&
+      hasCreatedBy &&
+      hasUsers != undefined &&
+      hasUsers
     ) {
-      expect(department).toHaveProperty('user');
+      expect(department).toHaveProperty(USER_QUERY_ALIAS);
       expect(department.users).toBeInstanceOf(Array);
 
       if (department.users == undefined || department.users.length === 0) {
+        console.log(department);
         throw new Error('Department users is undefined');
       }
 

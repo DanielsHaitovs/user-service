@@ -15,7 +15,9 @@ import {
 } from 'typeorm';
 
 @Entity('departments')
+@Unique('UQ_DEPARTMENT_ID', ['id'], { deferrable: 'INITIALLY IMMEDIATE' })
 @Unique('UQ_DEPARTMENT_NAME', ['name'], { deferrable: 'INITIALLY IMMEDIATE' })
+@Index('IX_DEPARTMENT_ID_NAME', ['id', 'name'])
 @Index('IX_DEPARTMENT_COUNTRY_NAME', ['country', 'name'])
 @Index('IX_DEPARTMENT_NAME_CREATED_BY', ['name', 'createdBy'])
 @Index('IX_DEPARTMENT_COUNTRY_CREATED_BY', ['country', 'createdBy'])

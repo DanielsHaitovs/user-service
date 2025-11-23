@@ -14,12 +14,11 @@ import {
 import { FilterUsersQueryDto } from '@/user/dto/query.dto';
 import { UserListResponseDto } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
+import { hashObject } from '@/utils/token-generator.util';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
 import { SelectQueryBuilder } from 'typeorm';
-
-import { hashObject } from '../../../utils/token-generator.util';
 
 @Injectable()
 export class QueryService extends EntityQueryService {
@@ -28,25 +27,28 @@ export class QueryService extends EntityQueryService {
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
-    userId,
+    requestedByUser,
   }: {
     filters: FilterUsersQueryDto;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
-    userId: UUID;
+    requestedByUser: UUID;
   }): Promise<UserListResponseDto> {
     const {
       sortField,
       sortOrder,
       page,
       limit,
+      includeCreatedBy,
       includeDepartments,
       includeRoles,
       includePermissions,
       selectUserFields,
+      selectCreatedByFields,
       selectDepartmentFields,
       selectUserRoleFields,
+      selectAssignedByFields,
       selectRoleFields,
       selectPermissionFields,
     } = filters;
@@ -73,14 +75,16 @@ export class QueryService extends EntityQueryService {
       },
       select: [
         ...selectUserFields,
+        ...selectCreatedByFields,
         ...selectDepartmentFields,
         ...selectUserRoleFields,
+        ...selectAssignedByFields,
         ...selectRoleFields,
         ...selectPermissionFields,
       ],
       criteria: this.userQueryCriteria({
         hasAccessToCreatedBy: true,
-        includeCreatedBy: true,
+        includeCreatedBy,
         hasAccessToDepartments,
         includeDepartments,
         hasAccessToRoles,
@@ -92,13 +96,13 @@ export class QueryService extends EntityQueryService {
 
     const cacheKey = hashObject({
       filters,
-      userId,
+      requestedByUser,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
     });
 
-    query.cache(cacheKey, 60000);
+    query.cache(cacheKey, 300000);
 
     return await this.paginatedResult({
       query,
@@ -279,10 +283,12 @@ export class QueryService extends EntityQueryService {
 
     this.filterByRolePermission({
       query,
-      hasAccessToRoles: includeRoles && hasAccessToRoles,
+      hasAccessToRoles,
+      includeRoles,
       roleIds,
       roleNames,
-      hasAccessToPermissions: includePermissions && hasAccessToPermissions,
+      hasAccessToPermissions,
+      includePermissions,
       permissionIds,
       permissionCodes,
     });
@@ -305,21 +311,25 @@ export class QueryService extends EntityQueryService {
   filterByRolePermission({
     query,
     hasAccessToRoles,
+    includeRoles,
     roleIds,
     roleNames,
     hasAccessToPermissions,
+    includePermissions,
     permissionIds,
     permissionCodes,
   }: {
     query: SelectQueryBuilder<User>;
     hasAccessToRoles: boolean;
+    includeRoles: boolean;
     roleIds?: string[] | undefined;
     roleNames?: string[] | undefined;
     hasAccessToPermissions: boolean;
+    includePermissions: boolean;
     permissionIds?: string[] | undefined;
     permissionCodes?: string[] | undefined;
   }): void {
-    if (!hasAccessToRoles) return;
+    if (!hasAccessToRoles || !includeRoles) return;
 
     this.joinRelation<User>({ query, alias: USER_ROLE_QUERY_ALIAS });
 
@@ -353,7 +363,7 @@ export class QueryService extends EntityQueryService {
       relationAlias: ROLE_QUERY_ALIAS,
     });
 
-    if (!hasAccessToPermissions) return;
+    if (!hasAccessToPermissions || !includePermissions) return;
 
     query.leftJoinAndSelect(
       `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,

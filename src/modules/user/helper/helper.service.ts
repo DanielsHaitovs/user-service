@@ -105,8 +105,10 @@ export class HelperService extends EntityQueryService {
 
     this.userQuery.filterByRolePermission({
       query,
-      hasAccessToRoles: includeRoles ?? false,
+      hasAccessToRoles: true,
+      includeRoles: includeRoles ?? false,
       hasAccessToPermissions: false,
+      includePermissions: false,
     });
 
     this.whereIn<User>({ query, field: 'id', values: [id], condition: 'AND' });

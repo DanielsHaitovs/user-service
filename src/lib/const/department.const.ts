@@ -4,6 +4,10 @@
  * to maintain uniformity in examples and mock data.
  */
 
+import { DepartmentListResponseDto } from '@/department/dto/department.dto';
+import { INPUT_BAD_REQUEST_MSG } from '@/lib/const/system.const';
+// import { INPUT_BAD_REQUEST_MSG } from '@/lib/system.const';
+
 /**
  * Sample UUID v4 for department identification in tests and API documentation.
  * Format follows RFC 4122 standard for universally unique identifiers.
@@ -65,3 +69,43 @@ export const UPDATE_DEPARTMENT = 'department:update' as string;
  * Represents a department description that is commonly used for testing scenarios.
  */
 export const DELETE_DEPARTMENT = 'department:delete' as string;
+
+export const DEPARTMENT_API_OK_RESPONSE_MSG =
+  'Department retrieved successfully';
+
+export const DEPARTMENT_GENERIC_BAD_REQUEST_MSG = [
+  'country must be a valid ISO country code',
+  'name should not be empty',
+];
+
+export const DEPARTMENT_MIN_OPERATION_BAD_REQUEST_MSG = [
+  'Each selectUserField must be a valid user field',
+  'Each selectDepartmentField must be a valid department field',
+  'includeCreatedBy must be a boolean value',
+  'includeDepartments must be a boolean value',
+  'includeUsers must be a boolean value',
+  'sortField must be a valid department field',
+  ...INPUT_BAD_REQUEST_MSG,
+];
+
+export const DEPARTMENT_FULL_OPERATION_BAD_REQUEST_MSG = [
+  'Each id must be a valid UUIDv4',
+  'Each name must be a string',
+  'Each country must be a valid ISO country code',
+  'eachUserId must be a valid UUIDv4',
+  'createdAt must be a valid ISO 8601 date string',
+  'updatedAt must be a valid ISO 8601 date string',
+  'each createdById must be a valid UUIDv4',
+  ...DEPARTMENT_MIN_OPERATION_BAD_REQUEST_MSG,
+];
+
+export const DEPARTMENT_MIN_API_OK_LIST = {
+  badRequestMessages: {
+    examples: DEPARTMENT_MIN_OPERATION_BAD_REQUEST_MSG,
+  },
+  okOperation: {
+    description: DEPARTMENT_API_OK_RESPONSE_MSG,
+    type: DepartmentListResponseDto,
+    isArray: false,
+  },
+};

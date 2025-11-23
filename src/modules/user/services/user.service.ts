@@ -1,3 +1,4 @@
+import { DeleteResponseDto } from '@/base/dto/response.dto';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
@@ -7,6 +8,7 @@ import {
   CreateUserDto,
   UpdateUserDto,
   UserListResponseDto,
+  UserResponseDto,
 } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
 import { HelperService } from '@/user/helper/helper.service';
@@ -48,22 +50,22 @@ export class UserService {
    * @throws ConflictException when email address is already registered
    */
   async create({
-    createUserDto,
+    createDto,
     createdBy,
   }: {
-    createUserDto: CreateUserDto;
+    createDto: CreateUserDto;
     createdBy: UUID;
   }): Promise<User> {
     await this.helperService.findEmailConflicts({
-      email: createUserDto.email,
+      email: createDto.email,
     });
 
-    const { departmentIds, roleIds } = createUserDto;
+    const { departmentIds, roleIds } = createDto;
 
     const user = this.userRepository.create({
       // eslint-disable-next-line @typescript-eslint/no-misused-spread
-      ...createUserDto,
-      password: await bcrypt.hash(createUserDto.password, 10),
+      ...createDto,
+      password: await bcrypt.hash(createDto.password, 10),
       isEmailVerified: false,
       emailVerificationToken: generateEmailVerificationToken(),
       passwordResetToken: generatePasswordResetToken(),
@@ -139,8 +141,10 @@ export class UserService {
 
     this.queryService.filterByRolePermission({
       query,
-      hasAccessToRoles: hasAccessToRoles && includeRoles,
-      hasAccessToPermissions: hasAccessToPermissions && includePermissions,
+      hasAccessToRoles,
+      includeRoles,
+      hasAccessToPermissions,
+      includePermissions,
     });
 
     this.queryService.optimize({
@@ -247,8 +251,10 @@ export class UserService {
 
     this.queryService.filterByRolePermission({
       query,
-      hasAccessToRoles: hasAccessToRoles && includeRoles,
-      hasAccessToPermissions: hasAccessToPermissions && includePermissions,
+      hasAccessToRoles,
+      includeRoles,
+      hasAccessToPermissions,
+      includePermissions,
     });
 
     this.queryService.optimize({
@@ -306,7 +312,7 @@ export class UserService {
    * @returns Promise resolving to paginated list of matching users
    * @throws ConflictException when pagination parameters are invalid
    */
-  async searchFor({
+  async search({
     value,
     control,
   }: {
@@ -426,13 +432,13 @@ export class UserService {
    * @throws EntityNotFoundError when email doesn't match any user
    * @throws ConflictException when new email conflicts with existing users
    */
-  async updateByEmail({
+  async updateBy({
     email,
     updateUserDto,
   }: {
     email: string;
     updateUserDto: UpdateUserDto;
-  }): Promise<User> {
+  }): Promise<UserResponseDto> {
     const user = await this.helperService.findByEmailOrFail(email);
 
     if (updateUserDto.email !== undefined) {
@@ -463,13 +469,13 @@ export class UserService {
    * @returns Promise resolving to deletion count summary
    * @throws NotFoundException when any specified user ID doesn't exist
    */
-  async deleteByIds({
+  async delete({
     ids,
-    currentUserId,
+    requestedByUserId,
   }: {
     ids: UUID[];
-    currentUserId: UUID;
-  }): Promise<{ deleted: number; message: string }> {
+    requestedByUserId: UUID;
+  }): Promise<DeleteResponseDto> {
     if (ids.length === 0) {
       return { deleted: 0, message: 'No users deleted' };
     }
@@ -489,8 +495,10 @@ export class UserService {
         sortField: undefined,
         sortOrder: 'ASC',
         selectUserFields: ['id'],
-        selectRoleFields: ['id'],
+        selectCreatedByFields: [],
         selectUserRoleFields: ['id'],
+        selectAssignedByFields: [],
+        selectRoleFields: ['id'],
         selectDepartmentFields: [],
         selectPermissionFields: [],
       },
@@ -518,7 +526,7 @@ export class UserService {
     await this.userRoleService.unassignRolesFromUsers({
       userIds: ids,
       roleIds,
-      assignedBy: currentUserId,
+      assignedBy: requestedByUserId,
     });
 
     const result = await this.userRepository

@@ -1,15 +1,22 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import { DeleteResponseDto } from '@/base/dto/response.dto';
 import { PostgresQueryFailedError } from '@/base/interface/query.error';
 import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
+import {
+  DepartmentRequestDto,
+  DepartmentSearchRequestDto,
+} from '@/department/dto/query.dto';
 import { Departments } from '@/department/entities/department.entity';
 import { HelperService } from '@/department/helper/helper.service';
 import { QueryService } from '@/department/services/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
-import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
+import {
+  CREATEDBY_USER_QUERY_ALIAS,
+  USER_QUERY_ALIAS,
+} from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -85,63 +92,88 @@ export class DepartmentService {
    */
   async findByIds({
     ids,
-    pagination,
     hasAccessToUser,
-    select,
-    sort,
+    control,
   }: {
     ids: UUID[];
-    pagination: PaginationDto;
     hasAccessToUser: boolean;
-    select?: string[];
-    sort?: SortDto;
-  }): Promise<Departments[]> {
+    control: DepartmentRequestDto;
+  }): Promise<DepartmentListResponseDto> {
     const query = this.departmentRepository.createQueryBuilder(
       DEPARTMENT_QUERY_ALIAS,
     );
 
-    if (ids.length > 0) {
-      this.queryService.whereIn({
-        query,
-        field: 'id',
-        values: ids,
-        condition: 'AND',
-        relationAlias: DEPARTMENT_QUERY_ALIAS,
-      });
-    }
+    this.queryService.whereIn({
+      query,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
+      relationAlias: DEPARTMENT_QUERY_ALIAS,
+    });
+
+    const {
+      page,
+      limit,
+      sortField,
+      sortOrder,
+      selectCreatedByFields,
+      selectDepartmentFields,
+      selectUserFields,
+      includeCreatedBy,
+      includeUsers,
+    } = control;
 
     if (hasAccessToUser) {
-      this.queryService.joinRelation({
-        query,
-        alias: CREATEDBY_USER_QUERY_ALIAS,
-      });
+      if (includeCreatedBy) {
+        this.queryService.joinRelation({
+          query,
+          alias: CREATEDBY_USER_QUERY_ALIAS,
+        });
+      }
+
+      if (includeUsers) {
+        this.queryService.joinRelation({
+          query,
+          alias: USER_QUERY_ALIAS,
+        });
+      }
     }
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: {
+        page,
+        limit,
+      },
+      select: [
+        ...selectCreatedByFields,
+        ...selectDepartmentFields,
+        ...selectUserFields,
+      ],
+      sort: {
+        sortField,
+        sortOrder,
+      },
       criteria: this.queryService.departmentQueryCriteria({
         hasAccessToUser,
-        includeCreatedBy: true,
-        includeUsers: true,
+        includeCreatedBy,
+        includeUsers,
       }),
     });
 
-    const { departments } = await this.queryService.paginatedResult({
+    const response = await this.queryService.paginatedResult({
       query,
       alias: 'departments',
     });
 
-    if (departments.length === 0) {
+    if (response.departments.length === 0) {
       throw new EntityNotFoundError(
         'Departments',
         `Departments with IDs [${ids.join(', ')}] not found`,
       );
     }
 
-    return departments;
+    return response;
   }
 
   /**
@@ -157,29 +189,40 @@ export class DepartmentService {
    */
   async searchFor({
     value,
-    pagination,
-    sort,
-    select,
+    control,
   }: {
     value: string;
-    pagination: PaginationDto;
-    sort: SortDto;
-    select?: string[];
+    control: DepartmentSearchRequestDto;
   }): Promise<DepartmentListResponseDto> {
     const query = this.departmentRepository
       .createQueryBuilder(DEPARTMENT_QUERY_ALIAS)
-      .where(`${DEPARTMENT_QUERY_ALIAS}.name like :value`, {
-        value: `%${value}%`,
-      })
-      .orWhere(`${DEPARTMENT_QUERY_ALIAS}.id::text ILIKE :value`, {
-        value: `%${value}%`,
-      });
+      .where(
+        `${DEPARTMENT_QUERY_ALIAS}.name ILIKE :${DEPARTMENT_QUERY_ALIAS}_name`,
+        {
+          [`${DEPARTMENT_QUERY_ALIAS}_name`]: `%${value}%`,
+        },
+      )
+      .orWhere(
+        `${DEPARTMENT_QUERY_ALIAS}.id::text ILIKE :${DEPARTMENT_QUERY_ALIAS}_id`,
+        {
+          [`${DEPARTMENT_QUERY_ALIAS}_id`]: `%${value}%`,
+        },
+      );
+
+    const { page, limit, sortField, sortOrder, selectDepartmentFields } =
+      control;
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: {
+        page,
+        limit,
+      },
+      select: selectDepartmentFields,
+      sort: {
+        sortField,
+        sortOrder,
+      },
       criteria: this.queryService.departmentQueryCriteria({
         hasAccessToUser: false,
         includeCreatedBy: false,
@@ -249,9 +292,9 @@ export class DepartmentService {
    * @returns Promise resolving to the number of deleted departments
    * @throws NotFoundException when any specified department ID doesn't exist
    */
-  async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
+  async deleteByIds(ids: UUID[]): Promise<DeleteResponseDto> {
     if (ids.length === 0) {
-      return { deleted: 0 };
+      return { deleted: 0, message: 'No departments to delete' };
     }
 
     await this.helperService.getManyByIdsOrFail(ids);
@@ -263,6 +306,9 @@ export class DepartmentService {
       .where('id IN (:...ids)', { ids })
       .execute();
 
-    return { deleted: result.affected ?? 0 };
+    return {
+      deleted: result.affected ?? 0,
+      message: 'Departments deleted successfully',
+    };
   }
 }

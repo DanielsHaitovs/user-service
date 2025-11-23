@@ -90,6 +90,8 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service,
         createdBy: systemUserId,
         hasAccessToUser: true,
+        includeCreatedBy: true,
+        includeUsers: false,
       });
     });
 
@@ -97,7 +99,17 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       await expect(
         service.findByIds({
           ids: [uuid() as UUID],
-          pagination: { page: 1, limit: 1 },
+          control: {
+            page: 1,
+            limit: 1,
+            includeCreatedBy: false,
+            includeUsers: false,
+            selectCreatedByFields: [],
+            selectUserFields: [],
+            selectDepartmentFields: [],
+            sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
+            sortOrder: 'ASC',
+          },
           hasAccessToUser: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
@@ -105,31 +117,75 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
   });
   describe('query()', () => {
     it('should query departments', async () => {
-      await queryDepartments(service, queryService, systemUserId, false);
+      await queryDepartments({
+        service,
+        queryService,
+        createdBy: systemUserId,
+        requestedByUser: systemUserId,
+        hasAccessToUser: false,
+        includeCreatedBy: false,
+        includeUsers: false,
+      });
     });
 
     it('should query departments with access to users', async () => {
-      await queryDepartments(service, queryService, systemUserId, true);
+      await queryDepartments({
+        service,
+        queryService,
+        createdBy: systemUserId,
+        requestedByUser: systemUserId,
+        hasAccessToUser: true,
+        includeCreatedBy: false,
+        includeUsers: true,
+      });
+    });
+
+    it('should query departments with access to created by', async () => {
+      await queryDepartments({
+        service,
+        queryService,
+        createdBy: systemUserId,
+        requestedByUser: systemUserId,
+        hasAccessToUser: true,
+        includeCreatedBy: true,
+        includeUsers: false,
+      });
+    });
+
+    it('should query departments with access to created by and to users', async () => {
+      await queryDepartments({
+        service,
+        queryService,
+        createdBy: systemUserId,
+        requestedByUser: systemUserId,
+        hasAccessToUser: true,
+        includeCreatedBy: true,
+        includeUsers: false,
+      });
     });
 
     it('should return empty array because department does not exist', async () => {
       await expect(
-        queryService.getDepartements(
-          {
-            query: {
-              ids: [uuid() as UUID, uuid() as UUID],
-            },
-            pagination: {
-              page: 1,
-              limit: 20,
-            },
-            sort: {
-              sortField: `${DEPARTMENT_QUERY_ALIAS}.name`,
-              sortOrder: 'ASC',
-            },
+        queryService.getDepartements({
+          filters: {
+            ids: [uuid() as UUID, uuid() as UUID],
+            createdByUserIds: [],
+            userIds: [],
+            names: [],
+            countries: [],
+            page: 1,
+            limit: 1,
+            includeCreatedBy: false,
+            includeUsers: false,
+            selectCreatedByFields: [],
+            selectUserFields: [],
+            selectDepartmentFields: [],
+            sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
+            sortOrder: 'ASC',
           },
-          true,
-        ),
+          hasAccessToUser: false,
+          requestedByUser: systemUserId,
+        }),
       ).resolves.toHaveProperty('departments', []);
     });
   });
@@ -139,23 +195,31 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       await searchForDepartments({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: false,
       });
-    });
+    }, 30000);
 
     it('should find departments by uuids', async () => {
       await searchForDepartments({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: true,
       });
-    });
+    }, 30000);
 
     it('should throw not found exception, because department id(s) does not exist', async () => {
       await expect(
         service.findByIds({
           ids: [uuid() as UUID],
-          pagination: { page: 1, limit: 1 },
+          control: {
+            page: 1,
+            limit: 1,
+            includeCreatedBy: false,
+            includeUsers: false,
+            selectCreatedByFields: [],
+            selectUserFields: [],
+            selectDepartmentFields: [],
+            sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
+            sortOrder: 'ASC',
+          },
           hasAccessToUser: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);

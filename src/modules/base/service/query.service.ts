@@ -7,12 +7,15 @@ import { OptimizeCriteria, QueryRequest } from '@/base/interface/query.request';
 import { ForbiddenException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
+import { UUID } from 'crypto';
 import {
   EntityManager,
   EntityTarget,
   ObjectLiteral,
   SelectQueryBuilder,
 } from 'typeorm';
+
+import { hashObject } from '../../../utils/token-generator.util';
 
 /**
  * Base service providing reusable TypeORM query building utilities.
@@ -429,23 +432,12 @@ export class EntityQueryService {
     }
 
     const relations: Record<string, boolean> = {};
-    const relationsNestedFrom: Record<string, string> = {};
 
     Object.entries(criteria).forEach(
-      ([relationAlias, { permissionAccess, includeRelation, nestedFrom }]) => {
+      ([relationAlias, { permissionAccess, includeRelation }]) => {
         const hasAccess = permissionAccess && includeRelation;
         if (query.alias !== relationAlias) {
-          this.validateRelationSelect<T>({
-            query,
-            select,
-            hasAccess,
-            relationAlias,
-          });
           relations[relationAlias] = hasAccess;
-
-          if (nestedFrom !== undefined) {
-            relationsNestedFrom[relationAlias] = nestedFrom;
-          }
         }
       },
     );
@@ -456,11 +448,7 @@ export class EntityQueryService {
       sort,
     });
 
-    this.validateResponseSelectPayload<T>({
-      query,
-      select,
-      criteria,
-    });
+    this.validateResponseSelectPayload<T>({ query, select, criteria });
 
     this.sort<T>({ query, sort });
 
@@ -470,15 +458,23 @@ export class EntityQueryService {
   async paginatedResult<T extends ObjectLiteral, K extends string>({
     query,
     alias,
+    requestedByUser,
   }: {
     query: SelectQueryBuilder<T>;
     alias: K;
+    requestedByUser?: UUID;
   }): Promise<PaginatedResponseDto & Record<K, T[]>> {
     const page = query.expressionMap.skip ?? 0;
     const limit = query.expressionMap.take ?? 10;
 
     query.distinct(true);
 
+    const cacheKey = hashObject({
+      requestedByUser,
+      query: query.getQueryAndParameters(),
+    });
+
+    query.cache(cacheKey, 300000);
     const [items, totalCount] = await query.getManyAndCount();
 
     return {
@@ -506,6 +502,28 @@ export class EntityQueryService {
       const [alias] = key.split('_');
       if (alias == undefined) continue;
       this.ensureSelectChainIds(alias, criteria, select);
+    }
+
+    const propertiesToRemove = new Set<string>();
+
+    for (const [
+      relationAlias,
+      { permissionAccess, includeRelation },
+    ] of Object.entries(criteria)) {
+      if (!includeRelation || !permissionAccess) {
+        propertiesToRemove.add(relationAlias);
+      }
+    }
+
+    for (const [relationAlias, { nestedFrom }] of Object.entries(criteria)) {
+      if (nestedFrom != undefined && propertiesToRemove.has(nestedFrom)) {
+        propertiesToRemove.add(relationAlias);
+      }
+    }
+
+    for (const prop of propertiesToRemove) {
+      const filtered = select.filter((s) => !s.startsWith(`${prop}.`));
+      select.splice(0, select.length, ...filtered);
     }
 
     query.select(select);

@@ -8,6 +8,8 @@ import {
   getRoleGenericSelectableFields,
 } from '@/role/helper/role-fields.util';
 import {
+  getAssignedByGenericSelectableFields,
+  getCreatedByGenericSelectableFields,
   getUserGenericSelectableFields,
   getUserRoleGenericSelectableFields,
 } from '@/user/helper/user-fields.util';
@@ -71,6 +73,18 @@ export class UserQueryParametersDto {
   @ToArray()
   @IsOptional()
   lastNames: string[] | undefined;
+
+  @ApiPropertyOptional({
+    description: 'Filter by countries - supports multiple countries',
+    type: String,
+    isArray: true,
+    enum: COUNTRIES,
+    uniqueItems: true,
+  })
+  @ToArray()
+  @IsOptional()
+  @IsEnum(COUNTRIES, { each: true })
+  countries?: string[] | undefined;
 
   @ApiPropertyOptional({
     description:
@@ -211,9 +225,10 @@ export class UserQueryParametersDto {
   permissionCodes: string[] | undefined;
 
   constructor(
-    ids: UUID[],
+    ids?: UUID[],
     firstNames?: string[],
     lastNames?: string[],
+    countries?: COUNTRIES[],
     emails?: string[],
     phoneNumbers?: string[],
     isActive?: boolean,
@@ -226,20 +241,21 @@ export class UserQueryParametersDto {
     permissionIds?: UUID[],
     permissionCodes?: string[],
   ) {
-    this.ids = ids;
-    this.firstNames = firstNames;
-    this.lastNames = lastNames;
-    this.phoneNumbers = phoneNumbers;
-    this.emails = emails;
-    this.isActive = isActive;
-    this.isEmailVerified = isEmailVerified;
-    this.createdByIds = createdByIds;
-    this.departmentIds = departmentIds;
-    this.departmentCountries = departmentCountries;
-    this.roleIds = roleIds;
-    this.roleNames = roleNames;
-    this.permissionIds = permissionIds;
-    this.permissionCodes = permissionCodes;
+    this.ids = ids ?? [];
+    this.firstNames = firstNames ?? [];
+    this.lastNames = lastNames ?? [];
+    this.countries = countries ?? [];
+    this.phoneNumbers = phoneNumbers ?? [];
+    this.emails = emails ?? [];
+    this.isActive = isActive ?? undefined;
+    this.isEmailVerified = isEmailVerified ?? undefined;
+    this.createdByIds = createdByIds ?? [];
+    this.departmentIds = departmentIds ?? [];
+    this.departmentCountries = departmentCountries ?? [];
+    this.roleIds = roleIds ?? [];
+    this.roleNames = roleNames ?? [];
+    this.permissionIds = permissionIds ?? [];
+    this.permissionCodes = permissionCodes ?? [];
   }
 }
 
@@ -267,6 +283,23 @@ export class UserSelectDto {
 }
 
 export class UserRelationSelectDto extends UserSelectDto {
+  @ApiPropertyOptional({
+    description:
+      'Specific user fields to return - optimizes payload size and performance',
+    enum: getCreatedByGenericSelectableFields(),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getCreatedByGenericSelectableFields(['email']),
+  })
+  @ToArray()
+  @IsEnum(getCreatedByGenericSelectableFields(), {
+    each: true,
+    message: 'Each selectUserField must be a valid user field',
+  })
+  @IsOptional()
+  selectCreatedByFields: string[];
+
   @ApiPropertyOptional({
     description:
       'Specific user department fields to return - optimizes payload size and performance',
@@ -300,6 +333,23 @@ export class UserRelationSelectDto extends UserSelectDto {
   })
   @IsOptional()
   selectUserRoleFields: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Specific role assigned by fields to return - optimizes payload size and performance',
+    enum: getAssignedByGenericSelectableFields(),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getAssignedByGenericSelectableFields(['email']),
+  })
+  @ToArray()
+  @IsEnum(getAssignedByGenericSelectableFields(), {
+    each: true,
+    message: 'Each selectUserField must be a valid user field',
+  })
+  @IsOptional()
+  selectAssignedByFields: string[];
 
   @ApiPropertyOptional({
     description:
@@ -337,20 +387,26 @@ export class UserRelationSelectDto extends UserSelectDto {
 
   constructor({
     selectUserFields,
+    selectCreatedByFields,
     selectDepartmentFields,
     selectUserRoleFields,
+    selectAssignedByFields,
     selectRoleFields,
     selectPermissionFields,
   }: {
     selectUserFields: string[] | undefined;
+    selectCreatedByFields: string[] | undefined;
     selectDepartmentFields: string[] | undefined;
     selectUserRoleFields: string[] | undefined;
+    selectAssignedByFields: string[] | undefined;
     selectRoleFields: string[] | undefined;
     selectPermissionFields: string[] | undefined;
   }) {
     super(selectUserFields);
+    this.selectCreatedByFields = selectCreatedByFields ?? [];
     this.selectDepartmentFields = selectDepartmentFields ?? [];
     this.selectUserRoleFields = selectUserRoleFields ?? [];
+    this.selectAssignedByFields = selectAssignedByFields ?? [];
     this.selectRoleFields = selectRoleFields ?? [];
     this.selectPermissionFields = selectPermissionFields ?? [];
   }
@@ -363,6 +419,7 @@ export class UserQueryResponseControlDto extends UserRelationSelectDto {
     default: false,
     required: false,
   })
+  @IsOptional()
   @ToBoolean()
   @IsBoolean()
   includeCreatedBy: boolean;
@@ -373,6 +430,7 @@ export class UserQueryResponseControlDto extends UserRelationSelectDto {
     default: false,
     required: false,
   })
+  @IsOptional()
   @ToBoolean()
   @IsBoolean()
   includeDepartments: boolean;
@@ -383,6 +441,7 @@ export class UserQueryResponseControlDto extends UserRelationSelectDto {
     default: false,
     required: false,
   })
+  @IsOptional()
   @IsBoolean()
   @ToBoolean()
   includeRoles: boolean;
@@ -393,32 +452,37 @@ export class UserQueryResponseControlDto extends UserRelationSelectDto {
     default: false,
     required: false,
   })
+  @IsOptional()
   @ToBoolean()
   @IsBoolean()
   includePermissions: boolean;
 
   constructor(
-    includeCreatedBy: boolean,
-    includeDepartments: boolean,
-    includeRoles: boolean,
-    includePermissions: boolean,
+    includeCreatedBy: boolean | undefined,
+    includeDepartments: boolean | undefined,
+    includeRoles: boolean | undefined,
+    includePermissions: boolean | undefined,
     selectUserFields: string[] | undefined,
+    selectCreatedByFields: string[] | undefined,
     selectDepartmentFields: string[] | undefined,
     selectUserRoleFields: string[] | undefined,
+    selectAssignedByFields: string[] | undefined,
     selectRoleFields: string[] | undefined,
     selectPermissionFields: string[] | undefined,
   ) {
     super({
       selectUserFields,
+      selectCreatedByFields,
       selectDepartmentFields,
       selectUserRoleFields,
+      selectAssignedByFields,
       selectRoleFields,
       selectPermissionFields,
     });
-    this.includeCreatedBy = includeCreatedBy;
-    this.includeDepartments = includeDepartments;
-    this.includeRoles = includeRoles;
-    this.includePermissions = includePermissions;
+    this.includeCreatedBy = includeCreatedBy ?? false;
+    this.includeDepartments = includeDepartments ?? false;
+    this.includeRoles = includeRoles ?? false;
+    this.includePermissions = includePermissions ?? false;
   }
 }
 
@@ -482,12 +546,6 @@ export class UserDateRequestDto extends QueryDateRequestDto {
   }
 }
 
-export interface UserRequestI {
-  responseControl: UserQueryResponseControlDto;
-  sort: UserSortDto;
-  pagination: PaginationDto;
-}
-
 export class UserRequestDto extends IntersectionType(
   PaginationDto,
   UserSortDto,
@@ -541,13 +599,6 @@ export class UserSearchRequestDto extends IntersectionType(
   UserSortDto,
   UserSelectDto,
 ) {}
-
-export interface UserQuery extends UserQueryResponseControlDto {
-  query: UserQueryParametersDto;
-  dateQuery: UserDateRequestDto;
-  sort: UserSortDto;
-  pagination: PaginationDto;
-}
 
 export class FilterUsersQueryDto extends IntersectionType(
   UserQueryParametersDto,

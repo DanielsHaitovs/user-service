@@ -1,5 +1,6 @@
 import { JWTPayload } from '@/auth/interfaces/req.interface';
 import { BaseController } from '@/base/base.controller';
+import { DeleteResponseDto } from '@/base/dto/response.dto';
 import { ApiOkList } from '@/common/decorators/api.decorator';
 import { TraceController } from '@/common/decorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/common/decorators/user.decorator';
@@ -14,11 +15,11 @@ import {
   EXAMPLE_USER_ID,
   READ_USER,
   READ_USER_ROLE,
-  UPDATE_USER,
   USER_API_OK_RESPONSE_MSG,
   USER_FULL_BAD_REQUEST_MSG,
   USER_GENERIC_BAD_REQUEST_MSG,
-  USER_MIN_OPERATION_BAD_REQUEST_MSG,
+  USER_MIN_API_OK_LIST,
+  USER_UPDATE_API_OK_LIST,
 } from '@/lib/const/user.const';
 import {
   FilterUsersQueryDto,
@@ -42,7 +43,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseArrayPipe,
   Patch,
   Post,
   Query,
@@ -50,6 +50,8 @@ import {
 import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+
+import { ParseUUIDArrayPipe } from '../../common/pipes/uuidArray.pipe';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -63,13 +65,17 @@ import { UUID } from 'crypto';
 @Controller('user')
 @TraceController()
 export class UserController extends BaseController<
+  CreateUserDto,
+  GetUsersByIdsRequestDto,
+  UserSearchRequestDto,
   UpdateUserDto,
   UserResponseDto,
-  UserListResponseDto
+  UserListResponseDto,
+  FilterUsersQueryDto
 > {
   constructor(
-    private readonly userService: UserService,
-    private readonly queryService: QueryService,
+    protected readonly userService: UserService,
+    protected readonly queryService: QueryService,
   ) {
     super();
   }
@@ -109,14 +115,13 @@ export class UserController extends BaseController<
       ],
     },
   })
-  override async create(
-    @Body() createUserDto: CreateUserDto,
+  async create(
+    @Body() createDto: CreateUserDto,
     @CurrentUser() createdByUser: JWTPayload,
   ): Promise<UserResponseDto> {
-    const { id: createdBy } = createdByUser;
     return await this.userService.create({
-      createUserDto,
-      createdBy,
+      createDto,
+      createdBy: createdByUser.id,
     });
   }
 
@@ -128,16 +133,9 @@ export class UserController extends BaseController<
       summary: 'Searches for users by ID',
       description: 'Searches for users by their unique identifiers',
     },
-    badRequestMessages: {
-      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    okOperartion: {
-      description: USER_API_OK_RESPONSE_MSG,
-      type: UserListResponseDto,
-      isArray: false,
-    },
+    ...USER_MIN_API_OK_LIST,
   })
-  override async findByIds(
+  async findByIds(
     @Query() query: GetUsersByIdsRequestDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
@@ -162,16 +160,9 @@ export class UserController extends BaseController<
       summary: 'Searches for users by Eails',
       description: 'Searches for users by their unique email addresses',
     },
-    badRequestMessages: {
-      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    okOperartion: {
-      description: USER_API_OK_RESPONSE_MSG,
-      type: UserListResponseDto,
-      isArray: false,
-    },
+    ...USER_MIN_API_OK_LIST,
   })
-  override async findBy(
+  async findBy(
     @Query() query: GetUsersByEmailsRequestDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
@@ -203,20 +194,13 @@ export class UserController extends BaseController<
       description:
         'Will search by match key fields between first name, last name, email or ID',
     },
-    badRequestMessages: {
-      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    okOperartion: {
-      description: USER_API_OK_RESPONSE_MSG,
-      type: UserListResponseDto,
-      isArray: false,
-    },
+    ...USER_MIN_API_OK_LIST,
   })
-  override async search(
+  async search(
     @Param('value') value: string,
     @Query() control: UserSearchRequestDto,
   ): Promise<UserListResponseDto> {
-    return await this.userService.searchFor({
+    return await this.userService.search({
       value,
       control,
     });
@@ -232,29 +216,14 @@ export class UserController extends BaseController<
     example: EXAMPLE_USER_ID,
   })
   @ApiOkList({
-    permissions: [UPDATE_USER, READ_USER],
     operation: {
       summary: 'Update user by ID',
       description:
         'Updates a user by their unique identifier. Only provided fields will be updated.',
     },
-    body: {
-      type: UpdateUserDto,
-      description: 'User update data (partial)',
-    },
-    badRequestMessages: {
-      examples: USER_GENERIC_BAD_REQUEST_MSG,
-    },
-    okOperartion: {
-      description: 'User updated successfully',
-      type: UserResponseDto,
-      isArray: false,
-    },
-    conflictMessage: {
-      description: 'Email already exists (when updating email)',
-    },
+    ...USER_UPDATE_API_OK_LIST,
   })
-  override async updateById(
+  async updateById(
     @Param('id') id: UUID,
     @Body() updateDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
@@ -271,33 +240,18 @@ export class UserController extends BaseController<
     example: EXAMPLE_USER_EMAIL,
   })
   @ApiOkList({
-    permissions: [UPDATE_USER, READ_USER],
     operation: {
       summary: 'Update user by email',
       description:
         'Updates a user by their email address. Only provided fields will be updated.',
     },
-    body: {
-      type: UpdateUserDto,
-      description: 'User update data (partial)',
-    },
-    badRequestMessages: {
-      examples: USER_GENERIC_BAD_REQUEST_MSG,
-    },
-    okOperartion: {
-      description: 'User updated successfully',
-      type: UserResponseDto,
-      isArray: false,
-    },
-    conflictMessage: {
-      description: 'Email already exists (when updating email)',
-    },
+    ...USER_UPDATE_API_OK_LIST,
   })
-  override async updateBy(
+  async updateBy(
     @Param('email') email: string,
     @Body() updateDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    return await this.userService.updateByEmail({
+    return await this.userService.updateBy({
       email,
       updateUserDto: updateDto,
     });
@@ -320,32 +274,25 @@ export class UserController extends BaseController<
       description:
         'Deletes multiple users by their unique identifiers. All users must exist or the operation will fail.',
     },
-    body: {
-      type: UpdateUserDto,
-      description: 'User update data (partial)',
-    },
     badRequestMessages: {
       examples: USER_GENERIC_BAD_REQUEST_MSG,
     },
-    okOperartion: {
-      description: 'User updated successfully',
-      type: UserResponseDto,
+    okOperation: {
+      description: 'Users deleted successfully',
+      type: DeleteResponseDto,
       isArray: false,
-    },
-    conflictMessage: {
-      description: 'Email already exists (when updating email)',
     },
     noContent: {
       description: 'No users to delete (empty IDs list)',
     },
   })
-  override async delete(
-    @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
+  async delete(
+    @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
     @CurrentUserId() requestedByUserId: UUID,
-  ): Promise<{ deleted: number; message: string }> {
-    return await this.userService.deleteByIds({
+  ): Promise<DeleteResponseDto> {
+    return await this.userService.delete({
       ids,
-      currentUserId: requestedByUserId,
+      requestedByUserId,
     });
   }
 
@@ -361,13 +308,13 @@ export class UserController extends BaseController<
     badRequestMessages: {
       examples: USER_FULL_BAD_REQUEST_MSG,
     },
-    okOperartion: {
+    okOperation: {
       description: USER_API_OK_RESPONSE_MSG,
       type: UserListResponseDto,
       isArray: false,
     },
   })
-  override async filter(
+  async filter(
     @Query() filters: FilterUsersQueryDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
@@ -379,7 +326,7 @@ export class UserController extends BaseController<
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
-      userId: requestedByUser.id,
+      requestedByUser: requestedByUser.id,
     });
   }
 }

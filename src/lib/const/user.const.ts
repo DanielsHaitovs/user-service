@@ -6,6 +6,11 @@
 
 import { COUNTRIES } from '@/lib/const/countries.const';
 import { INPUT_BAD_REQUEST_MSG } from '@/lib/const/system.const';
+import {
+  UpdateUserDto,
+  UserListResponseDto,
+  UserResponseDto,
+} from '@/user/dto/user.dto';
 
 // Standard email address for the system user.
 // This email is used in tests and API documentation to represent the system user.
@@ -239,3 +244,33 @@ export const USER_FULL_BAD_REQUEST_MSG = [
 ] as string[];
 
 export const USER_API_OK_RESPONSE_MSG = 'User retrieved successfully';
+
+export const USER_MIN_API_OK_LIST = {
+  badRequestMessages: {
+    examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
+  },
+  okOperation: {
+    description: USER_API_OK_RESPONSE_MSG,
+    type: UserListResponseDto,
+    isArray: false,
+  },
+};
+
+export const USER_UPDATE_API_OK_LIST = {
+  permissions: [UPDATE_USER, READ_USER],
+  body: {
+    type: UpdateUserDto,
+    description: 'User update data (partial)',
+  },
+  badRequestMessages: {
+    examples: USER_GENERIC_BAD_REQUEST_MSG,
+  },
+  okOperation: {
+    description: 'User updated successfully',
+    type: UserResponseDto,
+    isArray: false,
+  },
+  conflictMessage: {
+    description: 'Email already exists (when updating email)',
+  },
+};

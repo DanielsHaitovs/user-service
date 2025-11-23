@@ -63,7 +63,7 @@ export class DepartmentResponseDto extends DepartmentBaseDto {
 
   @ApiProperty({
     description: 'User that created the department',
-    type: GetUserDto,
+    type: () => GetUserDto,
     isArray: false,
   })
   @Type(() => GetUserDto)

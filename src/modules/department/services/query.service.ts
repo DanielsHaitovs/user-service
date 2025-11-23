@@ -1,7 +1,7 @@
 import { OptimizeCriteria } from '@/base/interface/query.request';
 import { EntityQueryService } from '@/base/service/query.service';
 import { DepartmentListResponseDto } from '@/department/dto/department.dto';
-import { DepartmentQueryDto } from '@/department/dto/query.dto';
+import { FilterDepartmentsQueryDto } from '@/department/dto/query.dto';
 import { Departments } from '@/department/entities/department.entity';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import {
@@ -10,27 +10,38 @@ import {
 } from '@/lib/const/user.const';
 import { Injectable } from '@nestjs/common';
 
+import { UUID } from 'crypto';
+
 @Injectable()
 export class QueryService extends EntityQueryService {
-  async getDepartements(
-    filters: DepartmentQueryDto,
-    hasAccessToUser: boolean,
-  ): Promise<DepartmentListResponseDto> {
+  async getDepartements({
+    filters,
+    hasAccessToUser,
+    requestedByUser,
+  }: {
+    filters: FilterDepartmentsQueryDto;
+    hasAccessToUser: boolean;
+    requestedByUser: UUID;
+  }): Promise<DepartmentListResponseDto> {
     const {
-      query: { ids, names, countries, userIds, createdByUserIds },
+      ids,
+      names,
+      countries,
+      userIds,
+      createdByUserIds,
       dateFrom,
       dateTo,
       dateFilterParam,
-      sort,
-      pagination,
+      sortField,
+      sortOrder,
+      page,
+      limit,
       selectUserFields,
       selectDepartmentFields,
-      selectUserCreatedByFields,
+      selectCreatedByFields,
+      includeCreatedBy,
+      includeUsers,
     } = filters;
-
-    let { includeUsers, includeCreatedBy } = filters;
-    includeUsers ??= hasAccessToUser;
-    includeCreatedBy ??= hasAccessToUser;
 
     const query = this.initQuery({
       entity: Departments,
@@ -74,6 +85,8 @@ export class QueryService extends EntityQueryService {
       });
     }
 
+    query.groupBy(`${query.alias}.id`);
+
     // Join user relation if specified or if IDs are provided
     this.joinEntityRelation({
       query,
@@ -86,6 +99,10 @@ export class QueryService extends EntityQueryService {
         },
       },
     });
+
+    if (includeUsers && hasAccessToUser) {
+      query.addGroupBy(`${USER_QUERY_ALIAS}.id`);
+    }
 
     // Join created by user relation if specified or if IDs are provided
     this.joinEntityRelation({
@@ -100,14 +117,24 @@ export class QueryService extends EntityQueryService {
       },
     });
 
+    if (includeCreatedBy && hasAccessToUser) {
+      query.addGroupBy(`${CREATEDBY_USER_QUERY_ALIAS}.id`);
+    }
+
     this.optimize({
       query,
-      pagination,
-      sort,
+      pagination: {
+        page,
+        limit,
+      },
+      sort: {
+        sortField,
+        sortOrder,
+      },
       select: [
-        ...(selectUserFields ?? []),
-        ...(selectDepartmentFields ?? []),
-        ...(selectUserCreatedByFields ?? []),
+        ...selectUserFields,
+        ...selectDepartmentFields,
+        ...selectCreatedByFields,
       ],
       criteria: this.departmentQueryCriteria({
         hasAccessToUser,

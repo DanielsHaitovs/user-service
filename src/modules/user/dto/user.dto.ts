@@ -335,7 +335,7 @@ export class GetUserDto extends UserBaseDto {
 export class UserResponseDto extends GetUserDto {
   @ApiProperty({
     description: 'User that created the user',
-    type: GetUserDto,
+    type: () => GetUserDto,
     isArray: false,
   })
   @Type(() => GetUserDto)

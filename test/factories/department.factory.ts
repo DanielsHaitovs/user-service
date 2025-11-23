@@ -18,6 +18,12 @@ import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { getDepartmentGenericSelectableFields } from '../../src/modules/department/helper/department-fields.util';
+import {
+  getCreatedByGenericSelectableFields,
+  getUserGenericSelectableFields,
+} from '../../src/modules/user/helper/user-fields.util';
+
 export async function createDepartment({
   service,
   createdBy,
@@ -45,7 +51,7 @@ export async function createDepartment({
       names: [department.name],
       countries: [department.country],
       amountExpected: 1,
-      hasAccessToUser,
+      hasCreatedBy: hasAccessToUser,
     });
 
     return department;
@@ -59,59 +65,78 @@ export async function findDepartmentsByIds({
   service,
   createdBy,
   hasAccessToUser,
+  includeCreatedBy,
+  includeUsers,
 }: {
   service: DepartmentService;
   createdBy: UUID;
   hasAccessToUser: boolean;
-}): Promise<Departments[]> {
+  includeCreatedBy?: boolean;
+  includeUsers?: boolean;
+}): Promise<DepartmentListResponseDto> {
   const department = await createDepartment({
     service,
     createdBy,
     hasAccessToUser,
   });
 
-  const departments = await service.findByIds({
+  const response = await service.findByIds({
     ids: [department.id],
-    pagination: { page: 1, limit: 1 },
+    control: {
+      page: 1,
+      limit: 1,
+      includeCreatedBy: includeCreatedBy ?? false,
+      includeUsers: includeUsers ?? false,
+      selectCreatedByFields: getCreatedByGenericSelectableFields([
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+      ]),
+      selectUserFields: getUserGenericSelectableFields({
+        fields: ['id', 'email', 'firstName', 'lastName'],
+      }),
+      selectDepartmentFields: getDepartmentGenericSelectableFields({}),
+      sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
+      sortOrder: 'ASC',
+    },
     hasAccessToUser,
   });
 
   validateDepartmentsResponse({
-    departments,
+    departments: response.departments,
     ids: [department.id],
     names: [department.name],
     countries: [department.country],
     amountExpected: 1,
-    hasAccessToUser,
+    hasCreatedBy: (includeCreatedBy ?? false) && hasAccessToUser,
+    hasUsers: (includeUsers ?? false) && hasAccessToUser,
   });
 
-  return departments;
+  return response;
 }
 
 export async function searchForDepartments({
   service,
   createdBy,
-  hasAccessToUser,
 }: {
   service: DepartmentService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
 }): Promise<DepartmentListResponseDto> {
   const newDepartment = await createDepartment({
     service,
     createdBy,
-    hasAccessToUser,
+    hasAccessToUser: false,
   });
 
   const res = await service.searchFor({
     value: newDepartment.name,
-    pagination: {
+    control: {
       limit: 20,
       page: 1,
-    },
-    sort: {
       sortField: `${DEPARTMENT_QUERY_ALIAS}.name`,
       sortOrder: 'ASC',
+      selectDepartmentFields: getDepartmentGenericSelectableFields({}),
     },
   });
 
@@ -123,7 +148,8 @@ export async function searchForDepartments({
     countries: [newDepartment.country],
     ids: [newDepartment.id],
     amountExpected: 1,
-    hasAccessToUser: false,
+    hasCreatedBy: false,
+    hasUsers: false,
   });
 
   return res;
@@ -195,67 +221,61 @@ export async function updateDepartmentCountry({
   return updatedDepartment;
 }
 
-export async function queryDepartments(
-  service: DepartmentService,
-  queryService: QueryService,
-  createdBy: UUID,
-  hasAccessToUser: boolean,
-): Promise<DepartmentListResponseDto> {
-  const department1 = await createDepartment({
-    service,
-    createdBy,
-    hasAccessToUser,
-  });
-  const department2 = await createDepartment({
-    service,
-    createdBy,
-    hasAccessToUser,
-  });
-  const department3 = await createDepartment({
-    service,
-    createdBy,
-    hasAccessToUser,
-  });
-  const department4 = await createDepartment({
-    service,
-    createdBy,
-    hasAccessToUser,
-  });
+export async function queryDepartments({
+  service,
+  queryService,
+  createdBy,
+  hasAccessToUser,
+  requestedByUser,
+  includeCreatedBy,
+  includeUsers,
+}: {
+  service: DepartmentService;
+  queryService: QueryService;
+  createdBy: UUID;
+  hasAccessToUser: boolean;
+  requestedByUser: UUID;
+  includeCreatedBy?: boolean;
+  includeUsers?: boolean;
+}): Promise<DepartmentListResponseDto> {
+  const newDepartments = await Promise.all([
+    createDepartment({ service, createdBy, hasAccessToUser }),
+    createDepartment({ service, createdBy, hasAccessToUser }),
+    createDepartment({ service, createdBy, hasAccessToUser }),
+    createDepartment({ service, createdBy, hasAccessToUser }),
+  ]);
 
-  const ids = [department1.id, department2.id, department3.id, department4.id];
+  const ids = newDepartments.flatMap((department) => department.id);
+  const names = newDepartments.flatMap((department) => department.name);
+  const countries = newDepartments.flatMap((department) => department.country);
 
-  const countries = [
-    department1.country,
-    department2.country,
-    department3.country,
-    department4.country,
-  ];
-
-  const names = [
-    department1.name,
-    department2.name,
-    department3.name,
-    department4.name,
-  ];
-
-  const departments = await queryService.getDepartements(
-    {
-      query: {
-        ids,
-        names,
-        countries,
-      },
-      pagination: {
-        page: 1,
-        limit: 20,
-      },
-      sort: {
-        sortField: `${DEPARTMENT_QUERY_ALIAS}.name`,
-        sortOrder: 'ASC',
-      },
+  const departments = await queryService.getDepartements({
+    filters: {
+      ids,
+      names,
+      countries,
+      userIds: [],
+      createdByUserIds: [],
+      page: 1,
+      limit: 20,
+      sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
+      sortOrder: 'ASC',
+      includeCreatedBy: includeCreatedBy ?? false,
+      includeUsers: includeUsers ?? false,
+      selectCreatedByFields: getCreatedByGenericSelectableFields([
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+      ]),
+      selectUserFields: getUserGenericSelectableFields({
+        fields: ['id', 'email', 'firstName', 'lastName'],
+      }),
+      selectDepartmentFields: getDepartmentGenericSelectableFields({}),
     },
+    requestedByUser,
     hasAccessToUser,
-  );
+  });
 
   validateDepartmentsResponse({
     departments: departments.departments as Departments[],
@@ -263,7 +283,8 @@ export async function queryDepartments(
     names,
     countries,
     amountExpected: 4,
-    hasAccessToUser,
+    hasCreatedBy: (includeCreatedBy ?? false) && hasAccessToUser,
+    hasUsers: (includeUsers ?? false) && hasAccessToUser,
   });
 
   return departments;
@@ -289,7 +310,17 @@ export async function deleteDepartments({
   await expect(
     service.findByIds({
       ids: [department.id],
-      pagination: { page: 1, limit: 1 },
+      control: {
+        page: 1,
+        limit: 1,
+        includeCreatedBy: false,
+        includeUsers: false,
+        selectCreatedByFields: [],
+        selectUserFields: [],
+        selectDepartmentFields: getDepartmentGenericSelectableFields({}),
+        sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
+        sortOrder: 'ASC',
+      },
       hasAccessToUser: false,
     }),
   ).rejects.toThrow(EntityNotFoundError);

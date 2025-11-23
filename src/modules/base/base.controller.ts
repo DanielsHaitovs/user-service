@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
 import { hasPermissions } from '@/auth/helper/permission.helper';
 import { JWTPayload } from '@/auth/interfaces/req.interface';
 import { UserAccessPermissions } from '@/base/interface/query.request';
@@ -37,32 +38,30 @@ import { UUID } from 'crypto';
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthenticationGuard, PermissionsGuard)
 export abstract class BaseController<
+  TCreateDto,
+  TFindByIdsQuery,
+  TSearchControl,
   TUpdateDto,
   TResponseDto,
   TListResponseDto,
+  TQueryFilter,
 > {
   abstract create(
-    createDto: unknown,
+    createDto: TCreateDto,
     createdByUser: JWTPayload,
   ): Promise<TResponseDto>;
 
   abstract findByIds(
-    query: unknown,
+    query: TFindByIdsQuery,
     requestedByUser: JWTPayload,
   ): Promise<TListResponseDto>;
 
-  abstract findBy(
-    query: unknown,
-    requestedByUser: JWTPayload,
+  abstract search(
+    value: string,
+    control: TSearchControl,
   ): Promise<TListResponseDto>;
-
-  abstract search(value: string, control: unknown): Promise<TListResponseDto>;
 
   abstract updateById(id: UUID, updateDto: TUpdateDto): Promise<TResponseDto>;
-  abstract updateBy(
-    value: unknown,
-    updateDto: TUpdateDto,
-  ): Promise<TResponseDto>;
 
   abstract delete(
     ids: UUID[],
@@ -70,7 +69,7 @@ export abstract class BaseController<
   ): Promise<{ deleted: number; message: string }>;
 
   abstract filter(
-    filters: unknown,
+    filters: TQueryFilter,
     requestedByUser: JWTPayload,
   ): Promise<TListResponseDto>;
 

@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_BY_USER_QUERY_ALIAS,
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
@@ -83,7 +84,7 @@ export function getUserRoleGenericSelectableFields({
 }
 
 /**
- * Dynamically extract all column names from the User entity using TypeORM metadata
+ * Dynamically extract all column names from the User entity for created by relation using TypeORM metadata
  * This automatically updates when you add/remove columns from the entity
  */
 export function getCreatedByGenericSelectableFields(
@@ -112,6 +113,40 @@ export function getCreatedByGenericSelectableFields(
     `${CREATEDBY_USER_QUERY_ALIAS}.updatedAt`,
     ...columns.map(
       (column) => `${CREATEDBY_USER_QUERY_ALIAS}.${column.propertyName}`,
+    ),
+  ];
+}
+
+/**
+ * Dynamically extract all column names from the User entity for assigned by relation using TypeORM metadata
+ * This automatically updates when you add/remove columns from the entity
+ */
+export function getAssignedByGenericSelectableFields(
+  fields?: string[],
+): string[] {
+  const metadata = getMetadataArgsStorage();
+
+  const columns = metadata.columns.filter((column) => column.target === User);
+
+  if (fields && fields.length > 0) {
+    return [
+      ...fields
+        .filter((field) =>
+          columns.some((column) => column.propertyName === field),
+        )
+        .flatMap((field) => `${ASSIGNED_BY_USER_QUERY_ALIAS}.${field}`),
+      `${ASSIGNED_BY_USER_QUERY_ALIAS}.id`,
+      `${ASSIGNED_BY_USER_QUERY_ALIAS}.createdAt`,
+      `${ASSIGNED_BY_USER_QUERY_ALIAS}.updatedAt`,
+    ];
+  }
+
+  return [
+    `${ASSIGNED_BY_USER_QUERY_ALIAS}.id`,
+    `${ASSIGNED_BY_USER_QUERY_ALIAS}.createdAt`,
+    `${ASSIGNED_BY_USER_QUERY_ALIAS}.updatedAt`,
+    ...columns.map(
+      (column) => `${ASSIGNED_BY_USER_QUERY_ALIAS}.${column.propertyName}`,
     ),
   ];
 }

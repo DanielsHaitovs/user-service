@@ -17,6 +17,7 @@ import {
   ApiProperty,
   ApiPropertyOptional,
   IntersectionType,
+  OmitType,
 } from '@nestjs/swagger';
 
 import {
@@ -44,11 +45,13 @@ export class UserQueryParametersDto {
     isArray: true,
     format: 'uuid',
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
   @IsUUID('4', { each: true, message: 'Each id must be a valid UUIDv4' })
-  ids: UUID[] | undefined;
+  ids?: UUID[];
 
   @ApiPropertyOptional({
     description:
@@ -56,11 +59,12 @@ export class UserQueryParametersDto {
     type: String,
     isArray: true,
     maxItems: 100,
+    required: false,
   })
   @IsString({ each: true })
   @ToArray()
   @IsOptional()
-  firstNames: string[] | undefined;
+  firstNames?: string[];
 
   @ApiPropertyOptional({
     description:
@@ -68,11 +72,12 @@ export class UserQueryParametersDto {
     type: String,
     isArray: true,
     maxItems: 100,
+    required: false,
   })
   @IsString({ each: true })
   @ToArray()
   @IsOptional()
-  lastNames: string[] | undefined;
+  lastNames?: string[];
 
   @ApiPropertyOptional({
     description: 'Filter by countries - supports multiple countries',
@@ -80,11 +85,13 @@ export class UserQueryParametersDto {
     isArray: true,
     enum: COUNTRIES,
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
   @IsEnum(COUNTRIES, { each: true })
-  countries?: string[] | undefined;
+  countries?: string[];
 
   @ApiPropertyOptional({
     description:
@@ -93,12 +100,12 @@ export class UserQueryParametersDto {
     isArray: true,
     format: 'email',
     uniqueItems: true,
-    maxItems: 50,
+    maxItems: 100,
   })
   @IsEmail({}, { each: true })
   @ToArray()
   @IsOptional()
-  emails: string[] | undefined;
+  emails?: string[];
 
   @ApiPropertyOptional({
     description: 'Filter by phone numbers - supports multiple contact methods',
@@ -106,17 +113,19 @@ export class UserQueryParametersDto {
     isArray: true,
     format: 'phone',
     uniqueItems: true,
-    maxItems: 50,
+    maxItems: 100,
+    required: false,
   })
   @IsString({ each: true })
   @ToArray()
   @IsOptional()
-  phoneNumbers: string[] | undefined;
+  phoneNumbers?: string[];
 
   @ApiPropertyOptional({
     description:
       'Filter by account activation status - false excludes suspended users',
     type: Boolean,
+    required: false,
   })
   @IsOptional()
   @ToBoolean()
@@ -127,6 +136,7 @@ export class UserQueryParametersDto {
     description:
       'Filter by account email verification status - false excludes unverified users',
     type: Boolean,
+    required: false,
   })
   @IsOptional()
   @ToBoolean()
@@ -139,6 +149,8 @@ export class UserQueryParametersDto {
     isArray: true,
     format: 'uuid',
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
@@ -146,7 +158,7 @@ export class UserQueryParametersDto {
     each: true,
     message: 'Each departmentId must be a valid UUIDv4',
   })
-  createdByIds: UUID[] | undefined;
+  createdByIds?: UUID[];
 
   @ApiPropertyOptional({
     description: 'Filter by specific departments UUIDs for bulk operations',
@@ -154,6 +166,8 @@ export class UserQueryParametersDto {
     isArray: true,
     format: 'uuid',
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
@@ -161,7 +175,7 @@ export class UserQueryParametersDto {
     each: true,
     message: 'Each departmentId must be a valid UUIDv4',
   })
-  departmentIds: UUID[] | undefined;
+  departmentIds?: UUID[];
 
   @ApiPropertyOptional({
     description: 'Filter by specific departments countries for bulk operations',
@@ -169,11 +183,13 @@ export class UserQueryParametersDto {
     isArray: true,
     enum: COUNTRIES,
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
   @IsEnum(COUNTRIES, { each: true })
-  departmentCountries: string[] | undefined;
+  departmentCountries?: string[];
 
   @ApiPropertyOptional({
     description: 'Filter by specific role UUIDs for bulk operations',
@@ -181,22 +197,26 @@ export class UserQueryParametersDto {
     isArray: true,
     format: 'uuid',
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
   @IsUUID('4', { each: true, message: 'Each roleId must be a valid UUIDv4' })
-  roleIds: UUID[] | undefined;
+  roleIds?: UUID[];
 
   @ApiPropertyOptional({
     description: 'Filter by specific role names for bulk operations',
     type: String,
     isArray: true,
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
   @IsString({ each: true })
-  roleNames: string[] | undefined;
+  roleNames?: string[];
 
   @ApiPropertyOptional({
     description: 'Filter by specific permission UUIDs for bulk operations',
@@ -204,6 +224,8 @@ export class UserQueryParametersDto {
     isArray: true,
     format: 'uuid',
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
@@ -211,18 +233,20 @@ export class UserQueryParametersDto {
     each: true,
     message: 'Each permissionId must be a valid UUIDv4',
   })
-  permissionIds: UUID[] | undefined;
+  permissionIds?: UUID[];
 
   @ApiPropertyOptional({
     description: 'Filter by specific permission codes for bulk operations',
     type: String,
     isArray: true,
     uniqueItems: true,
+    maxItems: 100,
+    required: false,
   })
   @ToArray()
   @IsOptional()
   @IsString({ each: true })
-  permissionCodes: string[] | undefined;
+  permissionCodes?: string[];
 
   constructor(
     ids?: UUID[],
@@ -522,7 +546,9 @@ export class UserSortDto {
   }
 }
 
-export class UserDateRequestDto extends QueryDateRequestDto {
+export class UserDateRequestDto extends OmitType(QueryDateRequestDto, [
+  'dateFilterParam',
+]) {
   @ApiPropertyOptional({
     description: 'Additional date filter parameter for custom filtering logic',
     example: 'createdAt',
@@ -581,7 +607,7 @@ export class GetUsersByEmailsRequestDto extends UserRequestDto {
     nullable: false,
     format: 'email',
     uniqueItems: true,
-    maxItems: 50,
+    maxItems: 100,
   })
   @IsEmail({}, { each: true })
   @ToArray()

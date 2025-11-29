@@ -2,7 +2,7 @@ import type {
   CreateRoleDto,
   RoleListResponseDto,
   UpdateRoleDto,
-} from '@/role/dto/role.dto';
+} from '@/modules/role/dto/role/role.dto';
 import type { Roles } from '@/role/entities/role.entity';
 import type { PermissionService } from '@/role/services/permission/permission.service';
 import type { QueryService } from '@/role/services/role/query.service';

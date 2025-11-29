@@ -1,8 +1,10 @@
 import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
+import { ToArray } from '@/common/decorators/array.decorator';
+import { ToBoolean } from '@/common/decorators/boolean.decorator';
 import { DepartmentResponseDto } from '@/department/dto/department.dto';
 import { COUNTRIES } from '@/lib/const/countries.const';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
-import { EXAMPLE_USER_COUNTRY, EXAMPLE_USER_ID } from '@/lib/const/user.const';
+import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import { UserRoleResponseDto } from '@/user/dto/userRole.dto';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
@@ -15,6 +17,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   MinLength,
   ValidateNested,
@@ -29,12 +32,12 @@ import { UUID } from 'crypto';
  */
 export class UserBaseDto {
   @ApiProperty({
-    description: 'Country where the department is located',
-    example: EXAMPLE_USER_COUNTRY,
+    description: 'Country where the user is located',
     required: true,
     minLength: 1,
     maxLength: 100,
     type: String,
+    enum: COUNTRIES,
   })
   @IsEnum(COUNTRIES)
   @MinLength(1)
@@ -95,9 +98,13 @@ export class UserBaseDto {
     example: '+1234567890',
     maxLength: 20,
     type: String,
+    required: false,
     pattern: '^\\+[1-9]\\d{1,14}$',
   })
-  // @IsPhoneNumber()
+  @IsOptional()
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: 'phone must be a valid E.164 phone number',
+  })
   @MaxLength(20)
   phone: string;
 
@@ -150,25 +157,29 @@ export class CreateUserDto extends UserBaseDto {
   })
   @IsOptional()
   @IsBoolean()
-  isTwoFactorEnabled: boolean;
+  @ToBoolean()
+  isTwoFactorEnabled?: boolean;
 
-  // @ApiPropertyOptional({
-  //   description: 'Email verification status - required for full account access',
-  //   example: false,
-  //   type: Boolean,
-  //   default: false,
-  // })
-  // @IsBoolean()
-  // isEmailVerified: boolean;
+  @ApiPropertyOptional({
+    description: 'Email verification status - required for full account access',
+    example: false,
+    type: Boolean,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @ToBoolean()
+  isEmailVerified?: boolean;
 
   @ApiProperty({
     description: 'Unique identifier for the department the user belongs to',
-    example: [EXAMPLE_USER_ID],
-    required: true,
+    required: false,
     type: String,
     isArray: true,
     format: 'uuid',
   })
+  @ToArray()
+  @IsOptional()
   @IsUUID(4, { each: true })
   departmentIds: UUID[];
 
@@ -180,6 +191,8 @@ export class CreateUserDto extends UserBaseDto {
     required: false,
     format: 'uuid',
   })
+  @ToArray()
+  @IsOptional()
   @IsUUID(4, { each: true })
   roleIds: UUID[];
 
@@ -192,16 +205,16 @@ export class CreateUserDto extends UserBaseDto {
     phone: string,
     dateOfBirth: Date,
     isActive: boolean,
-    // isEmailVerified: boolean,
-    isTwoFactorEnabled: boolean,
+    isEmailVerified: boolean | undefined,
+    isTwoFactorEnabled: boolean | undefined,
     departmentIds: UUID[],
     roleIds: UUID[],
   ) {
     super(country, firstName, lastName, email, password, phone, dateOfBirth);
     this.isActive = isActive;
-    // this.isEmailVerified = isEmailVerified;
+    this.isEmailVerified = isEmailVerified ?? false;
     this.departmentIds = departmentIds;
-    this.isTwoFactorEnabled = isTwoFactorEnabled;
+    this.isTwoFactorEnabled = isTwoFactorEnabled ?? true;
     this.roleIds = roleIds;
   }
 }

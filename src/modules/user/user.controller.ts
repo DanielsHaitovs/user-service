@@ -4,6 +4,7 @@ import { DeleteResponseDto } from '@/base/dto/response.dto';
 import { ApiOkList } from '@/common/decorators/api.decorator';
 import { TraceController } from '@/common/decorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/common/decorators/user.decorator';
+import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
 import { READ_DEPARTMENT } from '@/lib/const/department.const';
 import { READ_ROLE } from '@/lib/const/role.const';
 import {
@@ -51,8 +52,6 @@ import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
-import { ParseUUIDArrayPipe } from '../../common/pipes/uuidArray.pipe';
-
 /**
  * REST API controller for comprehensive user management operations.
  *
@@ -70,8 +69,7 @@ export class UserController extends BaseController<
   UserSearchRequestDto,
   UpdateUserDto,
   UserResponseDto,
-  UserListResponseDto,
-  FilterUsersQueryDto
+  UserListResponseDto
 > {
   constructor(
     protected readonly userService: UserService,
@@ -136,19 +134,17 @@ export class UserController extends BaseController<
     ...USER_MIN_API_OK_LIST,
   })
   async findByIds(
-    @Query() query: GetUsersByIdsRequestDto,
+    @Query() filters: GetUsersByIdsRequestDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
     const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
       this.extractAccess(requestedByUser);
 
-    const { ids, ...control } = query;
     return await this.userService.findByIds({
-      ids,
+      filters,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
-      control,
     });
   }
 
@@ -163,19 +159,17 @@ export class UserController extends BaseController<
     ...USER_MIN_API_OK_LIST,
   })
   async findBy(
-    @Query() query: GetUsersByEmailsRequestDto,
+    @Query() filters: GetUsersByEmailsRequestDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
     const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
       this.extractAccess(requestedByUser);
 
-    const { emails, ...control } = query;
     return await this.userService.findByEmails({
-      emails,
+      filters,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
-      control,
     });
   }
 
@@ -326,7 +320,7 @@ export class UserController extends BaseController<
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
-      requestedByUser: requestedByUser.id,
+      requestedByUserId: requestedByUser.id,
     });
   }
 }

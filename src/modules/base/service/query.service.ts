@@ -4,6 +4,7 @@ import {
   SortDto,
 } from '@/base/dto/pagination.dto';
 import { OptimizeCriteria, QueryRequest } from '@/base/interface/query.request';
+import { hashObject } from '@/utils/token-generator.util';
 import { ForbiddenException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
@@ -14,8 +15,6 @@ import {
   ObjectLiteral,
   SelectQueryBuilder,
 } from 'typeorm';
-
-import { hashObject } from '../../../utils/token-generator.util';
 
 /**
  * Base service providing reusable TypeORM query building utilities.
@@ -458,11 +457,11 @@ export class EntityQueryService {
   async paginatedResult<T extends ObjectLiteral, K extends string>({
     query,
     alias,
-    requestedByUser,
+    requestedByUserId,
   }: {
     query: SelectQueryBuilder<T>;
     alias: K;
-    requestedByUser?: UUID;
+    requestedByUserId?: UUID;
   }): Promise<PaginatedResponseDto & Record<K, T[]>> {
     const page = query.expressionMap.skip ?? 0;
     const limit = query.expressionMap.take ?? 10;
@@ -470,7 +469,7 @@ export class EntityQueryService {
     query.distinct(true);
 
     const cacheKey = hashObject({
-      requestedByUser,
+      requestedByUserId,
       query: query.getQueryAndParameters(),
     });
 

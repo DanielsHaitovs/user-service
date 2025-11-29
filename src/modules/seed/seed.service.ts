@@ -8,12 +8,14 @@ import {
 } from '@/lib/const/department.const';
 import {
   CREATE_PERMISSION,
-  CREATE_ROLE,
   DELETE_PERMISSION,
-  DELETE_ROLE,
   READ_PERMISSION,
-  READ_ROLE,
   UPDATE_PERMISSION,
+} from '@/lib/const/permission.const';
+import {
+  CREATE_ROLE,
+  DELETE_ROLE,
+  READ_ROLE,
   UPDATE_ROLE,
 } from '@/lib/const/role.const';
 import {

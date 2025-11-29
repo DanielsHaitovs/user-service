@@ -1,9 +1,7 @@
 import { OptimizeCriteria } from '@/base/interface/query.request';
 import { EntityQueryService } from '@/base/service/query.service';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { Injectable } from '@nestjs/common';
 

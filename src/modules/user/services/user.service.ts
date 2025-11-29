@@ -3,7 +3,11 @@ import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
 } from '@/lib/const/user.const';
-import { UserRequestDto, UserSearchRequestDto } from '@/user/dto/query.dto';
+import {
+  GetUsersByEmailsRequestDto,
+  GetUsersByIdsRequestDto,
+  UserSearchRequestDto,
+} from '@/user/dto/query.dto';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -11,7 +15,7 @@ import {
   UserResponseDto,
 } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
-import { HelperService } from '@/user/helper/helper.service';
+import { UserHelperService } from '@/user/helper/helper.service';
 import { QueryService } from '@/user/services/query.service';
 import { UserRoleService } from '@/user/services/roles/user-role.service';
 import {
@@ -35,7 +39,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     private readonly queryService: QueryService,
     private readonly userRoleService: UserRoleService,
-    private readonly helperService: HelperService,
+    private readonly helperService: UserHelperService,
   ) {}
 
   /**
@@ -90,28 +94,20 @@ export class UserService {
    * @throws EntityNotFoundError when user ID doesn't exist
    */
   async findByIds({
-    ids,
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
-    control,
+    filters,
   }: {
-    ids: string[];
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
-    control: UserRequestDto;
+    filters: GetUsersByIdsRequestDto;
   }): Promise<UserListResponseDto> {
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
-    this.queryService.whereIn({
-      query,
-      field: 'id',
-      values: ids,
-      condition: 'AND',
-    });
-
     const {
+      ids,
       page,
       limit,
       sortField,
@@ -125,7 +121,14 @@ export class UserService {
       includeDepartments,
       includeRoles,
       includePermissions,
-    } = control;
+    } = filters;
+
+    this.queryService.whereIn({
+      query,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
+    });
 
     if (includeCreatedBy) {
       this.queryService.joinRelation({
@@ -199,29 +202,20 @@ export class UserService {
    * @throws EntityNotFoundError when email is not registered
    */
   async findByEmails({
-    emails,
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
-    control,
+    filters,
   }: {
-    emails: string[];
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
-    control: UserRequestDto;
+    filters: GetUsersByEmailsRequestDto;
   }): Promise<UserListResponseDto> {
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
-    this.queryService.whereIn({
-      query,
-      field: 'email',
-      values: emails,
-      condition: 'AND',
-      relationAlias: USER_QUERY_ALIAS,
-    });
-
     const {
+      emails,
       page,
       limit,
       sortField,
@@ -235,7 +229,15 @@ export class UserService {
       includeDepartments,
       includeRoles,
       includePermissions,
-    } = control;
+    } = filters;
+
+    this.queryService.whereIn({
+      query,
+      field: 'email',
+      values: emails,
+      condition: 'AND',
+      relationAlias: USER_QUERY_ALIAS,
+    });
 
     if (includeCreatedBy) {
       this.queryService.joinRelation({
@@ -481,11 +483,11 @@ export class UserService {
     }
 
     const { users: existingUsers } = await this.findByIds({
-      ids,
       hasAccessToRoles: true,
       hasAccessToDepartments: false,
       hasAccessToPermissions: false,
-      control: {
+      filters: {
+        ids,
         includeRoles: true,
         includeDepartments: false,
         includePermissions: false,

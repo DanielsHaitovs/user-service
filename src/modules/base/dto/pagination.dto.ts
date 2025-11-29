@@ -149,6 +149,19 @@ export class SortDto {
 }
 
 export class QueryDateRequestDto {
+  @ApiPropertyOptional({
+    description: 'Additional date filter parameter for custom filtering logic',
+    example: 'createdAt',
+    enum: ['createdAt', 'updatedAt'],
+    type: String,
+  })
+  @IsEnum(['createdAt', 'updatedAt'], {
+    message: 'dateFilterParam must be a valid department date field',
+    each: true,
+  })
+  @IsOptional()
+  dateFilterParam?: string | undefined;
+
   @ApiPropertyOptional({ type: Date })
   @IsOptional()
   @Type(() => Date)
@@ -161,9 +174,14 @@ export class QueryDateRequestDto {
   @IsDate()
   dateTo?: Date | undefined;
 
-  constructor(dateFrom: Date | undefined, dateTo: Date | undefined) {
+  constructor(
+    dateFrom: Date | undefined,
+    dateTo: Date | undefined,
+    dateFilterParam?: string,
+  ) {
     this.dateFrom = dateFrom;
     this.dateTo = dateTo;
+    this.dateFilterParam = dateFilterParam;
   }
 }
 

@@ -11,7 +11,7 @@ import { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 
 @Injectable()
-export class HelperService extends EntityQueryService {
+export class DepartmentHelperService extends EntityQueryService {
   /** Checks for name conflicts when creating or updating a department.
    *
    * @param id - Optional UUID of the department being updated

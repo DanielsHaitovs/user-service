@@ -1,7 +1,7 @@
 import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
 import { ToArray } from '@/common/decorators/array.decorator';
 import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
-import { RoleResponseDto } from '@/role/dto/role.dto';
+import { RoleResponseDto } from '@/modules/role/dto/role/role.dto';
 import { GetUserDto } from '@/user/dto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
 

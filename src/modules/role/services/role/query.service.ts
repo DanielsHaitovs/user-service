@@ -1,42 +1,48 @@
 import { OptimizeCriteria } from '@/base/interface/query.request';
 import { EntityQueryService } from '@/base/service/query.service';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
-import { RolesQueryDto } from '@/role/dto/query.dto';
-import { RoleListResponseDto } from '@/role/dto/role.dto';
+import { FilterRolesQueryDto } from '@/modules/role/dto/role/query.dto';
+import { RoleListResponseDto } from '@/modules/role/dto/role/role.dto';
 import { Roles } from '@/role/entities/role.entity';
 import { Injectable } from '@nestjs/common';
 
+import { UUID } from 'crypto';
+
 @Injectable()
 export class QueryService extends EntityQueryService {
-  async getRoles(
-    filters: RolesQueryDto,
-    hasAccessToPermissions: boolean,
-    hasAccessToCreatedBy: boolean,
-  ): Promise<RoleListResponseDto> {
+  async getRoles({
+    filters,
+    hasAccessToPermissions,
+    hasAccessToCreatedBy,
+    requestedByUserId,
+  }: {
+    filters: FilterRolesQueryDto;
+    hasAccessToPermissions: boolean;
+    hasAccessToCreatedBy: boolean;
+    requestedByUserId: UUID;
+  }): Promise<RoleListResponseDto> {
     const {
-      rolesQuery: { ids, names, createdByIds },
-      permissionsQuery: {
-        ids: permissionIds,
-        names: permissionNames,
-        codes: permissionCodes,
-      },
-      sort,
-      pagination,
+      ids,
+      names,
+      createdByIds,
+      // permissionIds,
+      // permissionNames,
+      // permissionCodes,
+      sortField,
+      sortOrder,
+      page,
+      limit,
       dateFilterParam,
       dateFrom,
       dateTo,
-      selectRoles,
-      selectPermissions,
-      selectCreatedBy,
+      // selectRoleFields,
+      // selectPermissionFields,
+      // selectCreatedByFields,
+      includePermissions,
+      includeCreatedBy,
     } = filters;
-
-    let { includePermissions, includeCreatedBy } = filters;
-    includePermissions ??= hasAccessToPermissions;
-    includeCreatedBy ??= hasAccessToCreatedBy;
 
     const query = this.initQuery({ entity: Roles, alias: ROLE_QUERY_ALIAS });
 
@@ -63,19 +69,19 @@ export class QueryService extends EntityQueryService {
     }
 
     // Join permission relation if specified or if IDs are provided
-    this.joinEntityRelation({
-      query,
-      relationAlias: PERMISSION_QUERY_ALIAS,
-      shouldJoin: includePermissions && hasAccessToPermissions,
-      condition: 'AND',
-      options: {
-        filters: {
-          id: permissionIds,
-          code: permissionCodes,
-          name: permissionNames,
-        },
-      },
-    });
+    // this.joinEntityRelation({
+    //   query,
+    //   relationAlias: PERMISSION_QUERY_ALIAS,
+    //   shouldJoin: includePermissions && hasAccessToPermissions,
+    //   condition: 'AND',
+    //   options: {
+    //     filters: {
+    //       id: permissionIds,
+    //       code: permissionCodes,
+    //       name: permissionNames,
+    //     },
+    //   },
+    // });
 
     // Join createdBy relation if specified or if IDs are provided
     this.joinEntityRelation({
@@ -93,7 +99,10 @@ export class QueryService extends EntityQueryService {
     // Apply sorting, pagination, and field selection optimizations
     this.optimize({
       query,
-      pagination,
+      pagination: {
+        page,
+        limit,
+      },
       criteria: this.roleQueryCriteria({
         includeCreatedBy,
         includePermissions,
@@ -101,16 +110,20 @@ export class QueryService extends EntityQueryService {
         hasAccessToPermissions,
       }),
       select: [
-        ...(selectRoles ?? []),
-        ...(selectPermissions ?? []),
-        ...(selectCreatedBy ?? []),
+        // ...selectRoleFields,
+        // ...selectPermissionFields,
+        // ...selectCreatedByFields,
       ],
-      sort,
+      sort: {
+        sortField,
+        sortOrder,
+      },
     });
 
     return await this.paginatedResult({
       query,
       alias: 'roles',
+      requestedByUserId,
     });
   }
 

@@ -1,10 +1,11 @@
 import type { PaginationDto } from '@/base/dto/pagination.dto';
-import { PERMISSION_QUERY_ALIAS } from '@/lib/const/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
 import type {
   CreatePermissionDto,
   PermissionListResponseDto,
+  PermissionResponseDto,
   UpdatePermissionDto,
-} from '@/role/dto/permission.dto';
+} from '@/modules/role/dto/permission/permission.dto';
 import type { Permission } from '@/role/entities/permissions.entity';
 import type { PermissionService } from '@/role/services/permission/permission.service';
 import type { RoleService } from '@/role/services/role/role.service';
@@ -18,6 +19,8 @@ import { faker } from '@faker-js/faker';
 import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
+
+import { getPermissionsGenericSelectableFields } from '../../src/modules/role/helper/role-fields.util';
 
 export async function createPermissions({
   roleService,
@@ -81,7 +84,7 @@ export async function findPermissionsByIds({
   hasAccessToCreatedBy: boolean;
   hasAccessToRole: boolean;
   pagination: PaginationDto;
-}): Promise<Permission[]> {
+}): Promise<PermissionResponseDto[]> {
   const newPermissions = await createPermissions({
     roleService,
     permissionService,
@@ -93,11 +96,21 @@ export async function findPermissionsByIds({
   const names = newPermissions.map((p) => p.name);
   const codes = newPermissions.map((p) => p.code);
 
-  const permissions = await permissionService.findByIds({
-    ids,
+  const { permissions } = await permissionService.findByIds({
     hasAccessToCreatedBy,
     hasAccessToRole,
-    pagination,
+    filters: {
+      ids,
+      page: pagination.page,
+      limit: pagination.limit,
+      includeCreatedBy: false,
+      includeRoles: false,
+      selectCreatedByFields: [],
+      selectRoleFields: [],
+      sortField: undefined,
+      sortOrder: 'ASC',
+      selectPermissionFields: getPermissionsGenericSelectableFields({}),
+    },
   });
 
   validatePermissionResponse({

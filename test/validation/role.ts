@@ -1,4 +1,4 @@
-import type { RoleResponseDto } from '@/role/dto/role.dto';
+import type { RoleResponseDto } from '@/modules/role/dto/role/role.dto';
 import type { Roles } from '@/role/entities/role.entity';
 import { validatePermissionResponse } from '@/test/validation/permissions';
 

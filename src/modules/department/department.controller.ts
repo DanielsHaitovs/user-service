@@ -64,8 +64,7 @@ export class DepartmentController extends BaseController<
   DepartmentSearchRequestDto,
   UpdateDepartmentDto,
   DepartmentResponseDto,
-  DepartmentListResponseDto,
-  FilterDepartmentsQueryDto
+  DepartmentListResponseDto
 > {
   constructor(
     private readonly departmentService: DepartmentService,
@@ -280,7 +279,7 @@ export class DepartmentController extends BaseController<
     return await this.queryService.getDepartements({
       filters,
       hasAccessToUser,
-      requestedByUser: requestedByUser.id,
+      requestedByUserId: requestedByUser.id,
     });
   }
 }

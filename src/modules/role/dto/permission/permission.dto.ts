@@ -3,9 +3,9 @@ import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
   EXAMPLE_PERMISSION_NAME,
-  EXAMPLE_ROLE_ID,
-} from '@/lib/const/role.const';
-import { RoleResponseDto } from '@/role/dto/role.dto';
+} from '@/lib/const/permission.const';
+import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
+import { RoleResponseDto } from '@/modules/role/dto/role/role.dto';
 import { GetUserDto } from '@/user/dto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 

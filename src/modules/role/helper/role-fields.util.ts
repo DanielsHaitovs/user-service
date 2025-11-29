@@ -1,7 +1,5 @@
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { Permission } from '@/role/entities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
 import { getCreatedByGenericSelectableFields } from '@/user/helper/user-fields.util';

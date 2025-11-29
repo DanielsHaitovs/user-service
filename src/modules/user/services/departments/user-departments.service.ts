@@ -1,5 +1,5 @@
 import { User } from '@/user/entities/user.entity';
-import { HelperService } from '@/user/helper/helper.service';
+import { UserHelperService } from '@/user/helper/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -11,7 +11,7 @@ export class UserDepartmentsService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly helperService: HelperService,
+    private readonly helperService: UserHelperService,
   ) {}
 
   /**

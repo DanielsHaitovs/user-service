@@ -1,18 +1,21 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import { DeleteResponseDto } from '@/base/dto/response.dto';
 import { PostgresQueryFailedError } from '@/base/interface/query.error';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import {
   CreatePermissionDto,
   PermissionListResponseDto,
   UpdatePermissionDto,
-} from '@/role/dto/permission.dto';
+} from '@/modules/role/dto/permission/permission.dto';
+import {
+  GetPermissionsByCodesQueryDto,
+  GetPermissionsByIdsQueryDto,
+  PermissionSearchRequestDto,
+} from '@/modules/role/dto/permission/permission.query';
 import { Permission } from '@/role/entities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
-import { HelperService } from '@/role/helper/helper.service';
+import { RoleHelperService } from '@/role/helper/helper.service';
 import { QueryService } from '@/role/services/permission/query.service';
 import { User } from '@/user/entities/user.entity';
 import {
@@ -31,7 +34,7 @@ export class PermissionService {
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
     private readonly queryService: QueryService,
-    private readonly helperService: HelperService,
+    private readonly helperService: RoleHelperService,
   ) {}
 
   /**
@@ -102,32 +105,39 @@ export class PermissionService {
    * @throws NotFoundException if no permissions are found with the given IDs.
    */
   async findByIds({
-    ids,
+    filters,
     hasAccessToRole,
     hasAccessToCreatedBy,
-    pagination,
-    select,
-    sort,
   }: {
-    ids: UUID[];
+    filters: GetPermissionsByIdsQueryDto;
     hasAccessToRole: boolean;
     hasAccessToCreatedBy: boolean;
-    pagination: PaginationDto;
-    select?: string[];
-    sort?: SortDto;
-  }): Promise<Permission[]> {
+  }): Promise<PermissionListResponseDto> {
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
     );
 
-    if (hasAccessToRole) {
+    const {
+      ids,
+      page,
+      limit,
+      selectPermissionFields,
+      selectCreatedByFields,
+      selectRoleFields,
+      sortField,
+      sortOrder,
+      includeCreatedBy,
+      includeRoles,
+    } = filters;
+
+    if (hasAccessToRole && includeRoles) {
       this.queryService.joinRelation<Permission>({
         query,
         alias: ROLE_QUERY_ALIAS,
       });
     }
 
-    if (hasAccessToCreatedBy) {
+    if (hasAccessToCreatedBy && includeCreatedBy) {
       this.queryService.joinRelation<Permission>({
         query,
         alias: CREATEDBY_USER_QUERY_ALIAS,
@@ -143,30 +153,34 @@ export class PermissionService {
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { page, limit },
+      select: [
+        ...selectPermissionFields,
+        ...selectCreatedByFields,
+        ...selectRoleFields,
+      ],
+      sort: { sortField, sortOrder },
       criteria: this.queryService.permissionQueryCriteria({
         hasAccessToCreatedBy,
-        includeCreatedBy: true,
+        includeCreatedBy,
         hasAccessToRole,
-        includeRoles: true,
+        includeRoles,
       }),
     });
 
-    const { permissions } = await this.queryService.paginatedResult({
+    const result = await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
     });
 
-    if (permissions.length === 0) {
+    if (result.permissions.length === 0) {
       throw new EntityNotFoundError(
         'Permissions',
         `Permissions not found: ${ids.join(', ')}`,
       );
     }
 
-    return permissions;
+    return result;
   }
 
   /**
@@ -176,32 +190,39 @@ export class PermissionService {
    * @throws NotFoundException if no permissions are found with the given codes.
    */
   async findByCodes({
-    codes,
+    filters,
     hasAccessToRole,
     hasAccessToCreatedBy,
-    pagination,
-    select,
-    sort,
   }: {
-    codes: string[];
+    filters: GetPermissionsByCodesQueryDto;
     hasAccessToRole: boolean;
     hasAccessToCreatedBy: boolean;
-    pagination: PaginationDto;
-    select?: string[];
-    sort?: SortDto;
-  }): Promise<Permission[]> {
+  }): Promise<PermissionListResponseDto> {
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
     );
 
-    if (hasAccessToRole) {
+    const {
+      codes,
+      page,
+      limit,
+      selectPermissionFields,
+      selectCreatedByFields,
+      selectRoleFields,
+      sortField,
+      sortOrder,
+      includeCreatedBy,
+      includeRoles,
+    } = filters;
+
+    if (hasAccessToRole && includeRoles) {
       this.queryService.joinRelation<Permission>({
         query,
         alias: ROLE_QUERY_ALIAS,
       });
     }
 
-    if (hasAccessToCreatedBy) {
+    if (hasAccessToCreatedBy && includeCreatedBy) {
       this.queryService.joinRelation<Permission>({
         query,
         alias: CREATEDBY_USER_QUERY_ALIAS,
@@ -217,30 +238,34 @@ export class PermissionService {
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { page, limit },
+      select: [
+        ...selectPermissionFields,
+        ...selectCreatedByFields,
+        ...selectRoleFields,
+      ],
+      sort: { sortField, sortOrder },
       criteria: this.queryService.permissionQueryCriteria({
         hasAccessToCreatedBy,
-        includeCreatedBy: true,
+        includeCreatedBy,
         hasAccessToRole,
-        includeRoles: true,
+        includeRoles,
       }),
     });
 
-    const { permissions } = await this.queryService.paginatedResult({
+    const result = await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
     });
 
-    if (permissions.length === 0) {
+    if (result.permissions.length === 0) {
       throw new EntityNotFoundError(
         'Permissions',
         `Permissions not found: ${codes.join(', ')}`,
       );
     }
 
-    return permissions;
+    return result;
   }
 
   /**
@@ -258,15 +283,24 @@ export class PermissionService {
    */
   async searchFor({
     value,
-    pagination,
-    sort,
-    select,
+    control,
   }: {
-    value: string;
-    pagination: PaginationDto;
-    sort: SortDto;
-    select?: string[];
+    value?: string;
+    control: PermissionSearchRequestDto;
   }): Promise<PermissionListResponseDto> {
+    if (value === undefined || value.trim() === '') {
+      return {
+        permissions: [],
+        total: 0,
+        page: 1,
+        limit: control.limit,
+        totalPages: 0,
+      };
+    }
+
+    const { page, limit, sortField, sortOrder, selectPermissionFields } =
+      control;
+
     const query = this.permissionRepository
       .createQueryBuilder(PERMISSION_QUERY_ALIAS)
       .where(`${PERMISSION_QUERY_ALIAS}.name ILIKE :value`, {
@@ -281,9 +315,9 @@ export class PermissionService {
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { page, limit },
+      select: selectPermissionFields,
+      sort: { sortField, sortOrder },
       criteria: this.queryService.permissionQueryCriteria({
         hasAccessToCreatedBy: false,
         includeCreatedBy: false,
@@ -358,9 +392,9 @@ export class PermissionService {
    * @returns Promise resolving to void
    * @throws NotFoundException when any specified permission ID doesn't exist
    */
-  async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
+  async deleteByIds(ids: UUID[]): Promise<DeleteResponseDto> {
     if (ids.length === 0) {
-      return { deleted: 0 };
+      return { deleted: 0, message: 'No permissions to delete' };
     }
 
     const existingPermissions = await this.helperService.getPermissionsBy({
@@ -380,6 +414,9 @@ export class PermissionService {
       .where('id IN (:...ids)', { ids })
       .execute();
 
-    return { deleted: result.affected ?? 0 };
+    return {
+      deleted: result.affected ?? 0,
+      message: 'Permissions deleted successfully',
+    };
   }
 }

@@ -1,9 +1,9 @@
 import { EntityQueryService } from '@/base/service/query.service';
 import { Departments } from '@/department/entities/department.entity';
-import { HelperService as DepartmentHelperService } from '@/department/helper/helper.service';
+import { DepartmentHelperService } from '@/department/helper/helper.service';
 import { USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { Roles } from '@/role/entities/role.entity';
-import { HelperService as RoleHelperService } from '@/role/helper/helper.service';
+import { RoleHelperService } from '@/role/helper/helper.service';
 import { User } from '@/user/entities/user.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { QueryService } from '@/user/services/query.service';
@@ -17,12 +17,12 @@ import { UUID } from 'crypto';
 import { EntityManager, EntityNotFoundError } from 'typeorm';
 
 @Injectable()
-export class HelperService extends EntityQueryService {
+export class UserHelperService extends EntityQueryService {
   constructor(
+    protected userEntity: EntityManager,
     private readonly departmentsService: DepartmentHelperService,
     private readonly roleService: RoleHelperService,
     private readonly userQuery: QueryService,
-    protected userEntity: EntityManager,
   ) {
     super(userEntity);
   }
@@ -52,7 +52,7 @@ export class HelperService extends EntityQueryService {
       user.departments = departments;
     }
 
-    if (roleIds == undefined || roleIds.length === 0) {
+    if (roleIds != undefined && roleIds.length > 0) {
       await this.roleService.getManyByIdsOrFail(roleIds);
     }
 

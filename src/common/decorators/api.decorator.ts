@@ -43,10 +43,12 @@ export interface ApiOkListOptions {
   body?: {
     description: string;
     type: Type<unknown>;
+    isArray?: boolean;
   };
   createdResponse?: {
     description: string;
     type: Type<unknown>;
+    isArray?: boolean;
   };
   conflictMessage?: {
     description?: string;
@@ -78,6 +80,7 @@ export const ApiOkList = (options: ApiOkListOptions): MethodDecorator => {
         description: options.body.description,
         type: options.body.type,
         required: true,
+        isArray: options.body.isArray ?? false,
       }),
     );
   }
@@ -87,6 +90,7 @@ export const ApiOkList = (options: ApiOkListOptions): MethodDecorator => {
       ApiCreatedResponse({
         description: options.createdResponse.description,
         type: options.createdResponse.type,
+        isArray: options.createdResponse.isArray ?? false,
       }),
     );
   }

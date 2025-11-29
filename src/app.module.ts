@@ -5,6 +5,7 @@ import { BaseModule } from '@/base/base.module';
 import { DepartmentModule } from '@/department/department.module';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
+import { SeedModule } from '@/seed/seed.module';
 import { UserModule } from '@/user/user.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -12,7 +13,6 @@ import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppController } from './modules/app.controller';
-import { SeedModule } from './modules/seed/seed.module';
 
 @Module({
   controllers: [AppController],

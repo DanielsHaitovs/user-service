@@ -1,16 +1,14 @@
 import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import {
   CreateRoleDto,
   RoleListResponseDto,
   UpdateRoleDto,
-} from '@/role/dto/role.dto';
+} from '@/modules/role/dto/role/role.dto';
 import { Roles } from '@/role/entities/role.entity';
-import { HelperService } from '@/role/helper/helper.service';
+import { RoleHelperService } from '@/role/helper/helper.service';
 import { QueryService } from '@/role/services/role/query.service';
 import { User } from '@/user/entities/user.entity';
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -25,7 +23,7 @@ export class RoleService {
     @InjectRepository(Roles)
     private readonly roleRepository: Repository<Roles>,
     private readonly queryService: QueryService,
-    private readonly helperService: HelperService,
+    private readonly helperService: RoleHelperService,
   ) {}
 
   /**

@@ -17,11 +17,11 @@ export class QueryService extends EntityQueryService {
   async getDepartements({
     filters,
     hasAccessToUser,
-    requestedByUser,
+    requestedByUserId,
   }: {
     filters: FilterDepartmentsQueryDto;
     hasAccessToUser: boolean;
-    requestedByUser: UUID;
+    requestedByUserId: UUID;
   }): Promise<DepartmentListResponseDto> {
     const {
       ids,
@@ -146,6 +146,7 @@ export class QueryService extends EntityQueryService {
     return await this.paginatedResult({
       query,
       alias: 'departments',
+      requestedByUserId,
     });
   }
 

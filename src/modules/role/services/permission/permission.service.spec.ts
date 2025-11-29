@@ -1,7 +1,7 @@
 import type {
   CreatePermissionDto,
   UpdatePermissionDto,
-} from '@/role/dto/permission.dto';
+} from '@/modules/role/dto/permission/permission.dto';
 import { PermissionService } from '@/role/services/permission/permission.service';
 import { RoleService } from '@/role/services/role/role.service';
 import { getSystemUserId } from '@/test/api/auth-user-api';

@@ -2,9 +2,9 @@ import { LoginDto } from '@/auth/dto/auth.dto';
 import { JWTPayload } from '@/auth/interfaces/req.interface';
 import {
   PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
   ROOT_ADMIN_PERMISSION,
-} from '@/lib/const/role.const';
+} from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import {
   SYSTEM_USER_EMAIL,
   USER_QUERY_ALIAS,

@@ -1,9 +1,7 @@
 import { EntityQueryService } from '@/base/service/query.service';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
-import { UpdatePermissionDto } from '@/role/dto/permission.dto';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
+import { UpdatePermissionDto } from '@/modules/role/dto/permission/permission.dto';
 import { Permission } from '@/role/entities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
 import {
@@ -16,7 +14,7 @@ import { UUID } from 'crypto';
 import { Brackets, EntityNotFoundError } from 'typeorm';
 
 @Injectable()
-export class HelperService extends EntityQueryService {
+export class RoleHelperService extends EntityQueryService {
   /**
    * Checks for role name conflicts when creating or updating a role.
    * Throws a ConflictException if a role with the same name already exists.

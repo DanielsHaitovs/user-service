@@ -10,7 +10,7 @@ import {
   DepartmentSearchRequestDto,
 } from '@/department/dto/query.dto';
 import { Departments } from '@/department/entities/department.entity';
-import { HelperService } from '@/department/helper/helper.service';
+import { DepartmentHelperService } from '@/department/helper/helper.service';
 import { QueryService } from '@/department/services/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import {
@@ -30,7 +30,7 @@ export class DepartmentService {
     @InjectRepository(Departments)
     private readonly departmentRepository: Repository<Departments>,
     private readonly queryService: QueryService,
-    private readonly helperService: HelperService,
+    private readonly helperService: DepartmentHelperService,
   ) {}
 
   /**

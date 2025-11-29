@@ -1,6 +1,6 @@
 import { AssignRoleIdsDto, UnAssignRoleIdsDto } from '@/user/dto/userRole.dto';
 import { UserRole } from '@/user/entities/userRoles.entity';
-import { HelperService } from '@/user/helper/helper.service';
+import { UserHelperService } from '@/user/helper/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -11,7 +11,7 @@ export class UserRoleService {
   constructor(
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
-    private readonly helperService: HelperService,
+    private readonly helperService: UserHelperService,
   ) {}
 
   /**

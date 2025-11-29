@@ -1,5 +1,5 @@
 import { COUNTRIES } from '@/lib/const/countries.const';
-import { ROOT_ADMIN_PERMISSION } from '@/lib/const/role.const';
+import { ROOT_ADMIN_PERMISSION } from '@/lib/const/permission.const';
 import {
   SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,

@@ -214,6 +214,7 @@ export const USER_MIN_OPERATION_BAD_REQUEST_MSG = [
   'Each selectDepartmentField must be a valid department field',
   'Each selectRoleField must be a valid role field',
   'Each selectPermissionField must be a valid permission field',
+  'Each selectCreatedByField must be a valid user field',
   'includeCreatedBy must be a boolean value',
   'includeDepartments must be a boolean value',
   'includeRoles must be a boolean value',

@@ -1,10 +1,8 @@
 import { OptimizeCriteria } from '@/base/interface/query.request';
 import { EntityQueryService } from '@/base/service/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROLE_QUERY_ALIAS,
-} from '@/lib/const/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import {
   ASSIGNED_BY_USER_QUERY_ALIAS,
   CREATEDBY_USER_QUERY_ALIAS,
@@ -14,7 +12,6 @@ import {
 import { FilterUsersQueryDto } from '@/user/dto/query.dto';
 import { UserListResponseDto } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
-import { hashObject } from '@/utils/token-generator.util';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
@@ -27,13 +24,13 @@ export class QueryService extends EntityQueryService {
     hasAccessToDepartments,
     hasAccessToRoles,
     hasAccessToPermissions,
-    requestedByUser,
+    requestedByUserId,
   }: {
     filters: FilterUsersQueryDto;
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
-    requestedByUser: UUID;
+    requestedByUserId: UUID;
   }): Promise<UserListResponseDto> {
     const {
       sortField,
@@ -94,19 +91,10 @@ export class QueryService extends EntityQueryService {
       }),
     });
 
-    const cacheKey = hashObject({
-      filters,
-      requestedByUser,
-      hasAccessToDepartments,
-      hasAccessToRoles,
-      hasAccessToPermissions,
-    });
-
-    query.cache(cacheKey, 300000);
-
     return await this.paginatedResult({
       query,
       alias: 'users',
+      requestedByUserId,
     });
   }
 

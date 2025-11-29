@@ -12,12 +12,14 @@ import {
 } from '@/lib/const/department.const';
 import {
   CREATE_PERMISSION,
-  CREATE_ROLE,
   DELETE_PERMISSION,
-  DELETE_ROLE,
   READ_PERMISSION,
-  READ_ROLE,
   UPDATE_PERMISSION,
+} from '@/lib/const/permission.const';
+import {
+  CREATE_ROLE,
+  DELETE_ROLE,
+  READ_ROLE,
   UPDATE_ROLE,
 } from '@/lib/const/role.const';
 import {
@@ -44,12 +46,11 @@ export abstract class BaseController<
   TUpdateDto,
   TResponseDto,
   TListResponseDto,
-  TQueryFilter,
 > {
   abstract create(
-    createDto: TCreateDto,
+    createDto: TCreateDto | TCreateDto[],
     createdByUser: JWTPayload,
-  ): Promise<TResponseDto>;
+  ): Promise<TResponseDto | TResponseDto[]>;
 
   abstract findByIds(
     query: TFindByIdsQuery,
@@ -67,11 +68,6 @@ export abstract class BaseController<
     ids: UUID[],
     requestedByUserId: UUID,
   ): Promise<{ deleted: number; message: string }>;
-
-  abstract filter(
-    filters: TQueryFilter,
-    requestedByUser: JWTPayload,
-  ): Promise<TListResponseDto>;
 
   protected extractAccess(createdByUser: JWTPayload): UserAccessPermissions {
     const { permissions: userPermissions } = createdByUser;

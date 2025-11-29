@@ -9,13 +9,13 @@ import {
 import { AuthenticationGuard } from '@/common/guards/auth.guard';
 import { PermissionsGuard } from '@/common/guards/permission.guard';
 import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
+import { READ_PERMISSION } from '@/lib/const/permission.const';
 import {
   CREATE_ROLE,
   DELETE_ROLE,
   EXAMPLE_ROLE_DESCRIPTION,
   EXAMPLE_ROLE_ID,
   EXAMPLE_ROLE_NAME,
-  READ_PERMISSION,
   READ_ROLE,
   ROLE_NOT_FOUND_MSG,
   UPDATE_ROLE,
@@ -27,7 +27,8 @@ import {
   CreateRoleDto,
   RoleListResponseDto,
   UpdateRoleDto,
-} from '@/role/dto/role.dto';
+} from '@/modules/role/dto/role/role.dto';
+import { FilterRolesQueryDto } from '@/role/dto/role/query.dto';
 import { Roles } from '@/role/entities/role.entity';
 import {
   getPermissionsGenericSelectableFields,
@@ -49,9 +50,6 @@ import {
   NotFoundException,
   Param,
   ParseArrayPipe,
-  ParseBoolPipe,
-  ParseDatePipe,
-  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -886,83 +884,24 @@ export class RolesController {
     enum: getCreatedByGenericSelectableFields(),
   })
   async filterUsers(
-    @Query('ids', new ParseArrayPipe({ optional: true })) ids: UUID[],
-    @Query('createdByIds', new ParseArrayPipe({ optional: true }))
-    createdByIds: UUID[],
-    @Query('names', new ParseArrayPipe({ optional: true }))
-    names: string[],
-    @Query('includePermissions', new ParseBoolPipe({ optional: true }))
-    includePermissions: boolean,
-    @Query('includeCreatedBy', new ParseBoolPipe({ optional: true }))
-    includeCreatedBy: boolean,
-    @Query('permissionIds', new ParseArrayPipe({ optional: true }))
-    permissionIds: UUID[],
-    @Query('permissionNames', new ParseArrayPipe({ optional: true }))
-    permissionNames: string[],
-    @Query('permissionCodes', new ParseArrayPipe({ optional: true }))
-    permissionCodes: string[],
-    @Query('dateFrom', new ParseDatePipe({ optional: true }))
-    dateFrom: Date | undefined,
-    @Query('dateTo', new ParseDatePipe({ optional: true }))
-    dateTo: Date | undefined,
-    @Query(
-      'dateFilterParam',
-      new ParseEnumPipe(DateFilterParam, { optional: true }),
-    )
-    dateFilterParam: DateFilterParam | undefined,
-    @Query('page', ParseIntPipe) page: number,
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('sortField') sortField: string,
-    @Query('sortOrder') sortOrder: 'ASC' | 'DESC',
-    @Query('selectRoles', new ParseArrayPipe({ optional: true }))
-    selectRoles: string[],
-    @Query('selectPermissions', new ParseArrayPipe({ optional: true }))
-    selectPermissions: string[],
-    @Query('selectCreatedBy', new ParseArrayPipe({ optional: true }))
-    selectCreatedBy: string[],
-    @CurrentUserPermissions() userPermissions: string[],
+    @Query() filters: FilterRolesQueryDto,
+    @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<RoleListResponseDto> {
     const hasAccessToCreatedBy = hasPermissions({
-      userPermissions,
+      userPermissions: requestedByUser.permissions,
       requestedPermissions: [READ_USER],
     });
 
     const hasAccessToPermissions = hasPermissions({
-      userPermissions,
+      userPermissions: requestedByUser.permissions,
       requestedPermissions: [READ_PERMISSION],
     });
 
-    return await this.queryService.getRoles(
-      {
-        rolesQuery: {
-          ids,
-          names,
-          createdByIds,
-        },
-        permissionsQuery: {
-          ids: permissionIds,
-          names: permissionNames,
-          codes: permissionCodes,
-        },
-        includePermissions,
-        includeCreatedBy,
-        dateFrom,
-        dateTo,
-        dateFilterParam,
-        pagination: {
-          page,
-          limit,
-        },
-        sort: {
-          sortField,
-          sortOrder,
-        },
-        selectRoles,
-        selectPermissions,
-        selectCreatedBy,
-      },
+    return await this.queryService.getRoles({
+      filters,
       hasAccessToPermissions,
       hasAccessToCreatedBy,
-    );
+      requestedByUserId: requestedByUser.id,
+    });
   }
 }

@@ -107,30 +107,6 @@ export class DepartmentQueryParametersDto {
   }
 }
 
-export class DepartmentDateRequestDto extends QueryDateRequestDto {
-  @ApiPropertyOptional({
-    description: 'Additional date filter parameter for custom filtering logic',
-    example: 'createdAt',
-    enum: ['createdAt', 'updatedAt'],
-    type: String,
-  })
-  @IsEnum(['createdAt', 'updatedAt'], {
-    message: 'dateFilterParam must be a valid department date field',
-    each: true,
-  })
-  @IsOptional()
-  dateFilterParam?: string | undefined;
-
-  constructor(
-    dateFilterParam: string | undefined,
-    dateFrom: Date | undefined,
-    dateTo: Date | undefined,
-  ) {
-    super(dateFrom, dateTo);
-    this.dateFilterParam = dateFilterParam;
-  }
-}
-
 export class DepartmentSelectDto {
   @ApiPropertyOptional({
     description:
@@ -314,7 +290,7 @@ export class DepartmentSearchRequestDto extends IntersectionType(
 
 export class FilterDepartmentsQueryDto extends IntersectionType(
   DepartmentQueryParametersDto,
-  DepartmentDateRequestDto,
+  QueryDateRequestDto,
   DepartmentQueryResponseControlDto,
   PaginationDto,
   DepartmentSortDto,

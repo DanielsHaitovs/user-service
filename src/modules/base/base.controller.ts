@@ -60,6 +60,7 @@ export abstract class BaseController<
   abstract search(
     value: string,
     control: TSearchControl,
+    requestedByUserId: UUID,
   ): Promise<TListResponseDto>;
 
   abstract updateById(id: UUID, updateDto: TUpdateDto): Promise<TResponseDto>;
@@ -70,29 +71,30 @@ export abstract class BaseController<
   ): Promise<{ deleted: number; message: string }>;
 
   protected extractAccess(createdByUser: JWTPayload): UserAccessPermissions {
-    const { permissions: userPermissions } = createdByUser;
+    const { permissions, id } = createdByUser;
 
     return {
-      hasAccessToRoles: this.has(userPermissions, READ_ROLE),
-      canEditRoles: this.has(userPermissions, UPDATE_ROLE),
-      canDeleteRoles: this.has(userPermissions, DELETE_ROLE),
-      canCreateRoles: this.has(userPermissions, CREATE_ROLE),
-      hasAccessToPermissions: this.has(userPermissions, READ_PERMISSION),
-      canEditPermissions: this.has(userPermissions, UPDATE_PERMISSION),
-      canDeletePermissions: this.has(userPermissions, DELETE_PERMISSION),
-      canCreatePermissions: this.has(userPermissions, CREATE_PERMISSION),
-      hasAccessToDepartments: this.has(userPermissions, READ_DEPARTMENT),
-      canEditDepartments: this.has(userPermissions, UPDATE_DEPARTMENT),
-      canDeleteDepartments: this.has(userPermissions, DELETE_DEPARTMENT),
-      canCreateDepartments: this.has(userPermissions, CREATE_DEPARTMENT),
-      hasAccessToUserRoles: this.has(userPermissions, READ_USER_ROLE),
-      canEditUserRoles: this.has(userPermissions, UPDATE_USER_ROLE),
-      canDeleteUserRoles: this.has(userPermissions, DELETE_USER_ROLE),
-      canCreateUserRoles: this.has(userPermissions, CREATE_USER_ROLE),
-      hasAccessToUsers: this.has(userPermissions, READ_USER),
-      canEditUsers: this.has(userPermissions, UPDATE_USER),
-      canDeleteUsers: this.has(userPermissions, DELETE_USER),
-      canCreateUsers: this.has(userPermissions, CREATE_USER),
+      id,
+      hasAccessToRoles: this.has(permissions, READ_ROLE),
+      canEditRoles: this.has(permissions, UPDATE_ROLE),
+      canDeleteRoles: this.has(permissions, DELETE_ROLE),
+      canCreateRoles: this.has(permissions, CREATE_ROLE),
+      hasAccessToPermissions: this.has(permissions, READ_PERMISSION),
+      canEditPermissions: this.has(permissions, UPDATE_PERMISSION),
+      canDeletePermissions: this.has(permissions, DELETE_PERMISSION),
+      canCreatePermissions: this.has(permissions, CREATE_PERMISSION),
+      hasAccessToDepartments: this.has(permissions, READ_DEPARTMENT),
+      canEditDepartments: this.has(permissions, UPDATE_DEPARTMENT),
+      canDeleteDepartments: this.has(permissions, DELETE_DEPARTMENT),
+      canCreateDepartments: this.has(permissions, CREATE_DEPARTMENT),
+      hasAccessToUserRoles: this.has(permissions, READ_USER_ROLE),
+      canEditUserRoles: this.has(permissions, UPDATE_USER_ROLE),
+      canDeleteUserRoles: this.has(permissions, DELETE_USER_ROLE),
+      canCreateUserRoles: this.has(permissions, CREATE_USER_ROLE),
+      hasAccessToUsers: this.has(permissions, READ_USER),
+      canEditUsers: this.has(permissions, UPDATE_USER),
+      canDeleteUsers: this.has(permissions, DELETE_USER),
+      canCreateUsers: this.has(permissions, CREATE_USER),
     };
   }
 

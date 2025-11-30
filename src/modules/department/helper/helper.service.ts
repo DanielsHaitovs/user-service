@@ -82,6 +82,8 @@ export class DepartmentHelperService extends EntityQueryService {
       relationAlias: DEPARTMENT_QUERY_ALIAS,
     });
 
+    this.cacheQuery<Departments>({ query, expireAtMs: 30000 });
+
     const departments = await query.getMany();
 
     if (departments.length !== ids.length) {

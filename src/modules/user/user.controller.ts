@@ -137,14 +137,19 @@ export class UserController extends BaseController<
     @Query() filters: GetUsersByIdsRequestDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
-    const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-      this.extractAccess(requestedByUser);
+    const {
+      id,
+      hasAccessToDepartments,
+      hasAccessToRoles,
+      hasAccessToPermissions,
+    } = this.extractAccess(requestedByUser);
 
     return await this.userService.findByIds({
       filters,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
+      requestedByUserId: id,
     });
   }
 
@@ -162,14 +167,19 @@ export class UserController extends BaseController<
     @Query() filters: GetUsersByEmailsRequestDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
-    const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-      this.extractAccess(requestedByUser);
+    const {
+      id,
+      hasAccessToDepartments,
+      hasAccessToRoles,
+      hasAccessToPermissions,
+    } = this.extractAccess(requestedByUser);
 
     return await this.userService.findByEmails({
       filters,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
+      requestedByUserId: id,
     });
   }
 
@@ -193,10 +203,12 @@ export class UserController extends BaseController<
   async search(
     @Param('value') value: string,
     @Query() control: UserSearchRequestDto,
+    @CurrentUserId() requestedByUserId: UUID,
   ): Promise<UserListResponseDto> {
     return await this.userService.search({
       value,
       control,
+      requestedByUserId,
     });
   }
 
@@ -312,15 +324,19 @@ export class UserController extends BaseController<
     @Query() filters: FilterUsersQueryDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
-    const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-      this.extractAccess(requestedByUser);
+    const {
+      id,
+      hasAccessToDepartments,
+      hasAccessToRoles,
+      hasAccessToPermissions,
+    } = this.extractAccess(requestedByUser);
 
     return this.queryService.getUsers({
       filters,
       hasAccessToDepartments,
       hasAccessToRoles,
       hasAccessToPermissions,
-      requestedByUserId: requestedByUser.id,
+      requestedByUserId: id,
     });
   }
 }

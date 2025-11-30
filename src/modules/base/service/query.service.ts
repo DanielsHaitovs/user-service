@@ -454,6 +454,26 @@ export class EntityQueryService {
     this.paginate<T>({ query, pagination });
   }
 
+  /*
+   * Caches the query results for the specified duration.
+   */
+  cacheQuery<T extends ObjectLiteral>({
+    query,
+    expireAtMs,
+    requestedByUserId,
+  }: {
+    query: SelectQueryBuilder<T>;
+    expireAtMs: number;
+    requestedByUserId?: UUID | undefined;
+  }): void {
+    const cacheKey = hashObject({
+      requestedByUserId,
+      query: query.getQueryAndParameters(),
+    });
+
+    query.cache(cacheKey, expireAtMs);
+  }
+
   async paginatedResult<T extends ObjectLiteral, K extends string>({
     query,
     alias,
@@ -461,19 +481,19 @@ export class EntityQueryService {
   }: {
     query: SelectQueryBuilder<T>;
     alias: K;
-    requestedByUserId?: UUID;
+    requestedByUserId?: UUID | undefined;
   }): Promise<PaginatedResponseDto & Record<K, T[]>> {
     const page = query.expressionMap.skip ?? 0;
     const limit = query.expressionMap.take ?? 10;
 
     query.distinct(true);
 
-    const cacheKey = hashObject({
+    this.cacheQuery<T>({
+      query,
+      expireAtMs: 300000,
       requestedByUserId,
-      query: query.getQueryAndParameters(),
     });
 
-    query.cache(cacheKey, 300000);
     const [items, totalCount] = await query.getManyAndCount();
 
     return {

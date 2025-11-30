@@ -1,4 +1,3 @@
-import { hasPermissions } from '@/auth/helper/permission.helper';
 import { JWTPayload } from '@/auth/interfaces/req.interface';
 import { BaseController } from '@/base/base.controller';
 import { DeleteResponseDto } from '@/base/dto/response.dto';
@@ -20,7 +19,6 @@ import {
   UPDATE_PERMISSION,
 } from '@/lib/const/permission.const';
 import { READ_ROLE, ROLE_NOT_FOUND_MSG } from '@/lib/const/role.const';
-import { READ_USER } from '@/lib/const/user.const';
 import {
   CreatePermissionDto,
   PermissionListResponseDto,
@@ -97,19 +95,14 @@ export class PermissionController extends BaseController<
   async create(
     @Body(new ParseArrayPipe({ items: CreatePermissionDto }))
     createPermissionDto: CreatePermissionDto[],
-    @CurrentUser() reqUser: JWTPayload,
+    @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<PermissionResponseDto[]> {
-    const { permissions: userPermissions, id: createdBy } = reqUser;
-
-    const hasAccessToCreatedBy = hasPermissions({
-      userPermissions,
-      requestedPermissions: [READ_USER],
-    });
+    const { hasAccessToUsers, id } = this.extractAccess(requestedByUser);
 
     return await this.permissionService.create({
       permissions: createPermissionDto,
-      createdBy,
-      hasAccessToCreatedBy,
+      createdBy: id,
+      hasAccessToCreatedBy: hasAccessToUsers,
     });
   }
 
@@ -138,20 +131,14 @@ export class PermissionController extends BaseController<
     @Query() filters: GetPermissionsByIdsQueryDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<PermissionListResponseDto> {
-    const hasAccessToCreatedBy = hasPermissions({
-      userPermissions: requestedByUser.permissions,
-      requestedPermissions: [READ_USER],
-    });
-
-    const hasAccessToRole = hasPermissions({
-      userPermissions: requestedByUser.permissions,
-      requestedPermissions: [READ_ROLE],
-    });
+    const { id, hasAccessToUsers, hasAccessToRoles } =
+      this.extractAccess(requestedByUser);
 
     return await this.permissionService.findByIds({
       filters,
-      hasAccessToRole,
-      hasAccessToCreatedBy,
+      hasAccessToRoles,
+      hasAccessToCreatedBy: hasAccessToUsers,
+      requestedByUserId: id,
     });
   }
 
@@ -179,20 +166,14 @@ export class PermissionController extends BaseController<
     @Query() filters: GetPermissionsByCodesQueryDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<PermissionListResponseDto> {
-    const hasAccessToCreatedBy = hasPermissions({
-      userPermissions: requestedByUser.permissions,
-      requestedPermissions: [READ_USER],
-    });
-
-    const hasAccessToRole = hasPermissions({
-      userPermissions: requestedByUser.permissions,
-      requestedPermissions: [READ_ROLE],
-    });
+    const { id, hasAccessToUsers, hasAccessToRoles } =
+      this.extractAccess(requestedByUser);
 
     return await this.permissionService.findByCodes({
       filters,
-      hasAccessToRole,
-      hasAccessToCreatedBy,
+      hasAccessToRoles,
+      hasAccessToCreatedBy: hasAccessToUsers,
+      requestedByUserId: id,
     });
   }
 
@@ -230,10 +211,12 @@ export class PermissionController extends BaseController<
   async search(
     @Param('value') value: string,
     @Query() control: PermissionSearchRequestDto,
+    @CurrentUser() requestedByUserId: UUID,
   ): Promise<PermissionListResponseDto> {
     return await this.permissionService.searchFor({
       value,
       control,
+      requestedByUserId,
     });
   }
 

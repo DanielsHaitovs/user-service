@@ -10,12 +10,12 @@ export class QueryService extends EntityQueryService {
   permissionQueryCriteria({
     hasAccessToCreatedBy,
     includeCreatedBy,
-    hasAccessToRole,
+    hasAccessToRoles,
     includeRoles,
   }: {
     hasAccessToCreatedBy: boolean;
     includeCreatedBy: boolean;
-    hasAccessToRole: boolean;
+    hasAccessToRoles: boolean;
     includeRoles: boolean;
   }): Record<string, OptimizeCriteria> {
     return {
@@ -24,7 +24,7 @@ export class QueryService extends EntityQueryService {
         includeRelation: true,
       },
       [ROLE_QUERY_ALIAS]: {
-        permissionAccess: hasAccessToRole,
+        permissionAccess: hasAccessToRoles,
         includeRelation: includeRoles,
       },
       [CREATEDBY_USER_QUERY_ALIAS]: {

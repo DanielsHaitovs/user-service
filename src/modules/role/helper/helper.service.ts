@@ -87,6 +87,8 @@ export class RoleHelperService extends EntityQueryService {
       relationAlias: ROLE_QUERY_ALIAS,
     });
 
+    this.cacheQuery<Roles>({ query, expireAtMs: 30000 });
+
     const roles = await query.getMany();
 
     if (roles.length !== ids.length) {
@@ -148,6 +150,8 @@ export class RoleHelperService extends EntityQueryService {
     if (codes !== undefined && codes.length > 0) {
       query.orWhere(`${PERMISSION_QUERY_ALIAS}.code IN (:...codes)`, { codes });
     }
+
+    this.cacheQuery<Permission>({ query, expireAtMs: 30000 });
 
     const permissions = await query.getMany();
 

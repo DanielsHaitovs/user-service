@@ -1,5 +1,6 @@
 import type { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
 
+import type { UUID } from 'crypto';
 import type { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
 export interface OptimizeCriteria {
@@ -24,6 +25,7 @@ export interface QueryJoinOptions {
 }
 
 export interface UserAccessPermissions {
+  id: UUID;
   hasAccessToRoles: boolean;
   canEditRoles: boolean;
   canDeleteRoles: boolean;

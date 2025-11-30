@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 
 import { UUID } from 'crypto';
-import { Brackets, EntityNotFoundError } from 'typeorm';
+import { EntityNotFoundError } from 'typeorm';
 
 @Injectable()
 export class RoleHelperService extends EntityQueryService {
@@ -69,8 +69,8 @@ export class RoleHelperService extends EntityQueryService {
    * @returns Promise resolving to void
    * @throws EntityNotFoundError when any specified role ID doesn't exist
    */
-  async getManyByIdsOrFail(ids?: UUID[]): Promise<Roles[]> {
-    if (ids == undefined || ids.length === 0) {
+  async getManyByIdsOrFail(roleIds?: UUID[]): Promise<Roles[]> {
+    if (roleIds == undefined || roleIds.length === 0) {
       throw new BadRequestException('No role IDs provided');
     }
 
@@ -82,7 +82,7 @@ export class RoleHelperService extends EntityQueryService {
     this.whereIn({
       query,
       field: 'id',
-      values: ids,
+      values: roleIds,
       condition: 'AND',
       relationAlias: ROLE_QUERY_ALIAS,
     });
@@ -91,9 +91,11 @@ export class RoleHelperService extends EntityQueryService {
 
     const roles = await query.getMany();
 
-    if (roles.length !== ids.length) {
+    if (roles.length !== roleIds.length) {
       const existingIds = roles.map((role) => role.id);
-      const missingIds = ids.filter((roleId) => !existingIds.includes(roleId));
+      const missingIds = roleIds.filter(
+        (roleId) => !existingIds.includes(roleId),
+      );
 
       throw new EntityNotFoundError(
         'Roles',
@@ -205,26 +207,25 @@ export class RoleHelperService extends EntityQueryService {
     id: UUID;
     updatePermissionDto: UpdatePermissionDto;
   }): Promise<void> {
-    const conflictQuery = this.entityManager
+    const query = this.entityManager
       .createQueryBuilder(Permission, PERMISSION_QUERY_ALIAS)
       .where(`${PERMISSION_QUERY_ALIAS}.id != :id`, { id });
 
-    conflictQuery.andWhere(
-      new Brackets((qb) => {
-        if (updatePermissionDto.name !== undefined) {
-          qb.where(`${PERMISSION_QUERY_ALIAS}.name = :name`, {
-            name: updatePermissionDto.name,
-          });
-        }
-        if (updatePermissionDto.code !== undefined) {
-          qb.orWhere(`${PERMISSION_QUERY_ALIAS}.code = :code`, {
-            code: updatePermissionDto.code,
-          });
-        }
-      }),
-    );
+    if (updatePermissionDto.name != undefined) {
+      query.orWhere(`${PERMISSION_QUERY_ALIAS}.name = :name`, {
+        name: updatePermissionDto.name,
+      });
+    }
 
-    const conflictedRecords = await conflictQuery.getMany();
+    if (updatePermissionDto.code != undefined) {
+      query.orWhere(`${PERMISSION_QUERY_ALIAS}.code = :code`, {
+        code: updatePermissionDto.code,
+      });
+    }
+
+    this.cacheQuery<Permission>({ query, expireAtMs: 30000 });
+
+    const conflictedRecords = await query.getMany();
 
     if (conflictedRecords.length > 0) {
       throw new ConflictException('Permission name or code already exists');

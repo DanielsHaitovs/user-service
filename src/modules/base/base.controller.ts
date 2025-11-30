@@ -37,6 +37,8 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
+import { DeleteResponseDto } from './dto/response.dto';
+
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthenticationGuard, PermissionsGuard)
 export abstract class BaseController<
@@ -68,7 +70,7 @@ export abstract class BaseController<
   abstract delete(
     ids: UUID[],
     requestedByUserId: UUID,
-  ): Promise<{ deleted: number; message: string }>;
+  ): Promise<DeleteResponseDto>;
 
   protected extractAccess(createdByUser: JWTPayload): UserAccessPermissions {
     const { permissions, id } = createdByUser;

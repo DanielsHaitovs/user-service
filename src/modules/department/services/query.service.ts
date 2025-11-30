@@ -16,11 +16,11 @@ import { UUID } from 'crypto';
 export class QueryService extends EntityQueryService {
   async getDepartements({
     filters,
-    hasAccessToUser,
+    hasAccessToUsers,
     requestedByUserId,
   }: {
     filters: FilterDepartmentsQueryDto;
-    hasAccessToUser: boolean;
+    hasAccessToUsers: boolean;
     requestedByUserId: UUID;
   }): Promise<DepartmentListResponseDto> {
     const {
@@ -91,7 +91,7 @@ export class QueryService extends EntityQueryService {
     this.joinEntityRelation({
       query,
       relationAlias: USER_QUERY_ALIAS,
-      shouldJoin: includeUsers && hasAccessToUser,
+      shouldJoin: includeUsers && hasAccessToUsers,
       condition: 'AND',
       options: {
         filters: {
@@ -100,7 +100,7 @@ export class QueryService extends EntityQueryService {
       },
     });
 
-    if (includeUsers && hasAccessToUser) {
+    if (includeUsers && hasAccessToUsers) {
       query.addGroupBy(`${USER_QUERY_ALIAS}.id`);
     }
 
@@ -108,7 +108,7 @@ export class QueryService extends EntityQueryService {
     this.joinEntityRelation({
       query,
       relationAlias: CREATEDBY_USER_QUERY_ALIAS,
-      shouldJoin: includeCreatedBy && hasAccessToUser,
+      shouldJoin: includeCreatedBy && hasAccessToUsers,
       condition: 'AND',
       options: {
         filters: {
@@ -117,7 +117,7 @@ export class QueryService extends EntityQueryService {
       },
     });
 
-    if (includeCreatedBy && hasAccessToUser) {
+    if (includeCreatedBy && hasAccessToUsers) {
       query.addGroupBy(`${CREATEDBY_USER_QUERY_ALIAS}.id`);
     }
 
@@ -137,7 +137,7 @@ export class QueryService extends EntityQueryService {
         ...selectCreatedByFields,
       ],
       criteria: this.departmentQueryCriteria({
-        hasAccessToUser,
+        hasAccessToUsers,
         includeCreatedBy,
         includeUsers,
       }),
@@ -158,11 +158,11 @@ export class QueryService extends EntityQueryService {
    * @returns A map of relation aliases to their corresponding optimization criteria.
    */
   departmentQueryCriteria({
-    hasAccessToUser,
+    hasAccessToUsers,
     includeUsers,
     includeCreatedBy,
   }: {
-    hasAccessToUser: boolean;
+    hasAccessToUsers: boolean;
     includeUsers: boolean;
     includeCreatedBy: boolean;
   }): Record<string, OptimizeCriteria> {
@@ -172,11 +172,11 @@ export class QueryService extends EntityQueryService {
         includeRelation: true,
       },
       [USER_QUERY_ALIAS]: {
-        permissionAccess: hasAccessToUser,
+        permissionAccess: hasAccessToUsers,
         includeRelation: includeUsers,
       },
       [CREATEDBY_USER_QUERY_ALIAS]: {
-        permissionAccess: hasAccessToUser,
+        permissionAccess: hasAccessToUsers,
         includeRelation: includeCreatedBy,
       },
     };

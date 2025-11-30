@@ -98,13 +98,11 @@ export class UserService {
     hasAccessToRoles,
     hasAccessToPermissions,
     filters,
-    requestedByUserId,
   }: {
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
     filters: GetUsersByIdsRequestDto;
-    requestedByUserId?: UUID;
   }): Promise<UserListResponseDto> {
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
@@ -181,7 +179,6 @@ export class UserService {
     const response = await this.queryService.paginatedResult({
       query,
       alias: 'users',
-      requestedByUserId,
     });
 
     if (response.users.length === 0) {
@@ -209,13 +206,11 @@ export class UserService {
     hasAccessToRoles,
     hasAccessToPermissions,
     filters,
-    requestedByUserId,
   }: {
     hasAccessToDepartments: boolean;
     hasAccessToRoles: boolean;
     hasAccessToPermissions: boolean;
     filters: GetUsersByEmailsRequestDto;
-    requestedByUserId?: UUID;
   }): Promise<UserListResponseDto> {
     const query = this.userRepository.createQueryBuilder(USER_QUERY_ALIAS);
 
@@ -293,7 +288,6 @@ export class UserService {
     const response = await this.queryService.paginatedResult({
       query,
       alias: 'users',
-      requestedByUserId,
     });
 
     if (response.users.length === 0) {
@@ -323,11 +317,9 @@ export class UserService {
   async search({
     value,
     control,
-    requestedByUserId,
   }: {
     value?: string;
     control: UserSearchRequestDto;
-    requestedByUserId?: UUID;
   }): Promise<UserListResponseDto> {
     if (value === undefined || value.trim() === '') {
       return {
@@ -379,7 +371,6 @@ export class UserService {
     return await this.queryService.paginatedResult({
       query,
       alias: 'users',
-      requestedByUserId,
     });
   }
 
@@ -513,7 +504,6 @@ export class UserService {
         selectDepartmentFields: [],
         selectPermissionFields: [],
       },
-      requestedByUserId,
     });
 
     if (existingUsers.length !== ids.length) {

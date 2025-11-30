@@ -45,7 +45,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -131,14 +131,13 @@ export class PermissionController extends BaseController<
     @Query() filters: GetPermissionsByIdsQueryDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<PermissionListResponseDto> {
-    const { id, hasAccessToUsers, hasAccessToRoles } =
+    const { hasAccessToUsers, hasAccessToRoles } =
       this.extractAccess(requestedByUser);
 
     return await this.permissionService.findByIds({
       filters,
       hasAccessToRoles,
       hasAccessToCreatedBy: hasAccessToUsers,
-      requestedByUserId: id,
     });
   }
 
@@ -166,23 +165,19 @@ export class PermissionController extends BaseController<
     @Query() filters: GetPermissionsByCodesQueryDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<PermissionListResponseDto> {
-    const { id, hasAccessToUsers, hasAccessToRoles } =
+    const { hasAccessToUsers, hasAccessToRoles } =
       this.extractAccess(requestedByUser);
 
     return await this.permissionService.findByCodes({
       filters,
       hasAccessToRoles,
       hasAccessToCreatedBy: hasAccessToUsers,
-      requestedByUserId: id,
     });
   }
 
   @Get('search/:value')
   @Permissions(READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    description: 'Searches for permissions by name, code, id',
-  })
   @ApiParam({
     name: 'value',
     type: String,
@@ -204,19 +199,14 @@ export class PermissionController extends BaseController<
       type: PermissionListResponseDto,
       isArray: false,
     },
-    notFound: {
-      description: PERMISSION_NOT_FOUND_MSG,
-    },
   })
   async search(
     @Param('value') value: string,
     @Query() control: PermissionSearchRequestDto,
-    @CurrentUser() requestedByUserId: UUID,
   ): Promise<PermissionListResponseDto> {
     return await this.permissionService.searchFor({
       value,
       control,
-      requestedByUserId,
     });
   }
 

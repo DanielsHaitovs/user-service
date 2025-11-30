@@ -64,8 +64,8 @@ export class DepartmentHelperService extends EntityQueryService {
    * @returns Promise resolving to an array of Departments entities
    * @throws BadRequestException when not all provided department IDs exist
    */
-  async getManyByIdsOrFail(ids?: UUID[]): Promise<Departments[]> {
-    if (ids == undefined || ids.length === 0) {
+  async getManyByIdsOrFail(departmentIds?: UUID[]): Promise<Departments[]> {
+    if (departmentIds == undefined || departmentIds.length === 0) {
       throw new BadRequestException('No department ids provided');
     }
 
@@ -77,18 +77,21 @@ export class DepartmentHelperService extends EntityQueryService {
     this.whereIn({
       query,
       field: 'id',
-      values: ids,
+      values: departmentIds,
       condition: 'AND',
       relationAlias: DEPARTMENT_QUERY_ALIAS,
     });
 
-    this.cacheQuery<Departments>({ query, expireAtMs: 30000 });
+    this.cacheQuery<Departments>({
+      query,
+      expireAtMs: 30000,
+    });
 
     const departments = await query.getMany();
 
-    if (departments.length !== ids.length) {
+    if (departments.length !== departmentIds.length) {
       const existingIds = departments.map((department) => department.id);
-      const missingIds = ids.filter(
+      const missingIds = departmentIds.filter(
         (departmentId) => !existingIds.includes(departmentId),
       );
 

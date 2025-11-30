@@ -174,6 +174,8 @@ export class UserHelperService extends EntityQueryService {
       relationAlias: USER_QUERY_ALIAS,
     });
 
+    this.cacheQuery<User>({ query, expireAtMs: 30000 });
+
     const users = await query.getMany();
 
     if (users.length !== ids.length) {
@@ -189,13 +191,11 @@ export class UserHelperService extends EntityQueryService {
     return users;
   }
 
-  async findManyDeaprtmentsOrFail(
-    departmentIds: UUID[],
-  ): Promise<Departments[]> {
-    return await this.departmentsService.getManyByIdsOrFail(departmentIds);
+  async findManyDeaprtmentsOrFail(ids: UUID[]): Promise<Departments[]> {
+    return await this.departmentsService.getManyByIdsOrFail(ids);
   }
 
-  async findManyRolesOrFail(roleIds: UUID[]): Promise<Roles[]> {
-    return await this.roleService.getManyByIdsOrFail(roleIds);
+  async findManyRolesOrFail(ids: UUID[]): Promise<Roles[]> {
+    return await this.roleService.getManyByIdsOrFail(ids);
   }
 }

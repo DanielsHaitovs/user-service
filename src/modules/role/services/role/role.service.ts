@@ -1,4 +1,3 @@
-import { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
 import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
 import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
@@ -7,6 +6,10 @@ import {
   RoleListResponseDto,
   UpdateRoleDto,
 } from '@/modules/role/dto/role/role.dto';
+import {
+  GetRoleByIdsQueryDto,
+  RoleSearchRequestDto,
+} from '@/role/dto/role/query.dto';
 import { Roles } from '@/role/entities/role.entity';
 import { RoleHelperService } from '@/role/helper/helper.service';
 import { QueryService } from '@/role/services/role/query.service';
@@ -16,6 +19,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
+
+import { DeleteResponseDto } from '../../../base/dto/response.dto';
 
 @Injectable()
 export class RoleService {
@@ -145,30 +150,37 @@ export class RoleService {
    * @throws BadRequestException if pagination parameters are invalid or no IDs are provided.
    */
   async findByIds({
-    ids,
+    filters,
     hasAccessToPermissions,
     hasAccessToCreatedBy,
-    pagination,
-    select,
-    sort,
   }: {
-    ids: UUID[];
+    filters: GetRoleByIdsQueryDto;
     hasAccessToPermissions: boolean;
     hasAccessToCreatedBy: boolean;
-    pagination: PaginationDto;
-    select?: string[];
-    sort?: SortDto;
-  }): Promise<Roles[]> {
+  }): Promise<RoleListResponseDto> {
     const query = this.roleRepository.createQueryBuilder(ROLE_QUERY_ALIAS);
 
-    if (hasAccessToPermissions) {
+    const {
+      ids,
+      page,
+      limit,
+      selectPermissionFields,
+      selectCreatedByFields,
+      selectRoleFields,
+      sortField,
+      sortOrder,
+      includeCreatedBy,
+      includePermissions,
+    } = filters;
+
+    if (hasAccessToPermissions && includePermissions) {
       this.queryService.joinRelation<Roles>({
         query,
         alias: PERMISSION_QUERY_ALIAS,
       });
     }
 
-    if (hasAccessToCreatedBy) {
+    if (hasAccessToCreatedBy && includeCreatedBy) {
       this.queryService.joinRelation<Roles>({
         query,
         alias: CREATEDBY_USER_QUERY_ALIAS,
@@ -184,100 +196,34 @@ export class RoleService {
 
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { page, limit },
+      select: [
+        ...selectRoleFields,
+        ...selectPermissionFields,
+        ...selectCreatedByFields,
+      ],
+      sort: { sortField, sortOrder },
       criteria: this.queryService.roleQueryCriteria({
-        includeCreatedBy: true,
-        includePermissions: true,
+        includeCreatedBy,
+        includePermissions,
         hasAccessToCreatedBy,
         hasAccessToPermissions,
       }),
     });
 
-    const { roles } = await this.queryService.paginatedResult({
+    const response = await this.queryService.paginatedResult({
       query,
       alias: 'roles',
     });
 
-    if (roles.length === 0) {
+    if (response.roles.length === 0) {
       throw new EntityNotFoundError(
         'Roles',
         `Roles not found: ${ids.join(', ')}`,
       );
     }
 
-    return roles;
-  }
-
-  /**
-   * Finds roles created by specific users with pagination.
-   * @param createdByUserIds - The UUIDs of the users who created the roles.
-   * @param pagination - Pagination parameters to control result set size.
-   * @returns Promise resolving to an array of role entities.
-   * @throws EntityNotFoundError if no roles created by the given users exist.
-   * @throws BadRequestException if pagination parameters are invalid or no user IDs are provided.
-   */
-  async findCreatedByUserWithId({
-    createdByUserIds,
-    hasAccessToPermissions,
-    pagination,
-    select,
-    sort,
-  }: {
-    createdByUserIds: UUID[];
-    hasAccessToPermissions: boolean;
-    pagination: PaginationDto;
-    select?: string[];
-    sort?: SortDto;
-  }): Promise<Roles[]> {
-    const query = this.roleRepository.createQueryBuilder(ROLE_QUERY_ALIAS);
-
-    if (hasAccessToPermissions) {
-      this.queryService.joinRelation<Roles>({
-        query,
-        alias: PERMISSION_QUERY_ALIAS,
-      });
-    }
-
-    this.queryService.joinRelation<Roles>({
-      query,
-      alias: CREATEDBY_USER_QUERY_ALIAS,
-    });
-
-    this.queryService.whereIn<Roles>({
-      query,
-      field: CREATEDBY_USER_QUERY_ALIAS,
-      values: createdByUserIds,
-      condition: 'AND',
-    });
-
-    this.queryService.optimize({
-      query,
-      pagination,
-      select,
-      sort,
-      criteria: this.queryService.roleQueryCriteria({
-        includeCreatedBy: true,
-        includePermissions: true,
-        hasAccessToCreatedBy: true,
-        hasAccessToPermissions,
-      }),
-    });
-
-    const { roles } = await this.queryService.paginatedResult({
-      query,
-      alias: 'roles',
-    });
-
-    if (roles.length === 0) {
-      throw new EntityNotFoundError(
-        'Roles',
-        `Roles not found: ${createdByUserIds.join(', ')}`,
-      );
-    }
-
-    return roles;
+    return response;
   }
 
   /**
@@ -290,15 +236,21 @@ export class RoleService {
    */
   async searchFor({
     value,
-    pagination,
-    sort,
-    select,
+    control,
   }: {
-    value: string;
-    pagination: PaginationDto;
-    sort: SortDto;
-    select?: string[];
+    value?: string;
+    control: RoleSearchRequestDto;
   }): Promise<RoleListResponseDto> {
+    if (value === undefined || value.trim() === '') {
+      return {
+        roles: [],
+        total: 0,
+        page: 1,
+        limit: control.limit,
+        totalPages: 0,
+      };
+    }
+
     const query = this.roleRepository
       .createQueryBuilder(ROLE_QUERY_ALIAS)
       .where(`${ROLE_QUERY_ALIAS}.name like :value`, {
@@ -308,11 +260,13 @@ export class RoleService {
         value: `%${value}%`,
       });
 
+    const { page, limit, sortField, sortOrder, selectRoleFields } = control;
+
     this.queryService.optimize({
       query,
-      pagination,
-      select,
-      sort,
+      pagination: { page, limit },
+      select: selectRoleFields,
+      sort: { sortField, sortOrder },
       criteria: this.queryService.roleQueryCriteria({
         includeCreatedBy: false,
         includePermissions: false,
@@ -376,9 +330,9 @@ export class RoleService {
    * @returns The number of deleted roles.
    * @throws EntityNotFoundError if no roles with the given ids exist.
    */
-  async deleteByIds(ids: UUID[]): Promise<{ deleted: number }> {
+  async deleteByIds(ids: UUID[]): Promise<DeleteResponseDto> {
     if (ids.length === 0) {
-      return { deleted: 0 };
+      return { deleted: 0, message: 'No roles to delete' };
     }
 
     await this.helperService.getManyByIdsOrFail(ids);
@@ -390,6 +344,9 @@ export class RoleService {
       .where('id IN (:...ids)', { ids })
       .execute();
 
-    return { deleted: result.affected ?? 0 };
+    return {
+      deleted: result.affected ?? 0,
+      message: 'Roles deleted successfully',
+    };
   }
 }

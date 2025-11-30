@@ -1,4 +1,3 @@
-import { hasPermissions } from '@/auth/helper/permission.helper';
 import { JWTPayload } from '@/auth/interfaces/req.interface';
 import { BaseController } from '@/base/base.controller';
 import { DeleteResponseDto } from '@/base/dto/response.dto';
@@ -35,7 +34,6 @@ import {
   READ_DEPARTMENT,
   UPDATE_DEPARTMENT,
 } from '@/lib/const/department.const';
-import { READ_USER } from '@/lib/const/user.const';
 import {
   Body,
   Controller,
@@ -101,19 +99,14 @@ export class DepartmentController extends BaseController<
   })
   async create(
     @Body() createDepartmentDto: CreateDepartmentDto,
-    @CurrentUser() createdByUser: JWTPayload,
+    @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<Departments> {
-    const { permissions: userPermissions, id: createdBy } = createdByUser;
-
-    const hasAccessToUser = hasPermissions({
-      userPermissions,
-      requestedPermissions: [READ_USER],
-    });
+    const { id, hasAccessToUsers } = this.extractAccess(requestedByUser);
 
     return await this.departmentService.create({
       createDepartmentDto,
-      createdBy,
-      hasAccessToUser,
+      createdBy: id,
+      hasAccessToUsers,
     });
   }
 
@@ -135,16 +128,13 @@ export class DepartmentController extends BaseController<
     @Query() query: GetDepartmentsByIdsRequestDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<DepartmentListResponseDto> {
-    const hasAccessToUser = hasPermissions({
-      userPermissions: requestedByUser.permissions,
-      requestedPermissions: [READ_USER],
-    });
+    const { hasAccessToUsers } = this.extractAccess(requestedByUser);
 
     const { ids, ...control } = query;
 
     return await this.departmentService.findByIds({
       ids,
-      hasAccessToUser,
+      hasAccessToUsers,
       control,
     });
   }
@@ -245,7 +235,6 @@ export class DepartmentController extends BaseController<
   })
   async delete(
     @Query('ids', ParseUUIDArrayPipe) ids: UUID[],
-    // @CurrentUserId() requestedByUserId: UUID,
   ): Promise<DeleteResponseDto> {
     return await this.departmentService.deleteByIds(ids);
   }
@@ -271,14 +260,11 @@ export class DepartmentController extends BaseController<
     @Query() filters: FilterDepartmentsQueryDto,
     @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<DepartmentListResponseDto> {
-    const hasAccessToUser = hasPermissions({
-      userPermissions: requestedByUser.permissions,
-      requestedPermissions: [READ_USER],
-    });
+    const { hasAccessToUsers } = this.extractAccess(requestedByUser);
 
     return await this.queryService.getDepartements({
       filters,
-      hasAccessToUser,
+      hasAccessToUsers,
       requestedByUserId: requestedByUser.id,
     });
   }

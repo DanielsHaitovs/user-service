@@ -1,3 +1,5 @@
+import { INPUT_BAD_REQUEST_MSG } from '@/lib/const/system.const';
+
 /**
  * Sample UUID v4 for user identification in tests and API documentation.
  * Format follows RFC 4122 standard for universally unique identifiers.
@@ -48,3 +50,24 @@ export const UPDATE_ROLE = 'role:update' as string;
  * Represents a permission for deleting roles.
  */
 export const DELETE_ROLE = 'role:delete' as string;
+
+export const CONFLICT_ROLE_NAME_MSG =
+  'Role with this name already exists' as string;
+
+export const ROLE_GENERIC_BAD_REQUEST_MSG = [
+  'name should not be empty',
+  'role name should be a string',
+] as string[];
+
+export const ROLE_MIN_OPERATION_BAD_REQUEST_MSG = [
+  'Each selectRoleField must be a valid role field',
+  'Each selectPermissionField must be a valid permission field',
+  'Each selectCreatedByField must be a valid user field',
+  'includeCreatedBy must be a boolean value',
+  'includeRoles must be a boolean value',
+  'includePermissions must be a boolean value',
+  'sortField must be a valid user field',
+  ...INPUT_BAD_REQUEST_MSG,
+];
+
+export const ROLE_API_OK_RESPONSE_MSG = 'Role retrieved successfully';

@@ -108,12 +108,10 @@ export class PermissionService {
     filters,
     hasAccessToRoles,
     hasAccessToCreatedBy,
-    requestedByUserId,
   }: {
     filters: GetPermissionsByIdsQueryDto;
     hasAccessToRoles: boolean;
     hasAccessToCreatedBy: boolean;
-    requestedByUserId?: UUID;
   }): Promise<PermissionListResponseDto> {
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
@@ -173,7 +171,6 @@ export class PermissionService {
     const result = await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
-      requestedByUserId,
     });
 
     if (result.permissions.length === 0) {
@@ -196,12 +193,10 @@ export class PermissionService {
     filters,
     hasAccessToRoles,
     hasAccessToCreatedBy,
-    requestedByUserId,
   }: {
     filters: GetPermissionsByCodesQueryDto;
     hasAccessToRoles: boolean;
     hasAccessToCreatedBy: boolean;
-    requestedByUserId?: UUID;
   }): Promise<PermissionListResponseDto> {
     const query = this.permissionRepository.createQueryBuilder(
       PERMISSION_QUERY_ALIAS,
@@ -261,7 +256,6 @@ export class PermissionService {
     const result = await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
-      requestedByUserId,
     });
 
     if (result.permissions.length === 0) {
@@ -290,11 +284,9 @@ export class PermissionService {
   async searchFor({
     value,
     control,
-    requestedByUserId,
   }: {
     value?: string;
     control: PermissionSearchRequestDto;
-    requestedByUserId?: UUID;
   }): Promise<PermissionListResponseDto> {
     if (value === undefined || value.trim() === '') {
       return {
@@ -337,7 +329,6 @@ export class PermissionService {
     return await this.queryService.paginatedResult({
       query,
       alias: 'permissions',
-      requestedByUserId,
     });
   }
 

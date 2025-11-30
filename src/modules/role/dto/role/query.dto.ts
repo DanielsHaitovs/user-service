@@ -17,6 +17,7 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -148,29 +149,16 @@ export class RoleQueryResponseControlDto extends RoleRelationSelectDto {
   @IsBoolean()
   includePermissions: boolean;
 
-  @ApiPropertyOptional({
-    type: Boolean,
-    description: 'Include Roles in the response',
-    default: false,
-    required: false,
-  })
-  @IsOptional()
-  @ToBoolean()
-  @IsBoolean()
-  includeRoles: boolean;
-
   constructor(
     selectRoleFields: string[] | undefined,
     selectPermissionFields: string[] | undefined,
     selectCreatedByFields: string[] | undefined,
     includeCreatedBy: boolean | undefined,
     includePermissions: boolean | undefined,
-    includeRoles: boolean | undefined,
   ) {
     super(selectRoleFields, selectPermissionFields, selectCreatedByFields);
     this.includeCreatedBy = includeCreatedBy ?? false;
     this.includePermissions = includePermissions ?? false;
-    this.includeRoles = includeRoles ?? false;
   }
 }
 
@@ -181,4 +169,36 @@ export class FilterRolesQueryDto extends IntersectionType(
   QueryDateRequestDto,
   RoleQueryParametersDto,
   PermissionQueryParametersDto,
+) {}
+
+export class RoleRequestDto extends IntersectionType(
+  RoleSortDto,
+  PaginationDto,
+  RoleQueryResponseControlDto,
+) {}
+
+export class GetRoleByIdsQueryDto extends RoleRequestDto {
+  @ApiProperty({
+    description: 'Filter by specific role UUIDs for bulk operations',
+    type: String,
+    isArray: true,
+    format: 'uuid',
+    uniqueItems: true,
+    nullable: false,
+  })
+  @ToArray()
+  @IsNotEmpty()
+  @IsUUID('4', { each: true, message: 'Each id must be a valid UUIDv4' })
+  ids: UUID[];
+
+  constructor(ids: UUID[]) {
+    super();
+    this.ids = ids;
+  }
+}
+
+export class RoleSearchRequestDto extends IntersectionType(
+  PaginationDto,
+  RoleSortDto,
+  RoleSelectDto,
 ) {}

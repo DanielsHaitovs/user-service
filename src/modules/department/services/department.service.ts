@@ -47,11 +47,11 @@ export class DepartmentService {
   async create({
     createDepartmentDto,
     createdBy,
-    hasAccessToUser,
+    hasAccessToUsers,
   }: {
     createDepartmentDto: CreateDepartmentDto;
     createdBy: UUID;
-    hasAccessToUser: boolean;
+    hasAccessToUsers: boolean;
   }): Promise<Departments> {
     const { name, country } = createDepartmentDto;
 
@@ -75,7 +75,7 @@ export class DepartmentService {
         throw error;
       });
 
-    if (!hasAccessToUser) {
+    if (!hasAccessToUsers) {
       res.createdBy = {} as User;
       res.users = [];
     }
@@ -92,11 +92,11 @@ export class DepartmentService {
    */
   async findByIds({
     ids,
-    hasAccessToUser,
+    hasAccessToUsers,
     control,
   }: {
     ids: UUID[];
-    hasAccessToUser: boolean;
+    hasAccessToUsers: boolean;
     control: DepartmentRequestDto;
   }): Promise<DepartmentListResponseDto> {
     const query = this.departmentRepository.createQueryBuilder(
@@ -123,7 +123,7 @@ export class DepartmentService {
       includeUsers,
     } = control;
 
-    if (hasAccessToUser) {
+    if (hasAccessToUsers) {
       if (includeCreatedBy) {
         this.queryService.joinRelation({
           query,
@@ -155,7 +155,7 @@ export class DepartmentService {
         sortOrder,
       },
       criteria: this.queryService.departmentQueryCriteria({
-        hasAccessToUser,
+        hasAccessToUsers,
         includeCreatedBy,
         includeUsers,
       }),
@@ -224,7 +224,7 @@ export class DepartmentService {
         sortOrder,
       },
       criteria: this.queryService.departmentQueryCriteria({
-        hasAccessToUser: false,
+        hasAccessToUsers: false,
         includeCreatedBy: false,
         includeUsers: false,
       }),

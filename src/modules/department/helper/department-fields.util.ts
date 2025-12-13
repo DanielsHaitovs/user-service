@@ -49,6 +49,14 @@ export function getDepartmentGenericSelectableFields({
   ];
 }
 
+export function getDepartmentProperties(): string[] {
+  const collumns = getMetadataArgsStorage().columns.filter(
+    (column) => column.target === Departments,
+  );
+
+  return collumns.map((column) => column.propertyName);
+}
+
 /** * Combines selectable fields from Departments and its createdBy User relation
  * by prefixing them with their respective query aliases for use in TypeORM queries.
  *

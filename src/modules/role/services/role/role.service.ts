@@ -1,3 +1,4 @@
+import { DeleteResponseDto } from '@/base/dto/response.dto';
 import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
 import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
@@ -19,8 +20,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
-
-import { DeleteResponseDto } from '../../../base/dto/response.dto';
 
 @Injectable()
 export class RoleService {

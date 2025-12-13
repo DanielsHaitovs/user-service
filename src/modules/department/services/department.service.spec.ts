@@ -45,7 +45,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       await createDepartment({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToUsers: false,
       });
     });
 
@@ -53,7 +53,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       await createDepartment({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToUsers: true,
       });
     });
 
@@ -61,7 +61,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       const department = await createDepartment({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToUsers: false,
       });
       await expect(
         service.create({
@@ -70,7 +70,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
             country: department.country,
           },
           createdBy: systemUserId,
-          hasAccessToUser: false,
+          hasAccessToUsers: false,
         }),
       ).rejects.toThrow(ConflictException);
     });
@@ -81,7 +81,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       await findDepartmentsByIds({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToUsers: false,
       });
     });
 
@@ -89,7 +89,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       await findDepartmentsByIds({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: true,
+        hasAccessToUsers: true,
         includeCreatedBy: true,
         includeUsers: false,
       });
@@ -110,7 +110,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
             sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
             sortOrder: 'ASC',
           },
-          hasAccessToUser: false,
+          hasAccessToUsers: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
     });
@@ -121,8 +121,8 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service,
         queryService,
         createdBy: systemUserId,
-        requestedByUser: systemUserId,
-        hasAccessToUser: false,
+        requestedByUserId: systemUserId,
+        hasAccessToUsers: false,
         includeCreatedBy: false,
         includeUsers: false,
       });
@@ -133,8 +133,8 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service,
         queryService,
         createdBy: systemUserId,
-        requestedByUser: systemUserId,
-        hasAccessToUser: true,
+        requestedByUserId: systemUserId,
+        hasAccessToUsers: true,
         includeCreatedBy: false,
         includeUsers: true,
       });
@@ -145,8 +145,8 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service,
         queryService,
         createdBy: systemUserId,
-        requestedByUser: systemUserId,
-        hasAccessToUser: true,
+        requestedByUserId: systemUserId,
+        hasAccessToUsers: true,
         includeCreatedBy: true,
         includeUsers: false,
       });
@@ -157,8 +157,8 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
         service,
         queryService,
         createdBy: systemUserId,
-        requestedByUser: systemUserId,
-        hasAccessToUser: true,
+        requestedByUserId: systemUserId,
+        hasAccessToUsers: true,
         includeCreatedBy: true,
         includeUsers: false,
       });
@@ -183,8 +183,8 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
             sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
             sortOrder: 'ASC',
           },
-          hasAccessToUser: false,
-          requestedByUser: systemUserId,
+          hasAccessToUsers: false,
+          requestedByUserId: systemUserId,
         }),
       ).resolves.toHaveProperty('departments', []);
     });
@@ -220,7 +220,7 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
             sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
             sortOrder: 'ASC',
           },
-          hasAccessToUser: false,
+          hasAccessToUsers: false,
         }),
       ).rejects.toThrow(EntityNotFoundError);
     });
@@ -238,12 +238,12 @@ describe('DepartmentService (Integration - PostgreSQL)', () => {
       const department1 = await createDepartment({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToUsers: false,
       });
       const department2 = await createDepartment({
         service,
         createdBy: systemUserId,
-        hasAccessToUser: false,
+        hasAccessToUsers: false,
       });
 
       const updateDto: UpdateDepartmentDto = {

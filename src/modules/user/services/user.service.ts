@@ -16,6 +16,7 @@ import {
 } from '@/user/dto/user.dto';
 import { User } from '@/user/entities/user.entity';
 import { UserHelperService } from '@/user/helper/helper.service';
+import { UserCreateService } from '@/user/services/create.service';
 import { QueryService } from '@/user/services/query.service';
 import { UserRoleService } from '@/user/services/roles/user-role.service';
 import {
@@ -28,6 +29,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { EntityNotFoundError, Repository } from 'typeorm';
+
 /**
  * Service for managing user entities, including creation, retrieval,
  * updating, and deletion with comprehensive validation and error handling.
@@ -40,6 +42,7 @@ export class UserService {
     private readonly queryService: QueryService,
     private readonly userRoleService: UserRoleService,
     private readonly helperService: UserHelperService,
+    private readonly createService: UserCreateService,
   ) {}
 
   /**
@@ -75,7 +78,7 @@ export class UserService {
       passwordResetToken: generatePasswordResetToken(),
     });
 
-    return await this.helperService.createUser({
+    return await this.createService.createUser({
       user,
       departmentIds,
       roleIds,
@@ -497,6 +500,7 @@ export class UserService {
         sortField: undefined,
         sortOrder: 'ASC',
         selectUserFields: ['id'],
+        selectUserDepartmentFields: [],
         selectCreatedByFields: [],
         selectUserRoleFields: ['id'],
         selectAssignedByFields: [],

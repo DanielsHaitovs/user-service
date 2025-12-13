@@ -2,9 +2,13 @@ import { Departments } from '@/department/entities/department.entity';
 import { RandomCountry } from '@/lib/const/countries.const';
 import {
   CREATE_DEPARTMENT,
+  CREATE_USER_DEPARTMENT,
   DELETE_DEPARTMENT,
+  DELETE_USER_DEPARTMENT,
   READ_DEPARTMENT,
+  READ_USER_DEPARTMENT,
   UPDATE_DEPARTMENT,
+  UPDATE_USER_DEPARTMENT,
 } from '@/lib/const/department.const';
 import {
   CREATE_PERMISSION,
@@ -19,6 +23,7 @@ import {
   UPDATE_ROLE,
 } from '@/lib/const/role.const';
 import {
+  ASSIGN_USER_DEPARTMENT,
   ASSIGN_USER_ROLE,
   CREATE_USER,
   CREATE_USER_ROLE,
@@ -34,6 +39,7 @@ import {
 import { Permission } from '@/role/entities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
 import { User } from '@/user/entities/user.entity';
+import { UserDepartments } from '@/user/entities/userDepartments.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { getTraceId } from '@/utils/trace.util';
 import { faker } from '@faker-js/faker';
@@ -55,10 +61,16 @@ export class SeedService {
     [CREATE_DEPARTMENT]: 'Create Department',
     [UPDATE_DEPARTMENT]: 'Update Department',
     [DELETE_DEPARTMENT]: 'Delete Department',
+    [ASSIGN_USER_DEPARTMENT]: 'Assign User Department',
     [READ_PERMISSION]: 'Read Permission',
     [CREATE_PERMISSION]: 'Create Permission',
     [UPDATE_PERMISSION]: 'Update Permission',
     [DELETE_PERMISSION]: 'Delete Permission',
+    [READ_USER_DEPARTMENT]: 'Read User Department',
+    [CREATE_USER_DEPARTMENT]: 'Create User Department',
+    [UPDATE_USER_DEPARTMENT]: 'Update User Department',
+    [DELETE_USER_DEPARTMENT]: 'Delete User Department',
+    [ASSIGN_USER_DEPARTMENT]: 'Assign User Department',
     [READ_ROLE]: 'Read Role',
     [CREATE_ROLE]: 'Create Role',
     [UPDATE_ROLE]: 'Update Role',
@@ -182,6 +194,31 @@ export class SeedService {
           {
             name: 'Delete Department',
             code: DELETE_DEPARTMENT,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Read User Department',
+            code: READ_USER_DEPARTMENT,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Create User Department',
+            code: CREATE_USER_DEPARTMENT,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Update User Department',
+            code: UPDATE_USER_DEPARTMENT,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Delete User Department',
+            code: DELETE_USER_DEPARTMENT,
+            createdBy: systemUserID,
+          },
+          {
+            name: 'Assign User Department',
+            code: ASSIGN_USER_DEPARTMENT,
             createdBy: systemUserID,
           },
           {
@@ -311,7 +348,7 @@ export class SeedService {
       permissions,
     });
 
-    user.departments = [department];
+    user.userDepartments = [];
     user.userRoles = [];
 
     const userRole = this.entityManager.getRepository(UserRole).create({
@@ -322,7 +359,20 @@ export class SeedService {
 
     user.userRoles.push(userRole);
 
+    const userDepartment = this.entityManager
+      .getRepository(UserDepartments)
+      .create({
+        user,
+        department,
+        assignedBy: systemUserID,
+      });
+
+    user.userDepartments.push(userDepartment);
+
     await this.entityManager.getRepository(UserRole).save(userRole);
+    await this.entityManager
+      .getRepository(UserDepartments)
+      .save(userDepartment);
     return await this.entityManager.getRepository(User).save(user);
   }
 

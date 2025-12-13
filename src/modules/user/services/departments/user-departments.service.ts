@@ -1,17 +1,22 @@
-import { User } from '@/user/entities/user.entity';
+import { DepartmentHelperService } from '@/department/helper/helper.service';
+import {
+  AssignDepartmentsDto,
+  UnAssignDepartmentsDto,
+} from '@/user/dto/departments.dto';
+import { UserDepartments } from '@/user/entities/userDepartments.entity';
 import { UserHelperService } from '@/user/helper/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { UUID } from 'crypto';
 import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserDepartmentsService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    private readonly helperService: UserHelperService,
+    @InjectRepository(UserDepartments)
+    private readonly userDepartmentRepository: Repository<UserDepartments>,
+    private readonly userService: UserHelperService,
+    private readonly departmentService: DepartmentHelperService,
   ) {}
 
   /**
@@ -21,34 +26,35 @@ export class UserDepartmentsService {
    * @param departmentIds - An array of department IDs to assign to the user.
    * @returns A promise resolving to the updated User entity with assigned departments.
    */
-  async assignDepartmentsToUser({
-    userId,
-    departmentIds,
-  }: {
-    userId: UUID;
-    departmentIds: UUID[];
-  }): Promise<User> {
-    const user = await this.helperService.findByIdOrFail({
+  async assignDepartmentsToUser(
+    data: AssignDepartmentsDto,
+  ): Promise<UserDepartments[]> {
+    const { userId, departmentIds, assignedBy } = data;
+
+    const user = await this.userService.findByIdOrFail({
       id: userId,
-      includeDepartments: true,
+      includeRoles: true,
+      includeDepartments: false,
+    });
+
+    const assignedByUser = await this.userService.findByIdOrFail({
+      id: assignedBy,
+      includeDepartments: false,
       includeRoles: false,
     });
 
-    departmentIds = departmentIds.filter(
-      (id) => !user.departments.some((dept) => dept.id === id),
-    );
+    const departments =
+      await this.departmentService.getManyByIdsOrFail(departmentIds);
 
-    if (departmentIds.length === 0) {
-      return user;
-    }
+    const userDepartments = departments.map((department) => {
+      return this.userDepartmentRepository.create({
+        user,
+        department,
+        assignedBy: assignedByUser,
+      });
+    });
 
-    const department =
-      await this.helperService.findManyDeaprtmentsOrFail(departmentIds);
-
-    user.departments.push(...department);
-    await this.userRepository.save(user);
-
-    return user;
+    return await this.userDepartmentRepository.save(userDepartments);
   }
 
   /**
@@ -58,27 +64,25 @@ export class UserDepartmentsService {
    * @param departmentIds - An array of department IDs to unassign from the user.
    * @returns A promise resolving to the updated User entity without the unassigned departments.
    */
-  async unassignDepartmentsFromUser({
-    userId,
-    departmentIds,
-  }: {
-    userId: UUID;
-    departmentIds: UUID[];
-  }): Promise<User> {
-    const user = await this.helperService.findByIdOrFail({
-      id: userId,
-      includeDepartments: true,
-      includeRoles: false,
-    });
+  async unassignDepartmentsFromUser(
+    data: UnAssignDepartmentsDto,
+  ): Promise<{ unassigned: number; status: string }> {
+    const { userIds, departmentIds } = data;
 
-    await this.helperService.findManyDeaprtmentsOrFail(departmentIds);
+    await this.userService.findManyByIdsOrFail(userIds);
+    await this.departmentService.getManyByIdsOrFail(departmentIds);
 
-    user.departments = user.departments.filter(
-      (dept) => !departmentIds.includes(dept.id),
-    );
+    const result = await this.userDepartmentRepository
+      .createQueryBuilder()
+      .delete()
+      .from(UserDepartments)
+      .where('department.id IN (:...departmentIds)', { departmentIds })
+      .andWhere('user.id IN (:...userIds)', { userIds })
+      .execute();
 
-    await this.userRepository.save(user);
-
-    return user;
+    return {
+      unassigned: result.affected ?? 0,
+      status: 'Departments unassigned successfully',
+    };
   }
 }

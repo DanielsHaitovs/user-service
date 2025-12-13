@@ -3,6 +3,7 @@ import { ToArray } from '@/common/decorators/array.decorator';
 import { ToBoolean } from '@/common/decorators/boolean.decorator';
 import { getDepartmentGenericSelectableFields } from '@/department/helper/department-fields.util';
 import { COUNTRIES } from '@/lib/const/countries.const';
+import { UserDateParams } from '@/lib/enum/user/user.enum';
 import {
   getPermissionsGenericSelectableFields,
   getRoleGenericSelectableFields,
@@ -10,6 +11,7 @@ import {
 import {
   getAssignedByGenericSelectableFields,
   getCreatedByGenericSelectableFields,
+  getUserDepartmentGenericSelectableFields,
   getUserGenericSelectableFields,
   getUserRoleGenericSelectableFields,
 } from '@/user/helper/user-fields.util';
@@ -40,7 +42,8 @@ import { UUID } from 'crypto';
  */
 export class UserQueryParametersDto {
   @ApiPropertyOptional({
-    description: 'Filter by specific user UUIDs for bulk operations',
+    title: 'Filter by specific user UUIDs',
+    description: 'Excludes all users except those with the specified IDs',
     type: String,
     isArray: true,
     format: 'uuid',
@@ -54,8 +57,9 @@ export class UserQueryParametersDto {
   ids?: UUID[];
 
   @ApiPropertyOptional({
+    title: 'Filter by first names',
     description:
-      'Filter by first names - supports partial matching across multiple names',
+      'Excludes all users except for those with the specified first names, supports partial matching across multiple first names',
     type: String,
     isArray: true,
     maxItems: 100,
@@ -67,8 +71,9 @@ export class UserQueryParametersDto {
   firstNames?: string[];
 
   @ApiPropertyOptional({
+    title: 'Filter by last names',
     description:
-      'Filter by last names - useful for family or surname-based searches',
+      'Excludes all users except for those with the specified last names, supports partial matching across multiple last names',
     type: String,
     isArray: true,
     maxItems: 100,
@@ -80,7 +85,9 @@ export class UserQueryParametersDto {
   lastNames?: string[];
 
   @ApiPropertyOptional({
-    description: 'Filter by countries - supports multiple countries',
+    title: 'Filter by countries',
+    description:
+      'Excludes all users except for those from the specified countries, supports multiple country codes',
     type: String,
     isArray: true,
     enum: COUNTRIES,
@@ -94,8 +101,9 @@ export class UserQueryParametersDto {
   countries?: string[];
 
   @ApiPropertyOptional({
+    title: 'Filter by email addresses',
     description:
-      'Filter by email addresses - commonly used for user lookup and verification',
+      'Excludes all users except for those with the specified email addresses, supports multiple emails',
     type: String,
     isArray: true,
     format: 'email',
@@ -122,8 +130,9 @@ export class UserQueryParametersDto {
   phoneNumbers?: string[];
 
   @ApiPropertyOptional({
+    title: 'Filter by account activation status',
     description:
-      'Filter by account activation status - false excludes suspended users',
+      'Excludes users based on whether their account is active or not',
     type: Boolean,
     required: false,
   })
@@ -133,8 +142,21 @@ export class UserQueryParametersDto {
   isActive: boolean | undefined;
 
   @ApiPropertyOptional({
+    title: 'Filter by account two factory enabled status',
     description:
-      'Filter by account email verification status - false excludes unverified users',
+      'False excludes users without two factor authentication enabled',
+    type: Boolean,
+    required: false,
+  })
+  @IsOptional()
+  @ToBoolean()
+  @IsBoolean()
+  isTwoFactorEnabled: boolean | undefined;
+
+  @ApiPropertyOptional({
+    title: 'Filter by email verification status',
+    description:
+      'Excludes users based on whether their email is verified or not',
     type: Boolean,
     required: false,
   })
@@ -144,7 +166,9 @@ export class UserQueryParametersDto {
   isEmailVerified: boolean | undefined;
 
   @ApiPropertyOptional({
-    description: 'Filter by specific created by UUIDs for bulk operations',
+    title: 'Filter by specific creator UUIDs',
+    description:
+      'Excludes all users except those created by the specified user IDs',
     type: String,
     isArray: true,
     format: 'uuid',
@@ -161,7 +185,8 @@ export class UserQueryParametersDto {
   createdByIds?: UUID[];
 
   @ApiPropertyOptional({
-    description: 'Filter by specific departments UUIDs for bulk operations',
+    title: 'Filter by specific department UUIDs',
+    description: 'Excludes all users except those in the specified departments',
     type: String,
     isArray: true,
     format: 'uuid',
@@ -178,7 +203,9 @@ export class UserQueryParametersDto {
   departmentIds?: UUID[];
 
   @ApiPropertyOptional({
-    description: 'Filter by specific departments countries for bulk operations',
+    title: 'Filter by specific department countries',
+    description:
+      'Excludes all users except those in departments from the specified countries',
     type: String,
     isArray: true,
     enum: COUNTRIES,
@@ -192,7 +219,8 @@ export class UserQueryParametersDto {
   departmentCountries?: string[];
 
   @ApiPropertyOptional({
-    description: 'Filter by specific role UUIDs for bulk operations',
+    title: 'Filter by specific role UUIDs',
+    description: 'Excludes all users except those assigned the specified roles',
     type: String,
     isArray: true,
     format: 'uuid',
@@ -206,7 +234,9 @@ export class UserQueryParametersDto {
   roleIds?: UUID[];
 
   @ApiPropertyOptional({
-    description: 'Filter by specific role names for bulk operations',
+    title: 'Filter by specific role names',
+    description:
+      'Excludes all users except those assigned roles with the specified names',
     type: String,
     isArray: true,
     uniqueItems: true,
@@ -219,7 +249,9 @@ export class UserQueryParametersDto {
   roleNames?: string[];
 
   @ApiPropertyOptional({
-    description: 'Filter by specific permission UUIDs for bulk operations',
+    title: 'Filter by specific permission UUIDs',
+    description:
+      'Excludes all users except those roles with assigned the specified permissions',
     type: String,
     isArray: true,
     format: 'uuid',
@@ -236,7 +268,9 @@ export class UserQueryParametersDto {
   permissionIds?: UUID[];
 
   @ApiPropertyOptional({
-    description: 'Filter by specific permission codes for bulk operations',
+    title: 'Filter by specific permission Codes',
+    description:
+      'Excludes all users except those roles with assigned the specified permissions',
     type: String,
     isArray: true,
     uniqueItems: true,
@@ -255,6 +289,7 @@ export class UserQueryParametersDto {
     countries?: COUNTRIES[],
     emails?: string[],
     phoneNumbers?: string[],
+    isTwoFactorEnabled?: boolean,
     isActive?: boolean,
     isEmailVerified?: boolean,
     createdByIds?: UUID[],
@@ -271,6 +306,7 @@ export class UserQueryParametersDto {
     this.countries = countries ?? [];
     this.phoneNumbers = phoneNumbers ?? [];
     this.emails = emails ?? [];
+    this.isTwoFactorEnabled = isTwoFactorEnabled ?? undefined;
     this.isActive = isActive ?? undefined;
     this.isEmailVerified = isEmailVerified ?? undefined;
     this.createdByIds = createdByIds ?? [];
@@ -323,6 +359,23 @@ export class UserRelationSelectDto extends UserSelectDto {
   })
   @IsOptional()
   selectCreatedByFields: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Specific user department fields to return - optimizes payload size and performance',
+    enum: getUserDepartmentGenericSelectableFields({}),
+    type: String,
+    isArray: true,
+    required: false,
+    example: getUserDepartmentGenericSelectableFields({}),
+  })
+  @ToArray()
+  @IsEnum(getUserDepartmentGenericSelectableFields({}), {
+    each: true,
+    message: 'Each selectUserDepartmentField must be a valid user role field',
+  })
+  @IsOptional()
+  selectUserDepartmentFields: string[];
 
   @ApiPropertyOptional({
     description:
@@ -412,6 +465,7 @@ export class UserRelationSelectDto extends UserSelectDto {
   constructor({
     selectUserFields,
     selectCreatedByFields,
+    selectUserDepartmentFields,
     selectDepartmentFields,
     selectUserRoleFields,
     selectAssignedByFields,
@@ -420,6 +474,7 @@ export class UserRelationSelectDto extends UserSelectDto {
   }: {
     selectUserFields: string[] | undefined;
     selectCreatedByFields: string[] | undefined;
+    selectUserDepartmentFields: string[] | undefined;
     selectDepartmentFields: string[] | undefined;
     selectUserRoleFields: string[] | undefined;
     selectAssignedByFields: string[] | undefined;
@@ -428,6 +483,7 @@ export class UserRelationSelectDto extends UserSelectDto {
   }) {
     super(selectUserFields);
     this.selectCreatedByFields = selectCreatedByFields ?? [];
+    this.selectUserDepartmentFields = selectUserDepartmentFields ?? [];
     this.selectDepartmentFields = selectDepartmentFields ?? [];
     this.selectUserRoleFields = selectUserRoleFields ?? [];
     this.selectAssignedByFields = selectAssignedByFields ?? [];
@@ -488,6 +544,7 @@ export class UserQueryResponseControlDto extends UserRelationSelectDto {
     includePermissions: boolean | undefined,
     selectUserFields: string[] | undefined,
     selectCreatedByFields: string[] | undefined,
+    selectUserDepartmentFields: string[] | undefined,
     selectDepartmentFields: string[] | undefined,
     selectUserRoleFields: string[] | undefined,
     selectAssignedByFields: string[] | undefined,
@@ -497,6 +554,7 @@ export class UserQueryResponseControlDto extends UserRelationSelectDto {
     super({
       selectUserFields,
       selectCreatedByFields,
+      selectUserDepartmentFields,
       selectDepartmentFields,
       selectUserRoleFields,
       selectAssignedByFields,
@@ -552,10 +610,10 @@ export class UserDateRequestDto extends OmitType(QueryDateRequestDto, [
   @ApiPropertyOptional({
     description: 'Additional date filter parameter for custom filtering logic',
     example: 'createdAt',
-    enum: ['createdAt', 'updatedAt', 'dateOfBirth'],
+    enum: UserDateParams,
     type: String,
   })
-  @IsEnum(['createdAt', 'updatedAt', 'dateOfBirth'], {
+  @IsEnum(UserDateParams, {
     message: 'dateFilterParam must be a valid user date field',
     each: true,
   })

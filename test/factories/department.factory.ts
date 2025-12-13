@@ -1,9 +1,11 @@
 import type {
   CreateDepartmentDto,
   DepartmentListResponseDto,
+  DepartmentResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
 import type { Departments } from '@/department/entities/department.entity';
+import { getDepartmentGenericSelectableFields } from '@/department/helper/department-fields.util';
 import type { DepartmentService } from '@/department/services/department.service';
 import type { QueryService } from '@/department/services/query.service';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
@@ -12,37 +14,39 @@ import {
   validateDeleteDepartmentResponse,
   validateDepartmentsResponse,
 } from '@/test/validation/department';
+import {
+  getCreatedByGenericSelectableFields,
+  getUserGenericSelectableFields,
+} from '@/user/helper/user-fields.util';
 import { faker } from '@faker-js/faker';
 
 import type { UUID } from 'crypto';
 import { EntityNotFoundError } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { getDepartmentGenericSelectableFields } from '../../src/modules/department/helper/department-fields.util';
-import {
-  getCreatedByGenericSelectableFields,
-  getUserGenericSelectableFields,
-} from '../../src/modules/user/helper/user-fields.util';
+import type { User } from '../../src/modules/user/entities/user.entity';
 
 export async function createDepartment({
   service,
+  createDepartmentDto,
   createdBy,
-  hasAccessToUser,
+  hasAccessToUsers,
 }: {
   service: DepartmentService;
+  createDepartmentDto?: CreateDepartmentDto;
   createdBy: UUID;
-  hasAccessToUser: boolean;
-}): Promise<Departments> {
-  const dto: CreateDepartmentDto = {
+  hasAccessToUsers: boolean;
+}): Promise<DepartmentResponseDto> {
+  createDepartmentDto ??= {
     name: `${faker.lorem.word()}-${uuid()}`,
     country: getRandomCountryCode(),
   };
 
   try {
     const department = await service.create({
-      createDepartmentDto: dto,
+      createDepartmentDto,
       createdBy,
-      hasAccessToUser,
+      hasAccessToUsers,
     });
 
     validateDepartmentsResponse({
@@ -51,7 +55,8 @@ export async function createDepartment({
       names: [department.name],
       countries: [department.country],
       amountExpected: 1,
-      hasCreatedBy: hasAccessToUser,
+      hasCreatedBy: hasAccessToUsers,
+      expectedCreatedByIds: hasAccessToUsers ? [createdBy] : undefined,
     });
 
     return department;
@@ -64,43 +69,53 @@ export async function createDepartment({
 export async function findDepartmentsByIds({
   service,
   createdBy,
-  hasAccessToUser,
+  selectFields,
+  hasAccessToUsers,
   includeCreatedBy,
+  selectCreatedByFields,
   includeUsers,
+  selectUserFields,
 }: {
   service: DepartmentService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
+  selectFields?: (keyof Departments)[] | undefined;
+  hasAccessToUsers: boolean;
   includeCreatedBy?: boolean;
+  selectCreatedByFields?: (keyof User)[] | undefined;
   includeUsers?: boolean;
+  selectUserFields?: (keyof User)[] | undefined;
 }): Promise<DepartmentListResponseDto> {
   const department = await createDepartment({
     service,
     createdBy,
-    hasAccessToUser,
+    hasAccessToUsers,
   });
+
+  includeUsers ??= false;
+  includeCreatedBy ??= false;
+  selectCreatedByFields ??= ['id', 'email', 'firstName', 'lastName'];
+  selectUserFields ??= ['id', 'email', 'firstName', 'lastName'];
 
   const response = await service.findByIds({
     ids: [department.id],
     control: {
       page: 1,
       limit: 1,
-      includeCreatedBy: includeCreatedBy ?? false,
-      includeUsers: includeUsers ?? false,
-      selectCreatedByFields: getCreatedByGenericSelectableFields([
-        'id',
-        'email',
-        'firstName',
-        'lastName',
-      ]),
+      includeCreatedBy,
+      includeUsers,
+      selectCreatedByFields: getCreatedByGenericSelectableFields(
+        selectCreatedByFields,
+      ),
       selectUserFields: getUserGenericSelectableFields({
-        fields: ['id', 'email', 'firstName', 'lastName'],
+        fields: selectUserFields,
       }),
-      selectDepartmentFields: getDepartmentGenericSelectableFields({}),
+      selectDepartmentFields: getDepartmentGenericSelectableFields({
+        fields: selectFields,
+      }),
       sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
       sortOrder: 'ASC',
     },
-    hasAccessToUser,
+    hasAccessToUsers,
   });
 
   validateDepartmentsResponse({
@@ -108,9 +123,11 @@ export async function findDepartmentsByIds({
     ids: [department.id],
     names: [department.name],
     countries: [department.country],
+    expectedFields: selectFields,
     amountExpected: 1,
-    hasCreatedBy: (includeCreatedBy ?? false) && hasAccessToUser,
-    hasUsers: (includeUsers ?? false) && hasAccessToUser,
+    hasCreatedBy: includeCreatedBy && hasAccessToUsers,
+    hasUsers: includeUsers && hasAccessToUsers,
+    expectedUserIds: includeUsers ? [createdBy] : undefined,
   });
 
   return response;
@@ -126,7 +143,7 @@ export async function searchForDepartments({
   const newDepartment = await createDepartment({
     service,
     createdBy,
-    hasAccessToUser: false,
+    hasAccessToUsers: false,
   });
 
   const res = await service.searchFor({
@@ -161,11 +178,11 @@ export async function updateDepartmentName({
 }: {
   service: DepartmentService;
   createdBy: UUID;
-}): Promise<Departments> {
+}): Promise<DepartmentResponseDto> {
   const department = await createDepartment({
     service,
     createdBy,
-    hasAccessToUser: false,
+    hasAccessToUsers: false,
   });
 
   const updateDto: UpdateDepartmentDto = {
@@ -194,11 +211,11 @@ export async function updateDepartmentCountry({
 }: {
   service: DepartmentService;
   createdBy: UUID;
-}): Promise<Departments> {
+}): Promise<DepartmentResponseDto> {
   const department = await createDepartment({
     service,
     createdBy,
-    hasAccessToUser: false,
+    hasAccessToUsers: false,
   });
 
   const updateDto: UpdateDepartmentDto = {
@@ -225,24 +242,24 @@ export async function queryDepartments({
   service,
   queryService,
   createdBy,
-  hasAccessToUser,
-  requestedByUser,
+  hasAccessToUsers,
+  requestedByUserId,
   includeCreatedBy,
   includeUsers,
 }: {
   service: DepartmentService;
   queryService: QueryService;
   createdBy: UUID;
-  hasAccessToUser: boolean;
-  requestedByUser: UUID;
+  hasAccessToUsers: boolean;
+  requestedByUserId: UUID;
   includeCreatedBy?: boolean;
   includeUsers?: boolean;
 }): Promise<DepartmentListResponseDto> {
   const newDepartments = await Promise.all([
-    createDepartment({ service, createdBy, hasAccessToUser }),
-    createDepartment({ service, createdBy, hasAccessToUser }),
-    createDepartment({ service, createdBy, hasAccessToUser }),
-    createDepartment({ service, createdBy, hasAccessToUser }),
+    createDepartment({ service, createdBy, hasAccessToUsers }),
+    createDepartment({ service, createdBy, hasAccessToUsers }),
+    createDepartment({ service, createdBy, hasAccessToUsers }),
+    createDepartment({ service, createdBy, hasAccessToUsers }),
   ]);
 
   const ids = newDepartments.flatMap((department) => department.id);
@@ -273,8 +290,8 @@ export async function queryDepartments({
       }),
       selectDepartmentFields: getDepartmentGenericSelectableFields({}),
     },
-    requestedByUser,
-    hasAccessToUser,
+    requestedByUserId,
+    hasAccessToUsers,
   });
 
   validateDepartmentsResponse({
@@ -283,8 +300,8 @@ export async function queryDepartments({
     names,
     countries,
     amountExpected: 4,
-    hasCreatedBy: (includeCreatedBy ?? false) && hasAccessToUser,
-    hasUsers: (includeUsers ?? false) && hasAccessToUser,
+    hasCreatedBy: (includeCreatedBy ?? false) && hasAccessToUsers,
+    hasUsers: (includeUsers ?? false) && hasAccessToUsers,
   });
 
   return departments;
@@ -300,7 +317,7 @@ export async function deleteDepartments({
   const department = await createDepartment({
     service,
     createdBy,
-    hasAccessToUser: false,
+    hasAccessToUsers: false,
   });
 
   const result = await service.deleteByIds([department.id]);
@@ -321,7 +338,7 @@ export async function deleteDepartments({
         sortField: `${DEPARTMENT_QUERY_ALIAS}.createdAt`,
         sortOrder: 'ASC',
       },
-      hasAccessToUser: false,
+      hasAccessToUsers: false,
     }),
   ).rejects.toThrow(EntityNotFoundError);
 }

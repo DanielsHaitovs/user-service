@@ -9,7 +9,7 @@ import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsUUID, ValidateNested } from 'class-validator';
 import { UUID } from 'crypto';
 
-export class AssignRoleIdsDto {
+export class AssignRolesDto {
   @ApiProperty({
     type: String,
     format: 'uuid',
@@ -47,7 +47,7 @@ export class AssignRoleIdsDto {
   }
 }
 
-export class UnAssignRoleIdsDto {
+export class UnAssignRolesDto {
   @ApiProperty({
     type: String,
     format: 'uuid',

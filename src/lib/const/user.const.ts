@@ -99,12 +99,6 @@ export const EXAMPLE_USER_PASSWORD_RESET_TOKEN =
 export const USER_QUERY_ALIAS = 'users' as string;
 
 /**
- *  Alias used in TypeORM queries to refer to the assignedBy entity.
- *
- */
-export const ASSIGNED_USER_QUERY_ALIAS = 'assignedBy' as string;
-
-/**
  * Alias used in TypeORM queries to refer to the user role entity.
  * Ensures consistent naming across query service implementations.
  */
@@ -164,6 +158,12 @@ export const DELETE_USER_ROLE = 'user-role:delete' as string;
  * Represents a permission for assigning roles to users.
  */
 export const ASSIGN_USER_ROLE = 'user-role:assign' as string;
+
+/**
+ * Standard example permission used in API documentation and test fixtures.
+ * Represents a permission for assigning roles to users.
+ */
+export const ASSIGN_USER_DEPARTMENT = 'user-department:assign' as string;
 
 /**
  * Standard example permission used in API documentation and test fixtures.

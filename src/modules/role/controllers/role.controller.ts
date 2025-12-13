@@ -74,6 +74,14 @@ export class RolesController extends BaseController<
     super();
   }
 
+  /**
+   * Creates a new role with the provided information.
+   * @param roleDto - The DTO containing role creation data.
+   * @param requestedByUser - The user making the request.
+   * @returns The newly created role entity.
+   * @throws ConflictException if a role with the same name already exists.
+   * @throws NotFoundException if the permissions provided do not exist.
+   */
   @Post()
   @Permissions(CREATE_ROLE, READ_ROLE)
   @HttpCode(HttpStatus.CREATED)
@@ -114,6 +122,12 @@ export class RolesController extends BaseController<
     });
   }
 
+  /**
+   * @param filters - Query filters containing role IDs
+   * @param requestedByUser - The user making the request
+   * @returns List of roles matching the provided IDs
+   * @throws NotFoundException if any of the roles do not exist
+   */
   @Get('attribute/ids')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
@@ -148,6 +162,11 @@ export class RolesController extends BaseController<
     });
   }
 
+  /**
+   * @param value - search value (name, code, id)
+   * @param control - query control parameters
+   * @returns List of roles matching the search criteria
+   */
   @Get('search/:value')
   @HttpCode(HttpStatus.OK)
   @ApiParam({
@@ -182,6 +201,14 @@ export class RolesController extends BaseController<
     });
   }
 
+  /**
+   * Updates a role by its unique identifier.
+   * @param id - The UUID of the role to update.
+   * @param roleToUpdate - The DTO containing updated role information.
+   * @returns The updated role entity.
+   * @throws NotFoundException if the role does not exist.
+   * @throws ConflictException if the updated role name conflicts with an existing role.
+   */
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiParam({
@@ -226,6 +253,13 @@ export class RolesController extends BaseController<
     return await this.roleService.update({ id, roleToUpdate });
   }
 
+  /**
+   * Deletes roles by their unique identifiers.
+   * @param ids - An array of role UUIDs to be deleted.
+   * @returns A DeleteResponseDto indicating the result of the deletion operation.
+   * @throws BadRequestException if no role ids provided.
+   * @throws NotFoundException if any of the roles do not exist.
+   */
   @Delete()
   @HttpCode(HttpStatus.OK)
   @ApiQuery({
@@ -266,8 +300,7 @@ export class RolesController extends BaseController<
 
   /**
    * Adds permissions to an existing role.
-   * @param permissionIds - The IDs of the permissions to add.
-   * @param roleId - The ID of the role to which permissions will be added.
+   * @param payload - The DTO containing permission IDs/codes and the role ID.
    * @returns The updated role entity with new permissions.
    * @throws NotFoundException if the role or any of the permissions do not exist.
    */

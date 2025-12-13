@@ -64,6 +64,14 @@ export class PermissionController extends BaseController<
     super();
   }
 
+  /**
+   * @param createPermissionDto - Array of permissions to create
+   * @param requestedByUser - The user making the request
+   * @returns The created permissions
+   * @throws BadRequestException - If role id was not provided
+   * @throws EntityNotFoundError - If the specified role does not exist
+   * @throws ConflictException - If a permission with the same code already exists
+   */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOkList({
@@ -106,6 +114,14 @@ export class PermissionController extends BaseController<
     });
   }
 
+  /**
+   * Retrieves permissions by their unique identifiers.
+   *
+   * @param filters - Query parameters containing the list of permission IDs
+   * @param requestedByUser - The user making the request
+   * @returns Promise resolving to PermissionListResponseDto
+   * @throws EntityNotFoundError when one or more permissions are not found
+   */
   @Get('attribute/ids')
   @Permissions(READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
@@ -141,6 +157,14 @@ export class PermissionController extends BaseController<
     });
   }
 
+  /**
+   * Retrieves permissions by their unique codes.
+   *
+   * @param filters - Query parameters containing the list of permission codes
+   * @param requestedByUser - The user making the request
+   * @returns Promise resolving to PermissionListResponseDto
+   * @throws EntityNotFoundError when one or more permissions are not found
+   */
   @Get('attribute/codes')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
@@ -175,6 +199,13 @@ export class PermissionController extends BaseController<
     });
   }
 
+  /**
+   * Searches for permissions by name, code, or id.
+   *
+   * @param value - The search value (name, code, or id)
+   * @param control - Additional query parameters for filtering and pagination
+   * @returns Promise resolving to PermissionListResponseDto
+   */
   @Get('search/:value')
   @Permissions(READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
@@ -210,6 +241,15 @@ export class PermissionController extends BaseController<
     });
   }
 
+  /**
+   * Updates a permission by its ID.
+   *
+   * @param id - UUID of the permission to update
+   * @param updatePermissionDto - Data for updating the permission
+   * @returns Promise resolving to the updated Permission
+   * @throws EntityNotFoundError when the permission with the specified ID does not exist
+   * @throws ConflictException when a permission with the same name or code already exists
+   */
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiParam({
@@ -254,6 +294,13 @@ export class PermissionController extends BaseController<
     return await this.permissionService.update({ id, updatePermissionDto });
   }
 
+  /**
+   * Deletes permissions by their unique identifiers.
+   *
+   * @param ids - Array of permission UUIDs to delete
+   * @returns Promise resolving to DeleteResponseDto
+   * @throws EntityNotFoundError when one or more permissions are not found
+   */
   @Delete()
   @HttpCode(HttpStatus.OK)
   @ApiOkList({

@@ -239,8 +239,15 @@ export class EntityQueryService {
     if (sort?.sortField == undefined) return;
 
     const { sortField, sortOrder } = sort;
+    const field = sortField.split('.')[1];
 
-    query.orderBy(sortField, sortOrder);
+    if (field == undefined) return;
+
+    const orderAlias = `${field}_order`;
+
+    query
+      .addSelect(`${query.alias}.${field}::text`, orderAlias)
+      .orderBy(orderAlias, sortOrder);
   }
 
   validateRelationSelect<T extends ObjectLiteral>({

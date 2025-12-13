@@ -1,6 +1,7 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { COUNTRIES } from '@/lib/const/countries.const';
 import { User } from '@/user/entities/user.entity';
+import { UserDepartments } from '@/user/entities/userDepartments.entity';
 
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
@@ -9,8 +10,8 @@ import {
   Entity,
   Index,
   JoinColumn,
-  ManyToMany,
   ManyToOne,
+  OneToMany,
   Unique,
 } from 'typeorm';
 
@@ -37,8 +38,11 @@ export class Departments extends MecBaseEntity {
   @IsEnum(COUNTRIES)
   country: COUNTRIES;
 
-  @ManyToMany(() => User, (user) => user.departments)
-  users: User[];
+  @OneToMany(
+    () => UserDepartments,
+    (userDepartment) => userDepartment.department,
+  )
+  userDepartments: UserDepartments[];
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })
@@ -50,14 +54,14 @@ export class Departments extends MecBaseEntity {
     updatedAt: Date,
     name: string,
     country: COUNTRIES,
-    users: User[],
+    userDepartments: UserDepartments[],
     createdBy: User,
   ) {
     super(id, createdAt, updatedAt);
     this.id = id;
     this.name = name;
     this.country = country;
-    this.users = users;
+    this.userDepartments = userDepartments;
     this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;

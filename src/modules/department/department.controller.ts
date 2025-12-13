@@ -18,7 +18,6 @@ import {
   FilterDepartmentsQueryDto,
   GetDepartmentsByIdsRequestDto,
 } from '@/department/dto/query.dto';
-import { Departments } from '@/department/entities/department.entity';
 import { DepartmentService } from '@/department/services/department.service';
 import { QueryService } from '@/department/services/query.service';
 import {
@@ -100,7 +99,7 @@ export class DepartmentController extends BaseController<
   async create(
     @Body() createDepartmentDto: CreateDepartmentDto,
     @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<Departments> {
+  ): Promise<DepartmentResponseDto> {
     const { id, hasAccessToUsers } = this.extractAccess(requestedByUser);
 
     return await this.departmentService.create({
@@ -196,7 +195,7 @@ export class DepartmentController extends BaseController<
   async updateById(
     @Param('id') id: UUID,
     @Body() updateDepartmentDto: UpdateDepartmentDto,
-  ): Promise<Departments> {
+  ): Promise<DepartmentResponseDto> {
     return await this.departmentService.update({ id, updateDepartmentDto });
   }
 

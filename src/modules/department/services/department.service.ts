@@ -3,6 +3,7 @@ import { PostgresQueryFailedError } from '@/base/interface/query.error';
 import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
+  DepartmentResponseDto,
   UpdateDepartmentDto,
 } from '@/department/dto/department.dto';
 import {
@@ -52,7 +53,7 @@ export class DepartmentService {
     createDepartmentDto: CreateDepartmentDto;
     createdBy: UUID;
     hasAccessToUsers: boolean;
-  }): Promise<Departments> {
+  }): Promise<DepartmentResponseDto> {
     const { name, country } = createDepartmentDto;
 
     const department = this.departmentRepository.create({
@@ -61,7 +62,7 @@ export class DepartmentService {
       createdBy: { id: createdBy } as User,
     });
 
-    const res = await this.departmentRepository
+    const res: DepartmentResponseDto = await this.departmentRepository
       .save(department)
       .catch((e: unknown) => {
         const error = e as PostgresQueryFailedError;
@@ -76,8 +77,8 @@ export class DepartmentService {
       });
 
     if (!hasAccessToUsers) {
-      res.createdBy = {} as User;
-      res.users = [];
+      delete res.createdBy;
+      delete res.users;
     }
 
     return res;
@@ -254,7 +255,7 @@ export class DepartmentService {
   }: {
     id: UUID;
     updateDepartmentDto: UpdateDepartmentDto;
-  }): Promise<Departments> {
+  }): Promise<DepartmentResponseDto> {
     const department = await this.helperService.getByIdOrFail(id);
 
     if (updateDepartmentDto.name !== undefined) {

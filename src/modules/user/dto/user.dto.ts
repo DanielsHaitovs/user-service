@@ -1,11 +1,10 @@
 import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
 import { ToArray } from '@/common/decorators/array.decorator';
 import { ToBoolean } from '@/common/decorators/boolean.decorator';
-import { DepartmentResponseDto } from '@/department/dto/department.dto';
 import { COUNTRIES } from '@/lib/const/countries.const';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
-import { UserRoleResponseDto } from '@/user/dto/userRole.dto';
+import { UserRoleResponseDto } from '@/modules/user/dto/roles.dto';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -23,6 +22,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UUID } from 'crypto';
+
+import { UserDepartmentResponseDto } from './departments.dto';
 
 /**
  * Base DTO containing core user information shared across multiple operations.
@@ -357,11 +358,11 @@ export class UserResponseDto extends GetUserDto {
 
   @ApiProperty({
     description: 'Department information associated with the user',
-    type: DepartmentResponseDto,
+    type: UserDepartmentResponseDto,
   })
-  @Type(() => DepartmentResponseDto)
+  @Type(() => UserDepartmentResponseDto)
   @ValidateNested({ each: true })
-  departments?: DepartmentResponseDto[];
+  userDepartments?: UserDepartmentResponseDto[];
 
   @ApiProperty({
     description: 'List of roles assigned to the user',
@@ -390,7 +391,7 @@ export class UserResponseDto extends GetUserDto {
     createdAt: Date,
     updatedAt: Date,
     createdBy: GetUserDto,
-    departments?: DepartmentResponseDto[],
+    userDepartments?: UserDepartmentResponseDto[],
     userRoles?: UserRoleResponseDto[],
   ) {
     super(
@@ -411,7 +412,7 @@ export class UserResponseDto extends GetUserDto {
       createdAt,
       updatedAt,
     );
-    this.departments = departments ?? [];
+    this.userDepartments = userDepartments ?? [];
     this.createdBy = createdBy;
     this.userRoles = userRoles ?? [];
   }

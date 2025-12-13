@@ -87,7 +87,7 @@ export class RoleHelperService extends EntityQueryService {
       relationAlias: ROLE_QUERY_ALIAS,
     });
 
-    this.cacheQuery<Roles>({ query, expireAtMs: 30000 });
+    this.cacheQuery<Roles>({ query, expireAtMs: 300000 });
 
     const roles = await query.getMany();
 
@@ -153,7 +153,7 @@ export class RoleHelperService extends EntityQueryService {
       query.orWhere(`${PERMISSION_QUERY_ALIAS}.code IN (:...codes)`, { codes });
     }
 
-    this.cacheQuery<Permission>({ query, expireAtMs: 30000 });
+    this.cacheQuery<Permission>({ query, expireAtMs: 300000 });
 
     const permissions = await query.getMany();
 
@@ -223,7 +223,7 @@ export class RoleHelperService extends EntityQueryService {
       });
     }
 
-    this.cacheQuery<Permission>({ query, expireAtMs: 30000 });
+    this.cacheQuery<Permission>({ query, expireAtMs: 300000 });
 
     const conflictedRecords = await query.getMany();
 

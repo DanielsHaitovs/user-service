@@ -1,4 +1,5 @@
-import { AssignRoleIdsDto, UnAssignRoleIdsDto } from '@/user/dto/userRole.dto';
+import { RoleHelperService } from '@/role/helper/helper.service';
+import { AssignRolesDto, UnAssignRolesDto } from '@/user/dto/roles.dto';
 import { UserRole } from '@/user/entities/userRoles.entity';
 import { UserHelperService } from '@/user/helper/helper.service';
 import { Injectable } from '@nestjs/common';
@@ -11,7 +12,8 @@ export class UserRoleService {
   constructor(
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
-    private readonly helperService: UserHelperService,
+    private readonly userService: UserHelperService,
+    private readonly roleService: RoleHelperService,
   ) {}
 
   /**
@@ -21,22 +23,22 @@ export class UserRoleService {
    * @returns A promise resolving to an array of UserRole entities representing the assignments.
    * @throws EntityNotFoundError if any of the specified roles do not exist.
    */
-  async assignRolesToUser(data: AssignRoleIdsDto): Promise<UserRole[]> {
+  async assignRolesToUser(data: AssignRolesDto): Promise<UserRole[]> {
     const { userId, roleIds, assignedBy } = data;
 
-    const user = await this.helperService.findByIdOrFail({
+    const user = await this.userService.findByIdOrFail({
       id: userId,
       includeRoles: true,
       includeDepartments: false,
     });
 
-    const assignedByUser = await this.helperService.findByIdOrFail({
+    const assignedByUser = await this.userService.findByIdOrFail({
       id: assignedBy,
       includeDepartments: false,
       includeRoles: false,
     });
 
-    const roles = await this.helperService.findManyRolesOrFail(roleIds);
+    const roles = await this.roleService.getManyByIdsOrFail(roleIds);
 
     const userRoles = roles.map((role) => {
       return this.userRoleRepository.create({
@@ -46,7 +48,7 @@ export class UserRoleService {
       });
     });
 
-    return this.userRoleRepository.save(userRoles);
+    return await this.userRoleRepository.save(userRoles);
   }
 
   /**
@@ -56,12 +58,12 @@ export class UserRoleService {
    * @returns A promise resolving to an object with the count of deleted assignments.
    */
   async unassignRolesFromUsers(
-    data: UnAssignRoleIdsDto,
-  ): Promise<{ deleted: number }> {
+    data: UnAssignRolesDto,
+  ): Promise<{ deleted: number; status: string }> {
     const { userIds, roleIds } = data;
 
-    await this.helperService.findManyByIdsOrFail(userIds);
-    await this.helperService.findManyRolesOrFail(roleIds);
+    await this.userService.findManyByIdsOrFail(userIds);
+    await this.roleService.getManyByIdsOrFail(roleIds);
 
     const result = await this.userRoleRepository
       .createQueryBuilder()
@@ -71,6 +73,9 @@ export class UserRoleService {
       .andWhere('user.id IN (:...userIds)', { userIds })
       .execute();
 
-    return { deleted: result.affected ?? 0 };
+    return {
+      deleted: result.affected ?? 0,
+      status: 'Roles unassigned successfully',
+    };
   }
 }

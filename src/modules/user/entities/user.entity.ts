@@ -1,5 +1,4 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { Departments } from '@/department/entities/department.entity';
 import { COUNTRIES } from '@/lib/const/countries.const';
 import { UserRole } from '@/user/entities/userRoles.entity';
 
@@ -16,12 +15,12 @@ import {
   Entity,
   Index,
   JoinColumn,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   Unique,
 } from 'typeorm';
+
+import { UserDepartments } from './userDepartments.entity';
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })
@@ -97,13 +96,8 @@ export class User extends MecBaseEntity {
   @Column({ nullable: true })
   twoFactorSecret: string;
 
-  @ManyToMany(() => Departments, (departments) => departments.users)
-  @JoinTable({
-    name: 'user_departments',
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'department_id', referencedColumnName: 'id' },
-  })
-  departments: Departments[];
+  @OneToMany(() => UserDepartments, (userDepartment) => userDepartment.user)
+  userDepartments: UserDepartments[];
 
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   userRoles: UserRole[];
@@ -130,7 +124,7 @@ export class User extends MecBaseEntity {
     updatedAt: Date,
     isTwoFactorEnabled: boolean,
     twoFactorSecret: string,
-    departments: Departments[],
+    userDepartments: UserDepartments[],
     userRoles: UserRole[],
     createdBy: User,
   ) {
@@ -148,7 +142,7 @@ export class User extends MecBaseEntity {
     this.emailVerificationToken = emailVerificationToken;
     this.passwordResetToken = passwordResetToken;
     this.passwordResetExpires = passwordResetExpires;
-    this.departments = departments;
+    this.userDepartments = userDepartments;
     this.isTwoFactorEnabled = isTwoFactorEnabled;
     this.twoFactorSecret = twoFactorSecret;
     this.userRoles = userRoles;

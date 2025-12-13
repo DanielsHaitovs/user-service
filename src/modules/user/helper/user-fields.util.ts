@@ -1,3 +1,4 @@
+import { USER_DEPARTMENTS_QUERY_ALIAS } from '@/lib/const/department.const';
 import {
   ASSIGNED_BY_USER_QUERY_ALIAS,
   CREATEDBY_USER_QUERY_ALIAS,
@@ -5,6 +6,7 @@ import {
   USER_ROLE_QUERY_ALIAS,
 } from '@/lib/const/user.const';
 import { User } from '@/user/entities/user.entity';
+import { UserDepartments } from '@/user/entities/userDepartments.entity';
 import { UserRole } from '@/user/entities/userRoles.entity';
 
 import { getMetadataArgsStorage } from 'typeorm';
@@ -46,6 +48,14 @@ export function getUserGenericSelectableFields({
   ];
 }
 
+export function getUserProperties(): string[] {
+  const collumns = getMetadataArgsStorage().columns.filter(
+    (column) => column.target === User,
+  );
+
+  return collumns.map((column) => column.propertyName);
+}
+
 export function getUserRoleGenericSelectableFields({
   fields,
   alias,
@@ -59,6 +69,43 @@ export function getUserRoleGenericSelectableFields({
     (column) => column.target === UserRole,
   );
   alias ??= USER_ROLE_QUERY_ALIAS;
+
+  if (fields && fields.length > 0) {
+    return [
+      ...fields
+        .filter((field) =>
+          columns.some((column) => column.propertyName === field),
+        )
+        .flatMap((field) => `${alias}.${field}`),
+      `${alias}.id`,
+      `${alias}.createdAt`,
+      `${alias}.updatedAt`,
+      `${alias}.assignedBy`,
+    ];
+  }
+
+  return [
+    `${alias}.id`,
+    `${alias}.createdAt`,
+    `${alias}.updatedAt`,
+    `${alias}.assignedBy`,
+    ...columns.map((column) => `${alias}.${column.propertyName}`),
+  ];
+}
+
+export function getUserDepartmentGenericSelectableFields({
+  fields,
+  alias,
+}: {
+  fields?: string[] | undefined;
+  alias?: string | undefined;
+}): string[] {
+  const metadata = getMetadataArgsStorage();
+
+  const columns = metadata.columns.filter(
+    (column) => column.target === UserDepartments,
+  );
+  alias ??= USER_DEPARTMENTS_QUERY_ALIAS;
 
   if (fields && fields.length > 0) {
     return [

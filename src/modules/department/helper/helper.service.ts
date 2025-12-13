@@ -1,4 +1,5 @@
 import { EntityQueryService } from '@/base/service/query.service';
+import { DepartmentResponseDto } from '@/department/dto/department.dto';
 import { Departments } from '@/department/entities/department.entity';
 import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
 import {
@@ -50,7 +51,7 @@ export class DepartmentHelperService extends EntityQueryService {
    * @returns Promise resolving to the Departments entity
    * @throws EntityNotFoundError when the department ID doesn't exist
    */
-  async getByIdOrFail(id: UUID): Promise<Departments> {
+  async getByIdOrFail(id: UUID): Promise<DepartmentResponseDto> {
     return await this.entityManager
       .createQueryBuilder(Departments, DEPARTMENT_QUERY_ALIAS)
       .where(`${DEPARTMENT_QUERY_ALIAS}.id = :id`, { id })
@@ -84,7 +85,7 @@ export class DepartmentHelperService extends EntityQueryService {
 
     this.cacheQuery<Departments>({
       query,
-      expireAtMs: 30000,
+      expireAtMs: 300000,
     });
 
     const departments = await query.getMany();

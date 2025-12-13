@@ -1,6 +1,9 @@
 import { OptimizeCriteria } from '@/base/interface/query.request';
 import { EntityQueryService } from '@/base/service/query.service';
-import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
+import {
+  DEPARTMENT_QUERY_ALIAS,
+  USER_DEPARTMENTS_QUERY_ALIAS,
+} from '@/lib/const/department.const';
 import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
 import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import {
@@ -19,6 +22,9 @@ import { SelectQueryBuilder } from 'typeorm';
 
 @Injectable()
 export class QueryService extends EntityQueryService {
+  public readonly userDeaprtmentAssignedByAlias = `${DEPARTMENT_QUERY_ALIAS}_${ASSIGNED_BY_USER_QUERY_ALIAS}`;
+  public readonly userRoleAssignedByAlias = `${ROLE_QUERY_ALIAS}_${ASSIGNED_BY_USER_QUERY_ALIAS}`;
+
   async getUsers({
     filters,
     hasAccessToDepartments,
@@ -45,6 +51,7 @@ export class QueryService extends EntityQueryService {
       selectCreatedByFields,
       selectDepartmentFields,
       selectUserRoleFields,
+      selectUserDepartmentFields,
       selectAssignedByFields,
       selectRoleFields,
       selectPermissionFields,
@@ -73,9 +80,16 @@ export class QueryService extends EntityQueryService {
       select: [
         ...selectUserFields,
         ...selectCreatedByFields,
+        ...selectUserDepartmentFields,
         ...selectDepartmentFields,
         ...selectUserRoleFields,
-        ...selectAssignedByFields,
+        ...this.assignedByFields({
+          selectAssignedByFields,
+          hasAccessToDepartments,
+          includeDepartments,
+          hasAccessToRoles,
+          includeRoles,
+        }),
         ...selectRoleFields,
         ...selectPermissionFields,
       ],
@@ -126,15 +140,25 @@ export class QueryService extends EntityQueryService {
         permissionAccess: hasAccessToCreatedBy,
         includeRelation: includeCreatedBy,
       },
+      [USER_DEPARTMENTS_QUERY_ALIAS]: {
+        permissionAccess: hasAccessToDepartments,
+        includeRelation: includeDepartments,
+      },
+      [this.userDeaprtmentAssignedByAlias]: {
+        permissionAccess: hasAccessToDepartments,
+        includeRelation: includeDepartments,
+        nestedFrom: USER_DEPARTMENTS_QUERY_ALIAS,
+      },
       [DEPARTMENT_QUERY_ALIAS]: {
         permissionAccess: hasAccessToDepartments,
         includeRelation: includeDepartments,
+        nestedFrom: USER_DEPARTMENTS_QUERY_ALIAS,
       },
       [USER_ROLE_QUERY_ALIAS]: {
         permissionAccess: hasAccessToRoles,
         includeRelation: includeRoles,
       },
-      [ASSIGNED_BY_USER_QUERY_ALIAS]: {
+      [this.userRoleAssignedByAlias]: {
         permissionAccess: hasAccessToRoles,
         includeRelation: includeRoles,
         nestedFrom: USER_ROLE_QUERY_ALIAS,
@@ -173,6 +197,8 @@ export class QueryService extends EntityQueryService {
       phoneNumbers,
       isActive,
       isEmailVerified,
+      isTwoFactorEnabled,
+      countries,
       createdByIds,
       departmentIds,
       departmentCountries,
@@ -223,28 +249,38 @@ export class QueryService extends EntityQueryService {
 
     this.whereIn<User>({
       query,
+      field: 'country',
+      values: countries,
+      condition: 'AND',
+    });
+
+    this.whereIn<User>({
+      query,
       field: 'phone',
       values: phoneNumbers,
       condition: 'AND',
     });
 
-    if (isActive !== undefined) {
-      this.where({
-        query,
-        field: 'isActive',
-        value: isActive,
-        condition: 'AND',
-      });
-    }
+    this.where({
+      query,
+      field: 'isActive',
+      value: isActive,
+      condition: 'AND',
+    });
 
-    if (isEmailVerified !== undefined) {
-      this.where({
-        query,
-        field: 'isEmailVerified',
-        value: isEmailVerified,
-        condition: 'AND',
-      });
-    }
+    this.where({
+      query,
+      field: 'isEmailVerified',
+      value: isEmailVerified,
+      condition: 'AND',
+    });
+
+    this.where({
+      query,
+      field: 'isTwoFactorEnabled',
+      value: isTwoFactorEnabled,
+      condition: 'AND',
+    });
 
     if (dateFilterParam != undefined) {
       this.dateGreaterThan({
@@ -324,7 +360,7 @@ export class QueryService extends EntityQueryService {
     this.joinRelation<User>({
       query,
       alias: ASSIGNED_BY_USER_QUERY_ALIAS,
-      relationAlias: ASSIGNED_BY_USER_QUERY_ALIAS,
+      relationAlias: this.userRoleAssignedByAlias,
       nestedFrom: USER_ROLE_QUERY_ALIAS,
     });
 
@@ -388,65 +424,76 @@ export class QueryService extends EntityQueryService {
   }): void {
     if (!hasAccessToDepartments) return;
 
-    this.joinEntityRelation({
+    this.joinRelation<User>({ query, alias: USER_DEPARTMENTS_QUERY_ALIAS });
+
+    this.joinRelation<User>({
       query,
-      relationAlias: DEPARTMENT_QUERY_ALIAS,
-      shouldJoin: true,
-      condition: 'AND',
-      options: {
-        filters: {
-          id: departmentIds,
-        },
-      },
+      alias: ASSIGNED_BY_USER_QUERY_ALIAS,
+      relationAlias: this.userDeaprtmentAssignedByAlias,
+      nestedFrom: USER_DEPARTMENTS_QUERY_ALIAS,
     });
 
-    this.joinEntityRelation({
+    this.joinRelation<User>({
       query,
+      alias: 'department',
       relationAlias: DEPARTMENT_QUERY_ALIAS,
-      shouldJoin: true,
+      nestedFrom: USER_DEPARTMENTS_QUERY_ALIAS,
+    });
+
+    this.whereIn<User>({
+      query,
+      field: 'id',
+      values: departmentIds,
       condition: 'AND',
-      options: {
-        filters: {
-          country: departmentCountries,
-        },
-      },
+      relationAlias: DEPARTMENT_QUERY_ALIAS,
+    });
+
+    this.whereIn<User>({
+      query,
+      field: 'country',
+      values: departmentCountries,
+      condition: 'AND',
+      relationAlias: DEPARTMENT_QUERY_ALIAS,
     });
   }
 
-  userRoleQueryCriteria({
-    hasAccessToUsers,
-    includeUsers,
-    hasAccessToPermissions,
-    includePermissions,
+  private assignedByFields({
+    selectAssignedByFields,
+    hasAccessToDepartments,
+    includeDepartments,
+    hasAccessToRoles,
+    includeRoles,
   }: {
-    hasAccessToUsers: boolean;
-    includeUsers: boolean;
-    hasAccessToPermissions: boolean;
-    includePermissions: boolean;
-  }): Record<string, OptimizeCriteria> {
-    return {
-      [USER_ROLE_QUERY_ALIAS]: {
-        permissionAccess: true,
-        includeRelation: true,
-      },
-      [ROLE_QUERY_ALIAS]: {
-        permissionAccess: true,
-        includeRelation: true,
-        nestedFrom: USER_ROLE_QUERY_ALIAS,
-      },
-      [PERMISSION_QUERY_ALIAS]: {
-        permissionAccess: hasAccessToPermissions,
-        includeRelation: includePermissions,
-        nestedFrom: ROLE_QUERY_ALIAS,
-      },
-      [USER_QUERY_ALIAS]: {
-        permissionAccess: hasAccessToUsers,
-        includeRelation: includeUsers,
-      },
-      [ASSIGNED_BY_USER_QUERY_ALIAS]: {
-        permissionAccess: hasAccessToUsers,
-        includeRelation: includeUsers,
-      },
-    };
+    selectAssignedByFields: string[];
+    hasAccessToDepartments: boolean;
+    includeDepartments: boolean;
+    hasAccessToRoles: boolean;
+    includeRoles: boolean;
+  }): string[] {
+    const optimizedAssignedByFields = new Array<string>();
+
+    if (!selectAssignedByFields.length) {
+      return optimizedAssignedByFields;
+    }
+
+    const extractAssignedByFields = (alias: string): string[] =>
+      selectAssignedByFields
+        .map((field) => field.split('.')[1])
+        .filter((field): field is string => Boolean(field))
+        .map((field) => `${alias}.${field}`);
+
+    if (hasAccessToDepartments && includeDepartments) {
+      optimizedAssignedByFields.push(
+        ...extractAssignedByFields(this.userDeaprtmentAssignedByAlias),
+      );
+    }
+
+    if (hasAccessToRoles && includeRoles) {
+      optimizedAssignedByFields.push(
+        ...extractAssignedByFields(this.userRoleAssignedByAlias),
+      );
+    }
+
+    return optimizedAssignedByFields;
   }
 }

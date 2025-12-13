@@ -1,47 +1,57 @@
 import type { DepartmentResponseDto } from '@/department/dto/department.dto';
 import type { Departments } from '@/department/entities/department.entity';
+import { getDepartmentProperties } from '@/department/helper/department-fields.util';
+import { validateManyUsers, validateUser } from '@/test/validation/user';
+import type { User } from '@/user/entities/user.entity';
 
 import type { UUID } from 'crypto';
 
-import { USER_QUERY_ALIAS } from '../../src/lib/const/user.const';
-
 export function validateDepartmentsResponse({
   departments,
+  amountExpected,
+  expectedFields,
   ids,
   names,
   countries,
-  amountExpected,
   hasCreatedBy,
+  expectedCreatedByFields,
+  expectedCreatedByIds,
+  expectedCreatedByEmails,
   hasUsers,
+  expectedUsersFields,
+  expectedUserIds,
+  expectedUserEmails,
+  expectedUserAmount,
 }: {
   departments: Departments[] | DepartmentResponseDto[] | undefined;
+  amountExpected?: number | undefined;
+  expectedFields?: (keyof Departments)[] | undefined;
   ids?: UUID[] | undefined;
   names?: string[] | undefined;
   countries?: string[] | undefined;
-  amountExpected?: number | undefined;
-  hasCreatedBy?: boolean;
-  hasUsers?: boolean;
+  hasCreatedBy?: boolean | undefined;
+  expectedCreatedByFields?: (keyof User)[] | undefined;
+  expectedCreatedByIds?: UUID[] | undefined;
+  expectedCreatedByEmails?: string[] | undefined;
+  hasUsers?: boolean | undefined;
+  expectedUsersFields?: (keyof User)[] | undefined;
+  expectedUserIds?: UUID[] | undefined;
+  expectedUserEmails?: string[] | undefined;
+  expectedUserAmount?: number | undefined;
 }): void {
-  if (
-    (departments?.length === 0 || departments === undefined) &&
-    amountExpected != undefined &&
-    amountExpected !== 0
-  ) {
+  const notEmpty = amountExpected != undefined && amountExpected > 0;
+  const noDepartmentReceived =
+    departments == undefined || departments.length < 1;
+
+  if (noDepartmentReceived && notEmpty) {
     throw new Error('Could not find any departments');
   }
 
-  if (
-    (amountExpected === 0 || amountExpected === undefined) &&
-    departments != undefined &&
-    departments.length > 0
-  ) {
+  if (!notEmpty && !noDepartmentReceived) {
     throw new Error('Unexpected departments found');
   }
 
-  if (
-    (amountExpected === 0 || amountExpected === undefined) &&
-    (departments?.length === 0 || departments === undefined)
-  ) {
+  if (!notEmpty && noDepartmentReceived) {
     return;
   }
 
@@ -49,52 +59,104 @@ export function validateDepartmentsResponse({
     throw new Error('departments are undefined, cannot validate');
   }
 
-  departments.forEach((department) => {
-    expect(department).toHaveProperty('id');
-    expect(department).toHaveProperty('name');
-    expect(department).toHaveProperty('country');
+  expectedFields ??= getDepartmentProperties() as (keyof Departments)[];
 
-    if (ids !== undefined && ids.length > 0) {
+  expect(departments).toBeDefined();
+
+  if (amountExpected !== undefined) {
+    expect(departments).toHaveLength(amountExpected);
+  }
+
+  validateDepartment({
+    departments,
+    expectedFields,
+    ids,
+    names,
+    countries,
+    hasCreatedBy,
+    expectedCreatedByFields,
+    expectedCreatedByIds,
+    expectedCreatedByEmails,
+    hasUsers,
+    expectedUsersFields,
+    expectedUserIds,
+    expectedUserEmails,
+    expectedUserAmount,
+  });
+}
+
+export function validateDepartment({
+  departments,
+  expectedFields,
+  ids,
+  names,
+  countries,
+  hasCreatedBy,
+  expectedCreatedByFields,
+  expectedCreatedByIds,
+  expectedCreatedByEmails,
+  hasUsers,
+  expectedUsersFields,
+  expectedUserIds,
+  expectedUserEmails,
+  expectedUserAmount,
+}: {
+  departments: Departments[] | DepartmentResponseDto[];
+  expectedFields: (keyof Departments)[];
+  ids?: UUID[] | undefined;
+  names?: string[] | undefined;
+  countries?: string[] | undefined;
+  hasCreatedBy?: boolean | undefined;
+  expectedCreatedByFields?: (keyof User)[] | undefined;
+  expectedCreatedByIds?: UUID[] | undefined;
+  expectedCreatedByEmails?: string[] | undefined;
+  hasUsers?: boolean | undefined;
+  expectedUsersFields?: (keyof User)[] | undefined;
+  expectedUserIds?: UUID[] | undefined;
+  expectedUserEmails?: string[] | undefined;
+  expectedUserAmount?: number | undefined;
+}): void {
+  departments.forEach((department) => {
+    for (const field of expectedFields) {
+      expect(department).toHaveProperty(field);
+    }
+
+    if (ids !== undefined && ids.length > 0 && expectedFields.includes('id')) {
       expect(ids).toContain(department.id);
     }
 
-    if (names !== undefined && names.length > 0) {
+    if (
+      names !== undefined &&
+      names.length > 0 &&
+      expectedFields.includes('name')
+    ) {
       expect(names).toContain(department.name);
     }
 
-    if (countries !== undefined && countries.length > 0) {
+    if (
+      countries !== undefined &&
+      countries.length > 0 &&
+      expectedFields.includes('country')
+    ) {
       expect(countries).toContain(department.country);
     }
 
-    if (hasCreatedBy !== undefined && hasCreatedBy) {
-      expect(department).toHaveProperty('createdBy');
-      expect(department.createdBy).toHaveProperty('id');
-      expect(department.createdBy).toHaveProperty('email');
-      expect(department.createdBy).toHaveProperty('firstName');
-      expect(department.createdBy).toHaveProperty('lastName');
-    }
+    validateUser({
+      user: department.createdBy,
+      expectedFields: expectedCreatedByFields,
+      hasAccess: hasCreatedBy,
+      expectedEmails: expectedCreatedByEmails,
+      expectedIds: expectedCreatedByIds,
+    });
 
-    if (
-      hasCreatedBy !== undefined &&
-      hasCreatedBy &&
-      hasUsers != undefined &&
-      hasUsers
-    ) {
-      expect(department).toHaveProperty(USER_QUERY_ALIAS);
-      expect(department.users).toBeInstanceOf(Array);
-
-      if (department.users == undefined || department.users.length === 0) {
-        console.log(department);
-        throw new Error('Department users is undefined');
-      }
-
-      for (const user of department.users) {
-        expect(user).toHaveProperty('id');
-        expect(user).toHaveProperty('email');
-        expect(user).toHaveProperty('firstName');
-        expect(user).toHaveProperty('lastName');
-      }
-    }
+    validateManyUsers({
+      users: department.users,
+      expectedFields: expectedUsersFields,
+      hasAccess: hasUsers,
+      expectedEmails: expectedUserEmails,
+      expectedIds: expectedUserIds,
+      amountExpected: expectedUserAmount,
+    });
   });
 }
 

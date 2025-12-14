@@ -1,17 +1,17 @@
-import { LoginDto } from '@/auth/dto/auth.dto';
-import { JWTPayload } from '@/auth/interfaces/req.interface';
+import { LoginDto } from '@/authDto/auth.dto';
+import { JWTPayload } from '@/authInterfaces/req.interface';
 import {
   PERMISSION_QUERY_ALIAS,
   ROOT_ADMIN_PERMISSION,
-} from '@/lib/const/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
+} from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
 import {
   SYSTEM_USER_EMAIL,
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
-} from '@/lib/const/user.const';
-import { User } from '@/user/entities/user.entity';
-import { getUserGenericSelectableFields } from '@/user/helper/user-fields.util';
+} from '@/libConst/user.const';
+import { User } from '@/userEntities/user.entity';
+import { getUserGenericSelectableFields } from '@/userHelper/user-fields.util';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectEntityManager } from '@nestjs/typeorm';
@@ -92,7 +92,7 @@ export class AuthService {
     const permissions = Array.from(
       new Set(
         user.userRoles.flatMap((userRole) =>
-          userRole.role.permissions.map((permission) => permission.code),
+          userRole.roles.permissions.map((permission) => permission.code),
         ),
       ),
     );

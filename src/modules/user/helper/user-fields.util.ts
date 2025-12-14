@@ -1,13 +1,13 @@
-import { USER_DEPARTMENTS_QUERY_ALIAS } from '@/lib/const/department.const';
+import { USER_DEPARTMENTS_QUERY_ALIAS } from '@/libConst/department.const';
 import {
   ASSIGNED_BY_USER_QUERY_ALIAS,
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
-} from '@/lib/const/user.const';
-import { User } from '@/user/entities/user.entity';
-import { UserDepartments } from '@/user/entities/userDepartments.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
+} from '@/libConst/user.const';
+import { User } from '@/userEntities/user.entity';
+import { UserDepartments } from '@/userEntities/userDepartments.entity';
+import { UserRole } from '@/userEntities/userRoles.entity';
 
 import { getMetadataArgsStorage } from 'typeorm';
 

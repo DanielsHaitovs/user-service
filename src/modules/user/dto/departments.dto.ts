@@ -1,7 +1,8 @@
-import { ToArray } from '@/common/decorators/array.decorator';
-import { DepartmentResponseDto } from '@/department/dto/department.dto';
-import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
-import { GetUserDto } from '@/user/dto/user.dto';
+import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
+import { GetDepartmentDto } from '@/departmentDto/department.dto';
+import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+import { GetUserDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -102,13 +103,23 @@ export class UserDepartmentResponseDto {
 
   @ApiProperty({
     title: 'Department',
-    description: 'List of departments assigned to the user',
-    type: DepartmentResponseDto,
+    description: 'Department assigned to the user',
+    type: GetDepartmentDto,
     isArray: true,
   })
-  @Type(() => DepartmentResponseDto)
+  @Type(() => GetDepartmentDto)
   @ValidateNested()
-  department: DepartmentResponseDto;
+  departments: GetDepartmentDto;
+
+  @ApiProperty({
+    title: 'User',
+    description: 'User assigned to the department',
+    type: () => GetUserDto,
+    isArray: true,
+  })
+  @Type(() => GetUserDto)
+  @ValidateNested()
+  users: GetUserDto;
 
   @ApiProperty({
     title: 'Assigned By User',
@@ -135,11 +146,35 @@ export class UserDepartmentResponseDto {
     id: UUID,
     assignedBy: GetUserDto,
     createdAt: Date,
-    department: DepartmentResponseDto,
+    departments: GetDepartmentDto,
+    users: GetUserDto,
   ) {
     this.id = id;
     this.assignedBy = assignedBy;
-    this.department = department;
+    this.departments = departments;
+    this.users = users;
     this.createdAt = createdAt;
+  }
+}
+
+export class UserDepartmentListResponseDto extends PaginatedResponseDto {
+  @ApiProperty({
+    description: 'Array of user objects matching the query criteria',
+    type: UserDepartmentResponseDto,
+    isArray: true,
+  })
+  @Type(() => UserDepartmentResponseDto)
+  @ValidateNested({ each: true })
+  userDepartments: UserDepartmentResponseDto[];
+
+  constructor(
+    total: number,
+    page: number,
+    limit: number,
+    totalPages: number,
+    userDepartments: UserDepartmentResponseDto[],
+  ) {
+    super(total, page, limit, totalPages);
+    this.userDepartments = userDepartments;
   }
 }

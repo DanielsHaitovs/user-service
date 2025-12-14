@@ -1,5 +1,5 @@
-import { Permissions } from '@/common/decorators/permission.decorator';
-import { BAD_REQUEST_DESCRIPTION } from '@/lib/const/system.const';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { BAD_REQUEST_DESCRIPTION } from '@/libConst/system.const';
 import {
   applyDecorators,
   BadRequestException,

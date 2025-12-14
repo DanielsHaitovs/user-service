@@ -1,7 +1,7 @@
 import { AuthService } from '@/auth/auth.service';
-import { LoginDto } from '@/auth/dto/auth.dto';
-import { TokenResponseDto } from '@/auth/dto/response.dto';
-import { TraceController } from '@/common/decorators/trace.decorator';
+import { LoginDto } from '@/authDto/auth.dto';
+import { TokenResponseDto } from '@/authDto/response.dto';
+import { TraceController } from '@/commonDecorators/trace.decorator';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 

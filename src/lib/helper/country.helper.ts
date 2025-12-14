@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/pseudo-random */
-import { COUNTRIES } from '@/lib/const/countries.const';
+import { COUNTRIES } from '@/libConst/countries.const';
 
 export function getRandomCountryCode(): COUNTRIES {
   const countryCodes = Object.keys(COUNTRIES) as COUNTRIES[];

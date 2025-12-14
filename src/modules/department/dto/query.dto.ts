@@ -1,12 +1,12 @@
-import { PaginationDto, QueryDateRequestDto } from '@/base/dto/pagination.dto';
-import { ToArray } from '@/common/decorators/array.decorator';
-import { ToBoolean } from '@/common/decorators/boolean.decorator';
-import { getDepartmentGenericSelectableFields } from '@/department/helper/department-fields.util';
-import { COUNTRIES } from '@/lib/const/countries.const';
+import { PaginationDto, QueryDateRequestDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
+import { ToBoolean } from '@/commonDecorators/boolean.decorator';
+import { getDepartmentGenericSelectableFields } from '@/departmentHelper/department-fields.util';
+import { COUNTRIES } from '@/libConst/countries.const';
 import {
   getCreatedByGenericSelectableFields,
   getUserGenericSelectableFields,
-} from '@/user/helper/user-fields.util';
+} from '@/userHelper/user-fields.util';
 import {
   ApiProperty,
   ApiPropertyOptional,

@@ -1,7 +1,7 @@
-import { RequestWithUserPermissions } from '@/auth/interfaces/req.interface';
-import { ROOT_ADMIN_PERMISSION } from '@/lib/const/permission.const';
-import { SYSTEM_USER_EMAIL } from '@/lib/const/user.const';
-import { User } from '@/user/entities/user.entity';
+import { RequestWithUserPermissions } from '@/authInterfaces/req.interface';
+import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
+import { SYSTEM_USER_EMAIL } from '@/libConst/user.const';
+import { User } from '@/userEntities/user.entity';
 import {
   ExecutionContext,
   ForbiddenException,

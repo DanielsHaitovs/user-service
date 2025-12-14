@@ -1,24 +1,24 @@
-import { DeleteResponseDto } from '@/base/dto/response.dto';
-import { PostgresQueryFailedError } from '@/base/interface/query.error';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { PostgresQueryFailedError } from '@/baseInterface/query.error';
 import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
   DepartmentResponseDto,
   UpdateDepartmentDto,
-} from '@/department/dto/department.dto';
+} from '@/departmentDto/department.dto';
 import {
   DepartmentRequestDto,
   DepartmentSearchRequestDto,
-} from '@/department/dto/query.dto';
-import { Departments } from '@/department/entities/department.entity';
-import { DepartmentHelperService } from '@/department/helper/helper.service';
-import { QueryService } from '@/department/services/query.service';
-import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
+} from '@/departmentDto/query.dto';
+import { Departments } from '@/departmentEntities/department.entity';
+import { DepartmentHelperService } from '@/departmentHelper/helper.service';
+import { QueryService } from '@/departmentServices/query.service';
+import { DEPARTMENT_QUERY_ALIAS } from '@/libConst/department.const';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
-} from '@/lib/const/user.const';
-import { User } from '@/user/entities/user.entity';
+} from '@/libConst/user.const';
+import { User } from '@/userEntities/user.entity';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 

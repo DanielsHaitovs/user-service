@@ -1,9 +1,9 @@
-import { User } from '@/user/entities/user.entity';
-import { UserDepartments } from '@/user/entities/userDepartments.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
-import { UserHelperService } from '@/user/helper/helper.service';
-import { UserDepartmentsService } from '@/user/services/departments/user-departments.service';
-import { UserRoleService } from '@/user/services/roles/user-role.service';
+import { UserDepartmentsService } from '@/userDepartmentService/user-departments.service';
+import { User } from '@/userEntities/user.entity';
+import { UserDepartments } from '@/userEntities/userDepartments.entity';
+import { UserRole } from '@/userEntities/userRoles.entity';
+import { UserHelperService } from '@/userHelper/helper.service';
+import { UserRoleService } from '@/userRoleService/user-role.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
@@ -49,7 +49,7 @@ export class UserCreateService {
         });
 
         newUser.userRoles = assignedRoles.map(
-          ({ user: _omit, ...rest }) => rest as UserRole,
+          ({ users: _omit, ...rest }) => rest as UserRole,
         );
       }
 
@@ -62,7 +62,7 @@ export class UserCreateService {
           });
 
         newUser.userDepartments = assignedDepartments.map(
-          ({ user: _omit, ...rest }) => rest as UserDepartments,
+          ({ users: _omit, ...rest }) => rest as UserDepartments,
         );
       }
 

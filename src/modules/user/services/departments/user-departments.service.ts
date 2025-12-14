@@ -1,23 +1,108 @@
-import { DepartmentHelperService } from '@/department/helper/helper.service';
+import { DepartmentHelperService } from '@/departmentHelper/helper.service';
+import {
+  DEPARTMENT_QUERY_ALIAS,
+  USER_DEPARTMENTS_QUERY_ALIAS,
+} from '@/libConst/department.const';
+import { USER_QUERY_ALIAS } from '@/libConst/user.const';
 import {
   AssignDepartmentsDto,
   UnAssignDepartmentsDto,
-} from '@/user/dto/departments.dto';
-import { UserDepartments } from '@/user/entities/userDepartments.entity';
-import { UserHelperService } from '@/user/helper/helper.service';
+  UserDepartmentListResponseDto,
+} from '@/userDto/departments.dto';
+import { UnassignFromUserResponseDto } from '@/userDto/user.dto';
+import { UserDepartments } from '@/userEntities/userDepartments.entity';
+import { UserHelperService } from '@/userHelper/helper.service';
+import { GetUserDepartmentByIdsRequestDto } from '@/userQueryDto/departments.dto';
+import { QueryService } from '@/userService/query.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { EntityNotFoundError, Repository } from 'typeorm';
 
 @Injectable()
 export class UserDepartmentsService {
   constructor(
     @InjectRepository(UserDepartments)
     private readonly userDepartmentRepository: Repository<UserDepartments>,
+    private readonly queryService: QueryService,
     private readonly userService: UserHelperService,
     private readonly departmentService: DepartmentHelperService,
   ) {}
+
+  async getUserDepartments(
+    filters: GetUserDepartmentByIdsRequestDto,
+  ): Promise<UserDepartmentListResponseDto> {
+    const query = this.queryService.initQuery<UserDepartments>({
+      entity: UserDepartments,
+      alias: USER_DEPARTMENTS_QUERY_ALIAS,
+    });
+
+    const { page, limit, ids, departmentIds, userId } = filters;
+
+    this.queryService.joinEntityRelation<UserDepartments>({
+      query,
+      relationAlias: USER_QUERY_ALIAS,
+      shouldJoin: true,
+      condition: 'AND',
+      ...(userId != undefined && {
+        options: {
+          filters: {
+            id: [userId],
+          },
+        },
+      }),
+    });
+
+    this.queryService.joinEntityRelation<UserDepartments>({
+      query,
+      relationAlias: DEPARTMENT_QUERY_ALIAS,
+      shouldJoin: true,
+      condition: 'AND',
+      options: {
+        filters: {
+          id: departmentIds,
+        },
+      },
+    });
+
+    this.queryService.whereIn({
+      query,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
+    });
+
+    this.queryService.optimize({
+      query,
+      pagination: { limit, page },
+      sort: undefined,
+      select: [],
+      criteria: this.queryService.userQueryCriteria({
+        hasAccessToDepartments: true,
+        includeDepartments: true,
+        includeCreatedBy: false,
+        includeRoles: false,
+        includePermissions: false,
+        hasAccessToCreatedBy: false,
+        hasAccessToRoles: false,
+        hasAccessToPermissions: false,
+      }),
+    });
+
+    const response = await this.queryService.paginatedResult({
+      query,
+      alias: 'userDepartments',
+    });
+
+    if (response.userDepartments.length === 0) {
+      throw new EntityNotFoundError(
+        'Users Departments',
+        'Provided criteria resulted in no entities found',
+      );
+    }
+
+    return response;
+  }
 
   /**
    * Assigns multiple departments to a user.
@@ -48,8 +133,8 @@ export class UserDepartmentsService {
 
     const userDepartments = departments.map((department) => {
       return this.userDepartmentRepository.create({
-        user,
-        department,
+        users: user,
+        departments: department,
         assignedBy: assignedByUser,
       });
     });
@@ -66,7 +151,7 @@ export class UserDepartmentsService {
    */
   async unassignDepartmentsFromUser(
     data: UnAssignDepartmentsDto,
-  ): Promise<{ unassigned: number; status: string }> {
+  ): Promise<UnassignFromUserResponseDto> {
     const { userIds, departmentIds } = data;
 
     await this.userService.findManyByIdsOrFail(userIds);

@@ -1,4 +1,4 @@
-import type { JWTPayload } from '@/auth/interfaces/req.interface';
+import type { JWTPayload } from '@/authInterfaces/req.interface';
 import { JwtService } from '@nestjs/jwt';
 
 import type { UUID } from 'crypto';

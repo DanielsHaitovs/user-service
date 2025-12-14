@@ -1,13 +1,10 @@
-import { COUNTRIES } from '@/lib/const/countries.const';
-import { ROOT_ADMIN_PERMISSION } from '@/lib/const/permission.const';
-import {
-  SYSTEM_USER_EMAIL,
-  SYSTEM_USER_PASSWORD,
-} from '@/lib/const/user.const';
-import { Permission } from '@/role/entities/permissions.entity';
-import { Roles } from '@/role/entities/role.entity';
-import { User } from '@/user/entities/user.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
+import { COUNTRIES } from '@/libConst/countries.const';
+import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
+import { SYSTEM_USER_EMAIL, SYSTEM_USER_PASSWORD } from '@/libConst/user.const';
+import { Permission } from '@/roleEntities/permissions.entity';
+import { Roles } from '@/roleEntities/role.entity';
+import { User } from '@/userEntities/user.entity';
+import { UserRole } from '@/userEntities/userRoles.entity';
 import type { INestApplication } from '@nestjs/common';
 
 import * as bcrypt from 'bcrypt';
@@ -94,8 +91,8 @@ async function createUserRole(dataSource: DataSource): Promise<UserRole> {
   }
 
   const userRole = userRoleRepo.create({
-    user: existingUser,
-    role: existingRole,
+    users: existingUser,
+    roles: existingRole,
     assignedBy: existingUser,
   });
 

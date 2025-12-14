@@ -1,27 +1,28 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
-import { hasPermissions } from '@/auth/helper/permission.helper';
-import { JWTPayload } from '@/auth/interfaces/req.interface';
-import { UserAccessPermissions } from '@/base/interface/query.request';
-import { AuthenticationGuard } from '@/common/guards/auth.guard';
-import { PermissionsGuard } from '@/common/guards/permission.guard';
+import { hasPermissions } from '@/authHelper/permission.helper';
+import { JWTPayload } from '@/authInterfaces/req.interface';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { UserAccessPermissions } from '@/baseInterface/query.request';
+import { AuthenticationGuard } from '@/commonGuards/auth.guard';
+import { PermissionsGuard } from '@/commonGuards/permission.guard';
 import {
   CREATE_DEPARTMENT,
   DELETE_DEPARTMENT,
   READ_DEPARTMENT,
   UPDATE_DEPARTMENT,
-} from '@/lib/const/department.const';
+} from '@/libConst/department.const';
 import {
   CREATE_PERMISSION,
   DELETE_PERMISSION,
   READ_PERMISSION,
   UPDATE_PERMISSION,
-} from '@/lib/const/permission.const';
+} from '@/libConst/permission.const';
 import {
   CREATE_ROLE,
   DELETE_ROLE,
   READ_ROLE,
   UPDATE_ROLE,
-} from '@/lib/const/role.const';
+} from '@/libConst/role.const';
 import {
   CREATE_USER,
   CREATE_USER_ROLE,
@@ -31,13 +32,11 @@ import {
   READ_USER_ROLE,
   UPDATE_USER,
   UPDATE_USER_ROLE,
-} from '@/lib/const/user.const';
+} from '@/libConst/user.const';
 import { UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { DeleteResponseDto } from './dto/response.dto';
 
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthenticationGuard, PermissionsGuard)

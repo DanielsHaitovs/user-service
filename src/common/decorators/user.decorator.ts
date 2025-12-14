@@ -1,7 +1,7 @@
 import type {
   JWTPayload,
   RequestWithUserPermissions,
-} from '@/auth/interfaces/req.interface';
+} from '@/authInterfaces/req.interface';
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
 
 export const CurrentUserId = createParamDecorator(

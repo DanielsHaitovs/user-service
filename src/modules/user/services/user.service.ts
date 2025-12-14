@@ -1,24 +1,24 @@
-import { DeleteResponseDto } from '@/base/dto/response.dto';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
-} from '@/lib/const/user.const';
-import {
-  GetUsersByEmailsRequestDto,
-  GetUsersByIdsRequestDto,
-  UserSearchRequestDto,
-} from '@/user/dto/query.dto';
+} from '@/libConst/user.const';
 import {
   CreateUserDto,
   UpdateUserDto,
   UserListResponseDto,
   UserResponseDto,
-} from '@/user/dto/user.dto';
-import { User } from '@/user/entities/user.entity';
-import { UserHelperService } from '@/user/helper/helper.service';
-import { UserCreateService } from '@/user/services/create.service';
-import { QueryService } from '@/user/services/query.service';
-import { UserRoleService } from '@/user/services/roles/user-role.service';
+} from '@/userDto/user.dto';
+import { User } from '@/userEntities/user.entity';
+import { UserHelperService } from '@/userHelper/helper.service';
+import {
+  GetUsersByEmailsRequestDto,
+  GetUsersByIdsRequestDto,
+  UserSearchRequestDto,
+} from '@/userQueryDto/user.dto';
+import { UserRoleService } from '@/userRoleService/user-role.service';
+import { UserCreateService } from '@/userService/create.service';
+import { QueryService } from '@/userService/query.service';
 import {
   generateEmailVerificationToken,
   generatePasswordResetToken,
@@ -523,7 +523,7 @@ export class UserService {
 
     const roleIds = existingUsers.flatMap((user) => {
       if (user.userRoles != undefined) {
-        return user.userRoles.map((userRole) => userRole.role.id);
+        return user.userRoles.map((userRole) => userRole.roles.id);
       }
 
       return [];

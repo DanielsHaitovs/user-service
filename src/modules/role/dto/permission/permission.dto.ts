@@ -1,12 +1,12 @@
-import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
+import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
 import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
   EXAMPLE_PERMISSION_NAME,
-} from '@/lib/const/permission.const';
-import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
-import { RoleResponseDto } from '@/modules/role/dto/role/role.dto';
-import { GetUserDto } from '@/user/dto/user.dto';
+} from '@/libConst/permission.const';
+import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
+import { RoleResponseDto } from '@/roleDto/role.dto';
+import { GetUserDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 import { Trim } from 'class-sanitizer';

@@ -1,20 +1,20 @@
-import { DeleteResponseDto } from '@/base/dto/response.dto';
-import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
-import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { CREATEDBY_USER_QUERY_ALIAS } from '@/libConst/user.const';
+import {
+  GetRoleByIdsQueryDto,
+  RoleSearchRequestDto,
+} from '@/roleDto/query.dto';
 import {
   CreateRoleDto,
   RoleListResponseDto,
   UpdateRoleDto,
-} from '@/modules/role/dto/role/role.dto';
-import {
-  GetRoleByIdsQueryDto,
-  RoleSearchRequestDto,
-} from '@/role/dto/role/query.dto';
-import { Roles } from '@/role/entities/role.entity';
-import { RoleHelperService } from '@/role/helper/helper.service';
-import { QueryService } from '@/role/services/role/query.service';
-import { User } from '@/user/entities/user.entity';
+} from '@/roleDto/role.dto';
+import { Roles } from '@/roleEntities/role.entity';
+import { RoleHelperService } from '@/roleHelper/helper.service';
+import { QueryService } from '@/roleServices/query.service';
+import { User } from '@/userEntities/user.entity';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 

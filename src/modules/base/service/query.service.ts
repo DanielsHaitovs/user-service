@@ -2,8 +2,8 @@ import {
   PaginatedResponseDto,
   PaginationDto,
   SortDto,
-} from '@/base/dto/pagination.dto';
-import { OptimizeCriteria, QueryRequest } from '@/base/interface/query.request';
+} from '@/baseDto/pagination.dto';
+import { OptimizeCriteria, QueryRequest } from '@/baseInterface/query.request';
 import { hashObject } from '@/utils/token-generator.util';
 import { ForbiddenException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
@@ -243,11 +243,18 @@ export class EntityQueryService {
 
     if (field == undefined) return;
 
+    const metadata = query.expressionMap.mainAlias?.metadata;
+    if (!metadata) return;
+
+    const column = metadata.findColumnWithPropertyName(field);
+    if (!column) return;
+
+    const dbColumn = column.databaseName;
     const orderAlias = `${field}_order`;
 
     query
-      .addSelect(`${query.alias}.${field}::text`, orderAlias)
-      .orderBy(orderAlias, sortOrder);
+      .addSelect(`"${query.alias}"."${dbColumn}"::text`, orderAlias)
+      .orderBy(`"${orderAlias}"`, sortOrder);
   }
 
   validateRelationSelect<T extends ObjectLiteral>({

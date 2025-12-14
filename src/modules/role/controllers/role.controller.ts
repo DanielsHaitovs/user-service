@@ -1,13 +1,13 @@
-import { JWTPayload } from '@/auth/interfaces/req.interface';
+import { JWTPayload } from '@/authInterfaces/req.interface';
 import { BaseController } from '@/base/base.controller';
-import { DeleteResponseDto } from '@/base/dto/response.dto';
-import { ApiOkList } from '@/common/decorators/api.decorator';
-import { Permissions } from '@/common/decorators/permission.decorator';
-import { TraceController } from '@/common/decorators/trace.decorator';
-import { CurrentUser } from '@/common/decorators/user.decorator';
-import { AuthenticationGuard } from '@/common/guards/auth.guard';
-import { PermissionsGuard } from '@/common/guards/permission.guard';
-import { READ_PERMISSION } from '@/lib/const/permission.const';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUser } from '@/commonDecorators/user.decorator';
+import { AuthenticationGuard } from '@/commonGuards/auth.guard';
+import { PermissionsGuard } from '@/commonGuards/permission.guard';
+import { READ_PERMISSION } from '@/libConst/permission.const';
 import {
   CONFLICT_ROLE_NAME_MSG,
   CREATE_ROLE,
@@ -20,22 +20,22 @@ import {
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
   ROLE_NOT_FOUND_MSG,
   UPDATE_ROLE,
-} from '@/lib/const/role.const';
+} from '@/libConst/role.const';
+import {
+  FilterRolesQueryDto,
+  GetRoleByIdsQueryDto,
+  RoleSearchRequestDto,
+} from '@/roleDto/query.dto';
 import {
   AssignPermissionsToRoleDto,
   CreateRoleDto,
   RoleListResponseDto,
   RoleResponseDto,
   UpdateRoleDto,
-} from '@/modules/role/dto/role/role.dto';
-import {
-  FilterRolesQueryDto,
-  GetRoleByIdsQueryDto,
-  RoleSearchRequestDto,
-} from '@/role/dto/role/query.dto';
-import { Roles } from '@/role/entities/role.entity';
-import { QueryService } from '@/role/services/role/query.service';
-import { RoleService } from '@/role/services/role/role.service';
+} from '@/roleDto/role.dto';
+import { Roles } from '@/roleEntities/role.entity';
+import { QueryService } from '@/roleServices/query.service';
+import { RoleService } from '@/roleServices/role.service';
 import {
   Body,
   Controller,

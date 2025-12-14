@@ -1,8 +1,8 @@
-import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
-import { EXAMPLE_PERMISSION_ID } from '@/lib/const/permission.const';
-import { EXAMPLE_ROLE_ID, EXAMPLE_ROLE_NAME } from '@/lib/const/role.const';
-import { PermissionResponseDto } from '@/modules/role/dto/permission/permission.dto';
-import { GetUserDto } from '@/user/dto/user.dto';
+import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { EXAMPLE_PERMISSION_ID } from '@/libConst/permission.const';
+import { EXAMPLE_ROLE_ID, EXAMPLE_ROLE_NAME } from '@/libConst/role.const';
+import { PermissionResponseDto } from '@/rolePermissionDto/permission.dto';
+import { GetUserDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -96,7 +96,7 @@ export class AssignPermissionsToRoleDto {
   }
 }
 
-export class RoleResponseDto extends RoleBaseDto {
+export class GetRoleResponseDto extends RoleBaseDto {
   @ApiProperty({
     example: [EXAMPLE_ROLE_ID],
     description: 'Unique identifier of the role',
@@ -125,6 +125,15 @@ export class RoleResponseDto extends RoleBaseDto {
   @IsDate()
   updatedAt: Date;
 
+  constructor(id: UUID, name: string, createdAt: Date, updatedAt: Date) {
+    super(name);
+    this.id = id;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
+}
+
+export class RoleResponseDto extends GetRoleResponseDto {
   @ApiProperty({
     type: PermissionResponseDto,
     isArray: true,
@@ -153,7 +162,7 @@ export class RoleResponseDto extends RoleBaseDto {
     createdBy: GetUserDto,
     permissions?: PermissionResponseDto[],
   ) {
-    super(name);
+    super(id, name, createdAt, updatedAt);
     this.id = id;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;

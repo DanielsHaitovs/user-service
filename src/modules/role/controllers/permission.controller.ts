@@ -1,10 +1,10 @@
-import { JWTPayload } from '@/auth/interfaces/req.interface';
+import { JWTPayload } from '@/authInterfaces/req.interface';
 import { BaseController } from '@/base/base.controller';
-import { DeleteResponseDto } from '@/base/dto/response.dto';
-import { ApiOkList } from '@/common/decorators/api.decorator';
-import { Permissions } from '@/common/decorators/permission.decorator';
-import { TraceController } from '@/common/decorators/trace.decorator';
-import { CurrentUser } from '@/common/decorators/user.decorator';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUser } from '@/commonDecorators/user.decorator';
 import {
   CREATE_PERMISSION,
   DELETE_PERMISSION,
@@ -17,21 +17,21 @@ import {
   PERMISSION_NOT_FOUND_MSG,
   READ_PERMISSION,
   UPDATE_PERMISSION,
-} from '@/lib/const/permission.const';
-import { READ_ROLE, ROLE_NOT_FOUND_MSG } from '@/lib/const/role.const';
+} from '@/libConst/permission.const';
+import { READ_ROLE, ROLE_NOT_FOUND_MSG } from '@/libConst/role.const';
+import { Permission } from '@/roleEntities/permissions.entity';
 import {
   CreatePermissionDto,
   PermissionListResponseDto,
   PermissionResponseDto,
   UpdatePermissionDto,
-} from '@/modules/role/dto/permission/permission.dto';
+} from '@/rolePermissionDto/permission.dto';
 import {
   GetPermissionsByCodesQueryDto,
   GetPermissionsByIdsQueryDto,
   PermissionSearchRequestDto,
-} from '@/modules/role/dto/permission/permission.query';
-import { Permission } from '@/role/entities/permissions.entity';
-import { PermissionService } from '@/role/services/permission/permission.service';
+} from '@/rolePermissionDto/permission.query';
+import { PermissionService } from '@/rolePermissionServices/permission.service';
 import {
   Body,
   Controller,

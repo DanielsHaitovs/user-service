@@ -1,7 +1,7 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { COUNTRIES } from '@/lib/const/countries.const';
-import { User } from '@/user/entities/user.entity';
-import { UserDepartments } from '@/user/entities/userDepartments.entity';
+import { COUNTRIES } from '@/libConst/countries.const';
+import { User } from '@/userEntities/user.entity';
+import { UserDepartments } from '@/userEntities/userDepartments.entity';
 
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
@@ -40,7 +40,7 @@ export class Departments extends MecBaseEntity {
 
   @OneToMany(
     () => UserDepartments,
-    (userDepartment) => userDepartment.department,
+    (userDepartment) => userDepartment.departments,
   )
   userDepartments: UserDepartments[];
 

@@ -1,7 +1,7 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { Permission } from '@/role/entities/permissions.entity';
-import { User } from '@/user/entities/user.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
+import { Permission } from '@/roleEntities/permissions.entity';
+import { User } from '@/userEntities/user.entity';
+import { UserRole } from '@/userEntities/userRoles.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
@@ -26,7 +26,7 @@ export class Roles extends MecBaseEntity {
   @IsString()
   name: string;
 
-  @OneToMany(() => UserRole, (userRole) => userRole.role)
+  @OneToMany(() => UserRole, (userRole) => userRole.roles)
   userRoles: UserRole[];
 
   @ManyToMany(() => Permission, (permission) => permission.roles)

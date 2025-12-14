@@ -1,9 +1,9 @@
-import { EntityQueryService } from '@/base/service/query.service';
-import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
-import { UpdatePermissionDto } from '@/modules/role/dto/permission/permission.dto';
-import { Permission } from '@/role/entities/permissions.entity';
-import { Roles } from '@/role/entities/role.entity';
+import { EntityQueryService } from '@/baseServices/query.service';
+import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { Permission } from '@/roleEntities/permissions.entity';
+import { Roles } from '@/roleEntities/role.entity';
+import { UpdatePermissionDto } from '@/rolePermissionDto/permission.dto';
 import {
   BadRequestException,
   ConflictException,

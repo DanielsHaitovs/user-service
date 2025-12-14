@@ -1,20 +1,20 @@
-import { OptimizeCriteria } from '@/base/interface/query.request';
-import { EntityQueryService } from '@/base/service/query.service';
+import { OptimizeCriteria } from '@/baseInterface/query.request';
+import { EntityQueryService } from '@/baseServices/query.service';
 import {
   DEPARTMENT_QUERY_ALIAS,
   USER_DEPARTMENTS_QUERY_ALIAS,
-} from '@/lib/const/department.const';
-import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
+} from '@/libConst/department.const';
+import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
 import {
   ASSIGNED_BY_USER_QUERY_ALIAS,
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
-} from '@/lib/const/user.const';
-import { FilterUsersQueryDto } from '@/user/dto/query.dto';
-import { UserListResponseDto } from '@/user/dto/user.dto';
-import { User } from '@/user/entities/user.entity';
+} from '@/libConst/user.const';
+import { UserListResponseDto } from '@/userDto/user.dto';
+import { User } from '@/userEntities/user.entity';
+import { FilterUsersQueryDto } from '@/userQueryDto/user.dto';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
@@ -74,7 +74,7 @@ export class QueryService extends EntityQueryService {
       query,
       pagination: { limit, page },
       sort: {
-        sortField: sortField ?? `${USER_QUERY_ALIAS}.createdAt`,
+        sortField,
         sortOrder,
       },
       select: [
@@ -366,7 +366,7 @@ export class QueryService extends EntityQueryService {
 
     this.joinRelation<User>({
       query,
-      alias: 'role',
+      alias: ROLE_QUERY_ALIAS,
       relationAlias: ROLE_QUERY_ALIAS,
       nestedFrom: USER_ROLE_QUERY_ALIAS,
     });
@@ -435,7 +435,7 @@ export class QueryService extends EntityQueryService {
 
     this.joinRelation<User>({
       query,
-      alias: 'department',
+      alias: DEPARTMENT_QUERY_ALIAS,
       relationAlias: DEPARTMENT_QUERY_ALIAS,
       nestedFrom: USER_DEPARTMENTS_QUERY_ALIAS,
     });

@@ -1,12 +1,12 @@
-import { PaginationDto, QueryDateRequestDto } from '@/base/dto/pagination.dto';
-import { ToArray } from '@/common/decorators/array.decorator';
-import { ToBoolean } from '@/common/decorators/boolean.decorator';
-import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
+import { PaginationDto, QueryDateRequestDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
+import { ToBoolean } from '@/commonDecorators/boolean.decorator';
+import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
+import { getRoleGenericSelectableFields } from '@/roleHelper/role-fields.util';
 import {
   PermissionQueryParametersDto,
   PermissionRelationSelectDto,
-} from '@/role/dto/permission/permission.query';
-import { getRoleGenericSelectableFields } from '@/role/helper/role-fields.util';
+} from '@/rolePermissionDto/permission.query';
 import {
   ApiProperty,
   ApiPropertyOptional,

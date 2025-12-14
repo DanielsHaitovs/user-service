@@ -1,5 +1,5 @@
 import { AuthService } from '@/auth/auth.service';
-import { JWTPayload } from '@/auth/interfaces/req.interface';
+import { JWTPayload } from '@/authInterfaces/req.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';

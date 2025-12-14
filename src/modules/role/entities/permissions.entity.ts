@@ -1,6 +1,6 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { Roles } from '@/role/entities/role.entity';
-import { User } from '@/user/entities/user.entity';
+import { Roles } from '@/roleEntities/role.entity';
+import { User } from '@/userEntities/user.entity';
 
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';

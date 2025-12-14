@@ -1,7 +1,7 @@
-import { EntityQueryService } from '@/base/service/query.service';
-import { USER_QUERY_ALIAS } from '@/lib/const/user.const';
-import { User } from '@/user/entities/user.entity';
-import { QueryService } from '@/user/services/query.service';
+import { EntityQueryService } from '@/baseServices/query.service';
+import { USER_QUERY_ALIAS } from '@/libConst/user.const';
+import { User } from '@/userEntities/user.entity';
+import { QueryService } from '@/userService/query.service';
 import {
   BadRequestException,
   ConflictException,

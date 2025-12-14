@@ -1,4 +1,4 @@
-import type { PaginationDto, SortDto } from '@/base/dto/pagination.dto';
+import type { PaginationDto, SortDto } from '@/baseDto/pagination.dto';
 
 import type { UUID } from 'crypto';
 import type { ObjectLiteral, SelectQueryBuilder } from 'typeorm';

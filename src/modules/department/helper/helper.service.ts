@@ -1,7 +1,7 @@
-import { EntityQueryService } from '@/base/service/query.service';
-import { DepartmentResponseDto } from '@/department/dto/department.dto';
-import { Departments } from '@/department/entities/department.entity';
-import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
+import { EntityQueryService } from '@/baseServices/query.service';
+import { DepartmentResponseDto } from '@/departmentDto/department.dto';
+import { Departments } from '@/departmentEntities/department.entity';
+import { DEPARTMENT_QUERY_ALIAS } from '@/libConst/department.const';
 import {
   BadRequestException,
   ConflictException,

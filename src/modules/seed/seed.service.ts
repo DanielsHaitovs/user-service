@@ -1,5 +1,5 @@
-import { Departments } from '@/department/entities/department.entity';
-import { RandomCountry } from '@/lib/const/countries.const';
+import { Departments } from '@/departmentEntities/department.entity';
+import { RandomCountry } from '@/libConst/countries.const';
 import {
   CREATE_DEPARTMENT,
   CREATE_USER_DEPARTMENT,
@@ -9,19 +9,19 @@ import {
   READ_USER_DEPARTMENT,
   UPDATE_DEPARTMENT,
   UPDATE_USER_DEPARTMENT,
-} from '@/lib/const/department.const';
+} from '@/libConst/department.const';
 import {
   CREATE_PERMISSION,
   DELETE_PERMISSION,
   READ_PERMISSION,
   UPDATE_PERMISSION,
-} from '@/lib/const/permission.const';
+} from '@/libConst/permission.const';
 import {
   CREATE_ROLE,
   DELETE_ROLE,
   READ_ROLE,
   UPDATE_ROLE,
-} from '@/lib/const/role.const';
+} from '@/libConst/role.const';
 import {
   ASSIGN_USER_DEPARTMENT,
   ASSIGN_USER_ROLE,
@@ -35,12 +35,12 @@ import {
   SYSTEM_USER_PASSWORD,
   UPDATE_USER,
   UPDATE_USER_ROLE,
-} from '@/lib/const/user.const';
-import { Permission } from '@/role/entities/permissions.entity';
-import { Roles } from '@/role/entities/role.entity';
-import { User } from '@/user/entities/user.entity';
-import { UserDepartments } from '@/user/entities/userDepartments.entity';
-import { UserRole } from '@/user/entities/userRoles.entity';
+} from '@/libConst/user.const';
+import { Permission } from '@/roleEntities/permissions.entity';
+import { Roles } from '@/roleEntities/role.entity';
+import { User } from '@/userEntities/user.entity';
+import { UserDepartments } from '@/userEntities/userDepartments.entity';
+import { UserRole } from '@/userEntities/userRoles.entity';
 import { getTraceId } from '@/utils/trace.util';
 import { faker } from '@faker-js/faker';
 import { Injectable, Logger } from '@nestjs/common';
@@ -352,8 +352,8 @@ export class SeedService {
     user.userRoles = [];
 
     const userRole = this.entityManager.getRepository(UserRole).create({
-      user,
-      role,
+      users: user,
+      roles: role,
       assignedBy: systemUserID,
     });
 
@@ -362,8 +362,8 @@ export class SeedService {
     const userDepartment = this.entityManager
       .getRepository(UserDepartments)
       .create({
-        user,
-        department,
+        users: user,
+        departments: department,
         assignedBy: systemUserID,
       });
 

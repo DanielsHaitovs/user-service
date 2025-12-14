@@ -1,6 +1,6 @@
 import { SeedController } from '@/seed/seed.controller';
 import { SeedService } from '@/seed/seed.service';
-import { User } from '@/user/entities/user.entity';
+import { User } from '@/userEntities/user.entity';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 

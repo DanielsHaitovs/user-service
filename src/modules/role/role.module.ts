@@ -1,13 +1,13 @@
 import { PermissionController } from '@/role/controllers/permission.controller';
 import { RolesController } from '@/role/controllers/role.controller';
-import { Permission } from '@/role/entities/permissions.entity';
-import { Roles } from '@/role/entities/role.entity';
-import { RoleHelperService } from '@/role/helper/helper.service';
-import { PermissionService } from '@/role/services/permission/permission.service';
-import { QueryService as PermissionQueryService } from '@/role/services/permission/query.service';
-import { QueryService as RoleQueryService } from '@/role/services/role/query.service';
-import { RoleService } from '@/role/services/role/role.service';
-import { User } from '@/user/entities/user.entity';
+import { Permission } from '@/roleEntities/permissions.entity';
+import { Roles } from '@/roleEntities/role.entity';
+import { RoleHelperService } from '@/roleHelper/helper.service';
+import { PermissionService } from '@/rolePermissionServices/permission.service';
+import { QueryService as PermissionQueryService } from '@/rolePermissionServices/query.service';
+import { QueryService as RoleQueryService } from '@/roleServices/query.service';
+import { RoleService } from '@/roleServices/role.service';
+import { User } from '@/userEntities/user.entity';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -21,12 +21,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     PermissionService,
     PermissionQueryService,
   ],
-  exports: [
-    RoleService,
-    RoleQueryService,
-    RoleHelperService,
-    PermissionService,
-  ],
+  exports: [RoleHelperService],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class RolesModule {}

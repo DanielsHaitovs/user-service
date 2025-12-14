@@ -1,25 +1,25 @@
-import { JWTPayload } from '@/auth/interfaces/req.interface';
+import { JWTPayload } from '@/authInterfaces/req.interface';
 import { BaseController } from '@/base/base.controller';
-import { DeleteResponseDto } from '@/base/dto/response.dto';
-import { ApiOkList } from '@/common/decorators/api.decorator';
-import { TraceController } from '@/common/decorators/trace.decorator';
-import { CurrentUser } from '@/common/decorators/user.decorator';
-import { AuthenticationGuard } from '@/common/guards/auth.guard';
-import { PermissionsGuard } from '@/common/guards/permission.guard';
-import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUser } from '@/commonDecorators/user.decorator';
+import { AuthenticationGuard } from '@/commonGuards/auth.guard';
+import { PermissionsGuard } from '@/commonGuards/permission.guard';
+import { ParseUUIDArrayPipe } from '@/commonPipes/uuidArray.pipe';
 import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
   DepartmentResponseDto,
   UpdateDepartmentDto,
-} from '@/department/dto/department.dto';
+} from '@/departmentDto/department.dto';
 import {
   DepartmentSearchRequestDto,
   FilterDepartmentsQueryDto,
   GetDepartmentsByIdsRequestDto,
-} from '@/department/dto/query.dto';
-import { DepartmentService } from '@/department/services/department.service';
-import { QueryService } from '@/department/services/query.service';
+} from '@/departmentDto/query.dto';
+import { DepartmentService } from '@/departmentServices/department.service';
+import { QueryService } from '@/departmentServices/query.service';
 import {
   CREATE_DEPARTMENT,
   DELETE_DEPARTMENT,
@@ -32,7 +32,7 @@ import {
   EXAMPLE_DEPARTMENT_NAME,
   READ_DEPARTMENT,
   UPDATE_DEPARTMENT,
-} from '@/lib/const/department.const';
+} from '@/libConst/department.const';
 import {
   Body,
   Controller,

@@ -1,23 +1,23 @@
-import { DeleteResponseDto } from '@/base/dto/response.dto';
-import { PostgresQueryFailedError } from '@/base/interface/query.error';
-import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
-import { CREATEDBY_USER_QUERY_ALIAS } from '@/lib/const/user.const';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { PostgresQueryFailedError } from '@/baseInterface/query.error';
+import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { CREATEDBY_USER_QUERY_ALIAS } from '@/libConst/user.const';
+import { Permission } from '@/roleEntities/permissions.entity';
+import { Roles } from '@/roleEntities/role.entity';
+import { RoleHelperService } from '@/roleHelper/helper.service';
 import {
   CreatePermissionDto,
   PermissionListResponseDto,
   UpdatePermissionDto,
-} from '@/modules/role/dto/permission/permission.dto';
+} from '@/rolePermissionDto/permission.dto';
 import {
   GetPermissionsByCodesQueryDto,
   GetPermissionsByIdsQueryDto,
   PermissionSearchRequestDto,
-} from '@/modules/role/dto/permission/permission.query';
-import { Permission } from '@/role/entities/permissions.entity';
-import { Roles } from '@/role/entities/role.entity';
-import { RoleHelperService } from '@/role/helper/helper.service';
-import { QueryService } from '@/role/services/permission/query.service';
-import { User } from '@/user/entities/user.entity';
+} from '@/rolePermissionDto/permission.query';
+import { QueryService } from '@/rolePermissionServices/query.service';
+import { User } from '@/userEntities/user.entity';
 import {
   BadRequestException,
   ConflictException,

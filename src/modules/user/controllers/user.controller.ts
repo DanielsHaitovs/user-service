@@ -1,12 +1,12 @@
-import { JWTPayload } from '@/auth/interfaces/req.interface';
+import { JWTPayload } from '@/authInterfaces/req.interface';
 import { BaseController } from '@/base/base.controller';
-import { DeleteResponseDto } from '@/base/dto/response.dto';
-import { ApiOkList } from '@/common/decorators/api.decorator';
-import { TraceController } from '@/common/decorators/trace.decorator';
-import { CurrentUser, CurrentUserId } from '@/common/decorators/user.decorator';
-import { ParseUUIDArrayPipe } from '@/common/pipes/uuidArray.pipe';
-import { READ_DEPARTMENT } from '@/lib/const/department.const';
-import { READ_ROLE } from '@/lib/const/role.const';
+import { DeleteResponseDto } from '@/baseDto/response.dto';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
+import { ParseUUIDArrayPipe } from '@/commonPipes/uuidArray.pipe';
+import { READ_DEPARTMENT } from '@/libConst/department.const';
+import { READ_ROLE } from '@/libConst/role.const';
 import {
   CREATE_USER,
   CREATE_USER_ROLE,
@@ -21,21 +21,21 @@ import {
   USER_GENERIC_BAD_REQUEST_MSG,
   USER_MIN_API_OK_LIST,
   USER_UPDATE_API_OK_LIST,
-} from '@/lib/const/user.const';
-import {
-  FilterUsersQueryDto,
-  GetUsersByEmailsRequestDto,
-  GetUsersByIdsRequestDto,
-  UserSearchRequestDto,
-} from '@/user/dto/query.dto';
+} from '@/libConst/user.const';
 import {
   CreateUserDto,
   UpdateUserDto,
   UserListResponseDto,
   UserResponseDto,
-} from '@/user/dto/user.dto';
-import { QueryService } from '@/user/services/query.service';
-import { UserService } from '@/user/services/user.service';
+} from '@/userDto/user.dto';
+import {
+  FilterUsersQueryDto,
+  GetUsersByEmailsRequestDto,
+  GetUsersByIdsRequestDto,
+  UserSearchRequestDto,
+} from '@/userQueryDto/user.dto';
+import { QueryService } from '@/userService/query.service';
+import { UserService } from '@/userService/user.service';
 import {
   Body,
   Controller,

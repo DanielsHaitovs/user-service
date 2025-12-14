@@ -4,8 +4,8 @@
  * to maintain uniformity in examples and mock data.
  */
 
-import { DepartmentListResponseDto } from '@/department/dto/department.dto';
-import { INPUT_BAD_REQUEST_MSG } from '@/lib/const/system.const';
+import { DepartmentListResponseDto } from '@/departmentDto/department.dto';
+import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
 // import { INPUT_BAD_REQUEST_MSG } from '@/lib/system.const';
 
 /**

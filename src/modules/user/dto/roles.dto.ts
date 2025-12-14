@@ -1,8 +1,8 @@
-import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
-import { ToArray } from '@/common/decorators/array.decorator';
-import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
-import { RoleResponseDto } from '@/modules/role/dto/role/role.dto';
-import { GetUserDto } from '@/user/dto/user.dto';
+import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
+import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+import { GetRoleResponseDto } from '@/roleDto/role.dto';
+import { GetUserDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -105,12 +105,12 @@ export class UserRoleResponseDto {
   @ApiProperty({
     title: 'Roles',
     description: 'List of roles assigned to the user',
-    type: RoleResponseDto,
+    type: GetRoleResponseDto,
     isArray: true,
   })
-  @Type(() => RoleResponseDto)
+  @Type(() => GetRoleResponseDto)
   @ValidateNested()
-  role: RoleResponseDto;
+  roles: GetRoleResponseDto;
 
   @ApiProperty({
     title: 'Assigned By User',
@@ -123,6 +123,16 @@ export class UserRoleResponseDto {
   @Type(() => GetUserDto)
   @ValidateNested()
   assignedBy: GetUserDto;
+
+  @ApiProperty({
+    title: 'User',
+    description: 'User assigned to the department',
+    type: () => GetUserDto,
+    isArray: true,
+  })
+  @Type(() => GetUserDto)
+  @ValidateNested()
+  users: GetUserDto;
 
   @ApiProperty({
     description: 'Date when the user account was created',
@@ -147,11 +157,13 @@ export class UserRoleResponseDto {
     assignedBy: GetUserDto,
     createdAt: Date,
     updatedAt: Date,
-    role: RoleResponseDto,
+    roles: GetRoleResponseDto,
+    users: GetUserDto,
   ) {
     this.id = id;
     this.assignedBy = assignedBy;
-    this.role = role;
+    this.roles = roles;
+    this.users = users;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }

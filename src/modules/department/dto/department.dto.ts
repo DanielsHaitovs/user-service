@@ -1,10 +1,10 @@
-import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
-import { COUNTRIES } from '@/lib/const/countries.const';
+import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { COUNTRIES } from '@/libConst/countries.const';
 import {
   EXAMPLE_DEPARTMENT_COUNTRY,
   EXAMPLE_DEPARTMENT_NAME,
-} from '@/lib/const/department.const';
-import { GetUserDto } from '@/user/dto/user.dto';
+} from '@/libConst/department.const';
+import { GetUserDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -54,30 +54,12 @@ export class DepartmentBaseDto {
 
 export class CreateDepartmentDto extends DepartmentBaseDto {}
 
-export class DepartmentResponseDto extends DepartmentBaseDto {
+export class GetDepartmentDto extends DepartmentBaseDto {
   @ApiProperty({
     description: 'Unique identifier for the department',
     type: String,
   })
   id: UUID;
-
-  @ApiProperty({
-    description: 'User that created the department',
-    type: () => GetUserDto,
-    isArray: false,
-  })
-  @Type(() => GetUserDto)
-  @ValidateNested()
-  createdBy?: GetUserDto;
-
-  @ApiProperty({
-    description: 'List of users assigned to the department',
-    type: GetUserDto,
-    isArray: false,
-  })
-  @Type(() => GetUserDto)
-  @ValidateNested({ each: true })
-  users?: GetUserDto[];
 
   @ApiProperty({
     description: 'Date when the department was created',
@@ -103,10 +85,45 @@ export class DepartmentResponseDto extends DepartmentBaseDto {
     updatedAt: Date,
     name: string,
     country: COUNTRIES,
+  ) {
+    super(name, country);
+    this.id = id;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+    this.name = name;
+    this.country = country;
+  }
+}
+
+export class DepartmentResponseDto extends GetDepartmentDto {
+  @ApiProperty({
+    description: 'User that created the department',
+    type: () => GetUserDto,
+    isArray: false,
+  })
+  @Type(() => GetUserDto)
+  @ValidateNested()
+  createdBy?: GetUserDto;
+
+  @ApiProperty({
+    description: 'List of users assigned to the department',
+    type: GetUserDto,
+    isArray: false,
+  })
+  @Type(() => GetUserDto)
+  @ValidateNested({ each: true })
+  users?: GetUserDto[];
+
+  constructor(
+    id: UUID,
+    createdAt: Date,
+    updatedAt: Date,
+    name: string,
+    country: COUNTRIES,
     createdBy: GetUserDto,
     users: GetUserDto[],
   ) {
-    super(name, country);
+    super(id, createdAt, updatedAt, name, country);
     this.id = id;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;

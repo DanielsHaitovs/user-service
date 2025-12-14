@@ -1,16 +1,16 @@
-import { PaginationDto } from '@/base/dto/pagination.dto';
-import { ToArray } from '@/common/decorators/array.decorator';
-import { ToBoolean } from '@/common/decorators/boolean.decorator';
+import { PaginationDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
+import { ToBoolean } from '@/commonDecorators/boolean.decorator';
 import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
   EXAMPLE_PERMISSION_NAME,
-} from '@/lib/const/permission.const';
+} from '@/libConst/permission.const';
 import {
   getPermissionsGenericSelectableFields,
   getRoleGenericSelectableFields,
-} from '@/role/helper/role-fields.util';
-import { getCreatedByGenericSelectableFields } from '@/user/helper/user-fields.util';
+} from '@/roleHelper/role-fields.util';
+import { getCreatedByGenericSelectableFields } from '@/userHelper/user-fields.util';
 import {
   ApiProperty,
   ApiPropertyOptional,

@@ -1,9 +1,9 @@
-import { Departments } from '@/department/entities/department.entity';
-import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
+import { Departments } from '@/departmentEntities/department.entity';
+import { DEPARTMENT_QUERY_ALIAS } from '@/libConst/department.const';
 import {
   getCreatedByGenericSelectableFields,
   getUserGenericSelectableFields,
-} from '@/user/helper/user-fields.util';
+} from '@/userHelper/user-fields.util';
 
 import { getMetadataArgsStorage } from 'typeorm';
 

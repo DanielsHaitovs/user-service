@@ -1,6 +1,7 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { COUNTRIES } from '@/lib/const/countries.const';
-import { UserRole } from '@/user/entities/userRoles.entity';
+import { COUNTRIES } from '@/libConst/countries.const';
+import { UserDepartments } from '@/userEntities/userDepartments.entity';
+import { UserRole } from '@/userEntities/userRoles.entity';
 
 import {
   IsBoolean,
@@ -19,8 +20,6 @@ import {
   OneToMany,
   Unique,
 } from 'typeorm';
-
-import { UserDepartments } from './userDepartments.entity';
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })
@@ -96,10 +95,10 @@ export class User extends MecBaseEntity {
   @Column({ nullable: true })
   twoFactorSecret: string;
 
-  @OneToMany(() => UserDepartments, (userDepartment) => userDepartment.user)
+  @OneToMany(() => UserDepartments, (userDepartment) => userDepartment.users)
   userDepartments: UserDepartments[];
 
-  @OneToMany(() => UserRole, (userRole) => userRole.user)
+  @OneToMany(() => UserRole, (userRole) => userRole.users)
   userRoles: UserRole[];
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })

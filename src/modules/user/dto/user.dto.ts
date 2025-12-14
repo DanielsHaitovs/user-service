@@ -1,10 +1,10 @@
-import { PaginatedResponseDto } from '@/base/dto/pagination.dto';
-import { ToArray } from '@/common/decorators/array.decorator';
-import { ToBoolean } from '@/common/decorators/boolean.decorator';
-import { COUNTRIES } from '@/lib/const/countries.const';
-import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
-import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
-import { UserRoleResponseDto } from '@/modules/user/dto/roles.dto';
+import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
+import { ToBoolean } from '@/commonDecorators/boolean.decorator';
+import { COUNTRIES } from '@/libConst/countries.const';
+import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
+import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+import { UserRoleResponseDto } from '@/userDto/roles.dto';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -13,6 +13,8 @@ import {
   IsDate,
   IsEmail,
   IsEnum,
+  IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -491,5 +493,30 @@ export class UserListResponseDto extends PaginatedResponseDto {
   ) {
     super(total, page, limit, totalPages);
     this.users = users;
+  }
+}
+
+export class UnassignFromUserResponseDto {
+  @ApiProperty({
+    title: 'Unassigned Count',
+    description: 'Number of successfully unassigned entites from users',
+    example: 5,
+    type: Number,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  unassigned: number;
+
+  @ApiProperty({
+    title: 'Status',
+    description: 'Status message of the unassignment operation',
+    type: String,
+  })
+  @IsNotEmpty()
+  status: string;
+
+  constructor(unassigned: number, status: string) {
+    this.unassigned = unassigned;
+    this.status = status;
   }
 }

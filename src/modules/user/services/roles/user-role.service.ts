@@ -1,20 +1,107 @@
-import { RoleHelperService } from '@/role/helper/helper.service';
-import { AssignRolesDto, UnAssignRolesDto } from '@/user/dto/roles.dto';
-import { UserRole } from '@/user/entities/userRoles.entity';
-import { UserHelperService } from '@/user/helper/helper.service';
+import { USER_ROLE_QUERY_ALIAS } from '@/libConst/user.const';
+import { RoleHelperService } from '@/roleHelper/helper.service';
+import {
+  AssignRolesDto,
+  UnAssignRolesDto,
+  UserRoleListResponseDto,
+} from '@/userDto/roles.dto';
+import { UnassignFromUserResponseDto } from '@/userDto/user.dto';
+import { UserRole } from '@/userEntities/userRoles.entity';
+import { UserHelperService } from '@/userHelper/helper.service';
+import { GetUserRolesByIdsRequestDto } from '@/userQueryDto/role.dto';
+import { QueryService } from '@/userService/query.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { EntityNotFoundError, Repository } from 'typeorm';
 
 @Injectable()
 export class UserRoleService {
   constructor(
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
+    private readonly queryService: QueryService,
     private readonly userService: UserHelperService,
     private readonly roleService: RoleHelperService,
   ) {}
+
+  async getUserRole(
+    filters: GetUserRolesByIdsRequestDto,
+  ): Promise<UserRoleListResponseDto> {
+    const query = this.queryService.initQuery<UserRole>({
+      entity: UserRole,
+      alias: USER_ROLE_QUERY_ALIAS,
+    });
+
+    const { page, limit, ids, roleIds, userId } = filters;
+
+    if (userId != undefined) {
+      this.queryService.joinEntityRelation<UserRole>({
+        query,
+        relationAlias: 'user',
+        shouldJoin: true,
+        condition: 'AND',
+        options: {
+          filters: {
+            id: [userId],
+          },
+        },
+      });
+    }
+
+    this.queryService.joinEntityRelation<UserRole>({
+      query,
+      relationAlias: 'role',
+      shouldJoin: true,
+      condition: 'AND',
+      options: {
+        filters: {
+          id: roleIds,
+        },
+      },
+    });
+
+    this.queryService.whereIn({
+      query,
+      field: 'id',
+      values: ids,
+      condition: 'AND',
+    });
+
+    this.queryService.optimize({
+      query,
+      pagination: { limit, page },
+      sort: {
+        sortField: `${USER_ROLE_QUERY_ALIAS}.createdAt`,
+        sortOrder: 'DESC',
+      },
+      select: [],
+      criteria: this.queryService.userQueryCriteria({
+        includeRoles: true,
+        hasAccessToRoles: true,
+        hasAccessToDepartments: false,
+        includeDepartments: false,
+        includeCreatedBy: false,
+        includePermissions: false,
+        hasAccessToCreatedBy: false,
+        hasAccessToPermissions: false,
+      }),
+    });
+
+    const response = await this.queryService.paginatedResult({
+      query,
+      alias: 'userRoles',
+    });
+
+    if (response.userRoles.length === 0) {
+      throw new EntityNotFoundError(
+        'Users Roles',
+        'Provided criteria resulted in no entities found',
+      );
+    }
+
+    return response;
+  }
 
   /**
    * Assigns multiple roles to a user, ensuring all roles exist and are valid.
@@ -42,8 +129,8 @@ export class UserRoleService {
 
     const userRoles = roles.map((role) => {
       return this.userRoleRepository.create({
-        user,
-        role,
+        users: user,
+        roles: role,
         assignedBy: assignedByUser,
       });
     });
@@ -59,7 +146,7 @@ export class UserRoleService {
    */
   async unassignRolesFromUsers(
     data: UnAssignRolesDto,
-  ): Promise<{ deleted: number; status: string }> {
+  ): Promise<UnassignFromUserResponseDto> {
     const { userIds, roleIds } = data;
 
     await this.userService.findManyByIdsOrFail(userIds);
@@ -74,7 +161,7 @@ export class UserRoleService {
       .execute();
 
     return {
-      deleted: result.affected ?? 0,
+      unassigned: result.affected ?? 0,
       status: 'Roles unassigned successfully',
     };
   }

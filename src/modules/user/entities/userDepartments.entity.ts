@@ -1,18 +1,18 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { Departments } from '@/department/entities/department.entity';
-import { User } from '@/user/entities/user.entity';
+import { Departments } from '@/departmentEntities/department.entity';
+import { User } from '@/userEntities/user.entity';
 
 import { UUID } from 'crypto';
 import { Entity, Index, ManyToOne } from 'typeorm';
 
 @Entity('userDepartments')
-@Index('IX_USER_DEPARTMENTS', ['user', 'department'])
+@Index('IX_USER_DEPARTMENTS', ['users', 'departments'])
 export class UserDepartments extends MecBaseEntity {
   @ManyToOne(() => Departments, (department) => department.userDepartments)
-  department: Departments;
+  departments: Departments;
 
   @ManyToOne(() => User, (user) => user.userRoles)
-  user: User;
+  users: User;
 
   @ManyToOne(() => User, { nullable: true })
   assignedBy: User;
@@ -22,15 +22,15 @@ export class UserDepartments extends MecBaseEntity {
     createdAt: Date,
     updatedAt: Date,
     assignedBy: User,
-    department: Departments,
-    user: User,
+    departments: Departments,
+    users: User,
   ) {
     super(id, createdAt, updatedAt);
     this.id = id;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.assignedBy = assignedBy;
-    this.department = department;
-    this.user = user;
+    this.departments = departments;
+    this.users = users;
   }
 }

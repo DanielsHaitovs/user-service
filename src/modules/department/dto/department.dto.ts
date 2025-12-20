@@ -1,9 +1,9 @@
 import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
-import { COUNTRIES } from '@/libConst/countries.const';
 import {
   EXAMPLE_DEPARTMENT_COUNTRY,
   EXAMPLE_DEPARTMENT_NAME,
-} from '@/libConst/department.const';
+} from '@/departmentConst/department.const';
+import { COUNTRIES } from '@/lib/countries.const';
 import { GetUserDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 

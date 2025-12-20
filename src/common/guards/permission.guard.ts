@@ -1,6 +1,6 @@
 import { RequestWithUserPermissions } from '@/authInterfaces/req.interface';
 import { PERMISSIONS_KEY } from '@/commonDecorators/permission.decorator';
-import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
+import { ROOT_ADMIN_PERMISSION } from '@/roleConst/permission.const';
 import { User } from '@/userEntities/user.entity';
 import {
   CanActivate,

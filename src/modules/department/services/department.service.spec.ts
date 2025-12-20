@@ -1,7 +1,7 @@
+import { DEPARTMENT_QUERY_ALIAS } from '@/departmentConst/department.const';
 import type { UpdateDepartmentDto } from '@/departmentDto/department.dto';
 import { DepartmentService } from '@/departmentServices/department.service';
 import { QueryService } from '@/departmentServices/query.service';
-import { DEPARTMENT_QUERY_ALIAS } from '@/libConst/department.const';
 import { getSystemUserId } from '@/test/api/auth-user-api';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import {

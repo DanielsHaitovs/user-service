@@ -1,11 +1,11 @@
 import { OptimizeCriteria } from '@/baseInterface/query.request';
 import { EntityQueryService } from '@/baseServices/query.service';
-import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
-import { CREATEDBY_USER_QUERY_ALIAS } from '@/libConst/user.const';
+import { PERMISSION_QUERY_ALIAS } from '@/roleConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/roleConst/role.const';
 import { FilterRolesQueryDto } from '@/roleDto/query.dto';
 import { RoleListResponseDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
+import { CREATEDBY_USER_QUERY_ALIAS } from '@/userConst/user.const';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';

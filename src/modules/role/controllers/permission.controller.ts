@@ -17,8 +17,8 @@ import {
   PERMISSION_NOT_FOUND_MSG,
   READ_PERMISSION,
   UPDATE_PERMISSION,
-} from '@/libConst/permission.const';
-import { READ_ROLE, ROLE_NOT_FOUND_MSG } from '@/libConst/role.const';
+} from '@/roleConst/permission.const';
+import { READ_ROLE, ROLE_NOT_FOUND_MSG } from '@/roleConst/role.const';
 import { Permission } from '@/roleEntities/permissions.entity';
 import {
   CreatePermissionDto,

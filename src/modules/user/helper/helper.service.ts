@@ -1,5 +1,5 @@
 import { EntityQueryService } from '@/baseServices/query.service';
-import { USER_QUERY_ALIAS } from '@/libConst/user.const';
+import { USER_QUERY_ALIAS } from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import { QueryService } from '@/userService/query.service';
 import {

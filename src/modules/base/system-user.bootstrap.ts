@@ -1,8 +1,11 @@
-import { COUNTRIES } from '@/libConst/countries.const';
-import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
-import { SYSTEM_USER_EMAIL, SYSTEM_USER_PASSWORD } from '@/libConst/user.const';
+import { COUNTRIES } from '@/lib/countries.const';
+import { ROOT_ADMIN_PERMISSION } from '@/roleConst/permission.const';
 import { Permission } from '@/roleEntities/permissions.entity';
 import { Roles } from '@/roleEntities/role.entity';
+import {
+  SYSTEM_USER_EMAIL,
+  SYSTEM_USER_PASSWORD,
+} from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import { UserRole } from '@/userEntities/userRoles.entity';
 import type { INestApplication } from '@nestjs/common';

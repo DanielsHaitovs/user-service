@@ -1,5 +1,5 @@
 import type { JWTPayload } from '@/authInterfaces/req.interface';
-import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
+import { ROOT_ADMIN_PERMISSION } from '@/roleConst/permission.const';
 import { JwtService } from '@nestjs/jwt';
 
 import type { Request } from 'express';

@@ -1,5 +1,5 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { COUNTRIES } from '@/libConst/countries.const';
+import { COUNTRIES } from '@/lib/countries.const';
 import { UserDepartments } from '@/userEntities/userDepartments.entity';
 import { UserRole } from '@/userEntities/userRoles.entity';
 

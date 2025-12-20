@@ -1,5 +1,6 @@
 import { DeleteResponseDto } from '@/baseDto/response.dto';
 import { PostgresQueryFailedError } from '@/baseInterface/query.error';
+import { DEPARTMENT_QUERY_ALIAS } from '@/departmentConst/department.const';
 import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
@@ -13,11 +14,10 @@ import {
 import { Departments } from '@/departmentEntities/department.entity';
 import { DepartmentHelperService } from '@/departmentHelper/helper.service';
 import { QueryService } from '@/departmentServices/query.service';
-import { DEPARTMENT_QUERY_ALIAS } from '@/libConst/department.const';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';

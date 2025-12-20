@@ -5,7 +5,7 @@ import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
   EXAMPLE_PERMISSION_NAME,
-} from '@/libConst/permission.const';
+} from '@/roleConst/permission.const';
 import {
   getPermissionsGenericSelectableFields,
   getRoleGenericSelectableFields,

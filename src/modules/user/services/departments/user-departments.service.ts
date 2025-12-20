@@ -1,9 +1,9 @@
-import { DepartmentHelperService } from '@/departmentHelper/helper.service';
 import {
   DEPARTMENT_QUERY_ALIAS,
   USER_DEPARTMENTS_QUERY_ALIAS,
-} from '@/libConst/department.const';
-import { USER_QUERY_ALIAS } from '@/libConst/user.const';
+} from '@/departmentConst/department.const';
+import { DepartmentHelperService } from '@/departmentHelper/helper.service';
+import { USER_QUERY_ALIAS } from '@/userConst/user.const';
 import {
   AssignDepartmentsDto,
   UnAssignDepartmentsDto,

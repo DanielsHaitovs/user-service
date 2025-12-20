@@ -2,7 +2,7 @@ import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { AuthenticationGuard } from '@/commonGuards/auth.guard';
 import { PermissionsGuard } from '@/commonGuards/permission.guard';
-import { ASSIGN_USER_ROLE } from '@/libConst/user.const';
+import { ASSIGN_USER_ROLE } from '@/userConst/user.const';
 import {
   AssignRolesDto,
   UnAssignRolesDto,

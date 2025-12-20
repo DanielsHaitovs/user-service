@@ -1,6 +1,6 @@
 import { RequestWithUserPermissions } from '@/authInterfaces/req.interface';
-import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
-import { SYSTEM_USER_EMAIL } from '@/libConst/user.const';
+import { ROOT_ADMIN_PERMISSION } from '@/roleConst/permission.const';
+import { SYSTEM_USER_EMAIL } from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import {
   ExecutionContext,

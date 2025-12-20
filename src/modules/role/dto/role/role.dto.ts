@@ -1,6 +1,6 @@
 import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
-import { EXAMPLE_PERMISSION_ID } from '@/libConst/permission.const';
-import { EXAMPLE_ROLE_ID, EXAMPLE_ROLE_NAME } from '@/libConst/role.const';
+import { EXAMPLE_PERMISSION_ID } from '@/roleConst/permission.const';
+import { EXAMPLE_ROLE_ID, EXAMPLE_ROLE_NAME } from '@/roleConst/role.const';
 import { PermissionResponseDto } from '@/rolePermissionDto/permission.dto';
 import { GetUserDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';

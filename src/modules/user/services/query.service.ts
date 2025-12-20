@@ -3,15 +3,15 @@ import { EntityQueryService } from '@/baseServices/query.service';
 import {
   DEPARTMENT_QUERY_ALIAS,
   USER_DEPARTMENTS_QUERY_ALIAS,
-} from '@/libConst/department.const';
-import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+} from '@/departmentConst/department.const';
+import { PERMISSION_QUERY_ALIAS } from '@/roleConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/roleConst/role.const';
 import {
   ASSIGNED_BY_USER_QUERY_ALIAS,
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import { UserListResponseDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { FilterUsersQueryDto } from '@/userQueryDto/user.dto';

@@ -1,5 +1,5 @@
 import type { PaginationDto } from '@/base/dto/pagination.dto';
-import { PERMISSION_QUERY_ALIAS } from '@/lib/const/permission.const';
+import { PERMISSION_QUERY_ALIAS } from '@/modules/role/const/permission.const';
 import type {
   CreatePermissionDto,
   PermissionListResponseDto,

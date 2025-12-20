@@ -2,12 +2,12 @@ import { PaginationDto, QueryDateRequestDto } from '@/baseDto/pagination.dto';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { ToBoolean } from '@/commonDecorators/boolean.decorator';
 import { getDepartmentGenericSelectableFields } from '@/departmentHelper/department-fields.util';
-import { UserDateParams } from '@/lib/enum/user/user.enum';
-import { COUNTRIES } from '@/libConst/countries.const';
+import { COUNTRIES } from '@/lib/countries.const';
 import {
   getPermissionsGenericSelectableFields,
   getRoleGenericSelectableFields,
 } from '@/roleHelper/role-fields.util';
+import { UserDateParams } from '@/userEnum/user.enum';
 import {
   getAssignedByGenericSelectableFields,
   getCreatedByGenericSelectableFields,

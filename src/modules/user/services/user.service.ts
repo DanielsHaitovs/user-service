@@ -2,7 +2,7 @@ import { DeleteResponseDto } from '@/baseDto/response.dto';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import {
   CreateUserDto,
   UpdateUserDto,

@@ -1,13 +1,13 @@
 import { OptimizeCriteria } from '@/baseInterface/query.request';
 import { EntityQueryService } from '@/baseServices/query.service';
+import { DEPARTMENT_QUERY_ALIAS } from '@/departmentConst/department.const';
 import { DepartmentListResponseDto } from '@/departmentDto/department.dto';
 import { FilterDepartmentsQueryDto } from '@/departmentDto/query.dto';
 import { Departments } from '@/departmentEntities/department.entity';
-import { DEPARTMENT_QUERY_ALIAS } from '@/libConst/department.const';
 import {
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';

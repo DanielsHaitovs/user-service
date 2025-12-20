@@ -3,13 +3,13 @@ import { JWTPayload } from '@/authInterfaces/req.interface';
 import {
   PERMISSION_QUERY_ALIAS,
   ROOT_ADMIN_PERMISSION,
-} from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+} from '@/roleConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/roleConst/role.const';
 import {
   SYSTEM_USER_EMAIL,
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import { getUserGenericSelectableFields } from '@/userHelper/user-fields.util';
 import { Injectable, UnauthorizedException } from '@nestjs/common';

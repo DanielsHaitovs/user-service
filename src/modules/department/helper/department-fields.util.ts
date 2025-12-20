@@ -1,5 +1,5 @@
+import { DEPARTMENT_QUERY_ALIAS } from '@/departmentConst/department.const';
 import { Departments } from '@/departmentEntities/department.entity';
-import { DEPARTMENT_QUERY_ALIAS } from '@/libConst/department.const';
 import {
   getCreatedByGenericSelectableFields,
   getUserGenericSelectableFields,

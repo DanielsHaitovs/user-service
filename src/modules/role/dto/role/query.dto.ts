@@ -1,7 +1,7 @@
 import { PaginationDto, QueryDateRequestDto } from '@/baseDto/pagination.dto';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { ToBoolean } from '@/commonDecorators/boolean.decorator';
-import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
+import { EXAMPLE_ROLE_ID } from '@/roleConst/role.const';
 import { getRoleGenericSelectableFields } from '@/roleHelper/role-fields.util';
 import {
   PermissionQueryParametersDto,

@@ -1,3 +1,4 @@
+import { getRandomCountryCode } from '@/common/helper/country.helper';
 import type {
   CreateDepartmentDto,
   DepartmentListResponseDto,
@@ -8,8 +9,7 @@ import type { Departments } from '@/department/entities/department.entity';
 import { getDepartmentGenericSelectableFields } from '@/department/helper/department-fields.util';
 import type { DepartmentService } from '@/department/services/department.service';
 import type { QueryService } from '@/department/services/query.service';
-import { DEPARTMENT_QUERY_ALIAS } from '@/lib/const/department.const';
-import { getRandomCountryCode } from '@/lib/helper/country.helper';
+import { DEPARTMENT_QUERY_ALIAS } from '@/modules/department/const/department.const';
 import {
   validateDeleteDepartmentResponse,
   validateDepartmentsResponse,

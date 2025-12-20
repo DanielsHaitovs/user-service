@@ -5,8 +5,8 @@ import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
 import { ParseUUIDArrayPipe } from '@/commonPipes/uuidArray.pipe';
-import { READ_DEPARTMENT } from '@/libConst/department.const';
-import { READ_ROLE } from '@/libConst/role.const';
+import { READ_DEPARTMENT } from '@/departmentConst/department.const';
+import { READ_ROLE } from '@/roleConst/role.const';
 import {
   CREATE_USER,
   CREATE_USER_ROLE,
@@ -21,7 +21,7 @@ import {
   USER_GENERIC_BAD_REQUEST_MSG,
   USER_MIN_API_OK_LIST,
   USER_UPDATE_API_OK_LIST,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import {
   CreateUserDto,
   UpdateUserDto,

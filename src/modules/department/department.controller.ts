@@ -8,6 +8,19 @@ import { AuthenticationGuard } from '@/commonGuards/auth.guard';
 import { PermissionsGuard } from '@/commonGuards/permission.guard';
 import { ParseUUIDArrayPipe } from '@/commonPipes/uuidArray.pipe';
 import {
+  CREATE_DEPARTMENT,
+  DELETE_DEPARTMENT,
+  DEPARTMENT_API_OK_RESPONSE_MSG,
+  DEPARTMENT_FULL_OPERATION_BAD_REQUEST_MSG,
+  DEPARTMENT_GENERIC_BAD_REQUEST_MSG,
+  DEPARTMENT_MIN_API_OK_LIST,
+  DEPARTMENT_NAME_EXISTS_MSG,
+  EXAMPLE_DEPARTMENT_ID,
+  EXAMPLE_DEPARTMENT_NAME,
+  READ_DEPARTMENT,
+  UPDATE_DEPARTMENT,
+} from '@/departmentConst/department.const';
+import {
   CreateDepartmentDto,
   DepartmentListResponseDto,
   DepartmentResponseDto,
@@ -20,19 +33,6 @@ import {
 } from '@/departmentDto/query.dto';
 import { DepartmentService } from '@/departmentServices/department.service';
 import { QueryService } from '@/departmentServices/query.service';
-import {
-  CREATE_DEPARTMENT,
-  DELETE_DEPARTMENT,
-  DEPARTMENT_API_OK_RESPONSE_MSG,
-  DEPARTMENT_FULL_OPERATION_BAD_REQUEST_MSG,
-  DEPARTMENT_GENERIC_BAD_REQUEST_MSG,
-  DEPARTMENT_MIN_API_OK_LIST,
-  DEPARTMENT_NAME_EXISTS_MSG,
-  EXAMPLE_DEPARTMENT_ID,
-  EXAMPLE_DEPARTMENT_NAME,
-  READ_DEPARTMENT,
-  UPDATE_DEPARTMENT,
-} from '@/libConst/department.const';
 import {
   Body,
   Controller,

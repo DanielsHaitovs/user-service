@@ -1,5 +1,5 @@
-import { USER_ROLE_QUERY_ALIAS } from '@/libConst/user.const';
 import { RoleHelperService } from '@/roleHelper/helper.service';
+import { USER_ROLE_QUERY_ALIAS } from '@/userConst/user.const';
 import {
   AssignRolesDto,
   UnAssignRolesDto,

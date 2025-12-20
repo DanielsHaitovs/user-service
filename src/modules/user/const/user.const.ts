@@ -4,8 +4,8 @@
  * to maintain uniformity in examples and mock data.
  */
 
-import { COUNTRIES } from '@/libConst/countries.const';
-import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
+import { COUNTRIES } from '@/lib/countries.const';
+import { INPUT_BAD_REQUEST_MSG } from '@/lib/system.const';
 import {
   UpdateUserDto,
   UserListResponseDto,

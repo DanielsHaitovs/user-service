@@ -5,8 +5,8 @@ import { PermissionsGuard } from '@/commonGuards/permission.guard';
 import {
   READ_DEPARTMENT,
   READ_USER_DEPARTMENT,
-} from '@/libConst/department.const';
-import { ASSIGN_USER_DEPARTMENT, READ_USER } from '@/libConst/user.const';
+} from '@/departmentConst/department.const';
+import { ASSIGN_USER_DEPARTMENT, READ_USER } from '@/userConst/user.const';
 import { UserDepartmentsService } from '@/userDepartmentService/user-departments.service';
 import {
   AssignDepartmentsDto,

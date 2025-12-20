@@ -7,7 +7,7 @@ import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser } from '@/commonDecorators/user.decorator';
 import { AuthenticationGuard } from '@/commonGuards/auth.guard';
 import { PermissionsGuard } from '@/commonGuards/permission.guard';
-import { READ_PERMISSION } from '@/libConst/permission.const';
+import { READ_PERMISSION } from '@/roleConst/permission.const';
 import {
   CONFLICT_ROLE_NAME_MSG,
   CREATE_ROLE,
@@ -20,7 +20,7 @@ import {
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
   ROLE_NOT_FOUND_MSG,
   UPDATE_ROLE,
-} from '@/libConst/role.const';
+} from '@/roleConst/role.const';
 import {
   FilterRolesQueryDto,
   GetRoleByIdsQueryDto,

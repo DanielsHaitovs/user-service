@@ -1,8 +1,7 @@
 import { DeleteResponseDto } from '@/baseDto/response.dto';
 import { PostgresQueryFailedError } from '@/baseInterface/query.error';
-import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
-import { CREATEDBY_USER_QUERY_ALIAS } from '@/libConst/user.const';
+import { PERMISSION_QUERY_ALIAS } from '@/roleConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/roleConst/role.const';
 import { Permission } from '@/roleEntities/permissions.entity';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleHelper/helper.service';
@@ -17,6 +16,7 @@ import {
   PermissionSearchRequestDto,
 } from '@/rolePermissionDto/permission.query';
 import { QueryService } from '@/rolePermissionServices/query.service';
+import { CREATEDBY_USER_QUERY_ALIAS } from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import {
   BadRequestException,

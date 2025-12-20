@@ -1,9 +1,9 @@
 import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { ToBoolean } from '@/commonDecorators/boolean.decorator';
-import { COUNTRIES } from '@/libConst/countries.const';
-import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
-import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+import { COUNTRIES } from '@/lib/countries.const';
+import { EXAMPLE_ROLE_ID } from '@/roleConst/role.const';
+import { EXAMPLE_USER_ID } from '@/userConst/user.const';
 import { UserRoleResponseDto } from '@/userDto/roles.dto';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 

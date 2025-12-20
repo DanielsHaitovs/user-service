@@ -1,10 +1,10 @@
-import { USER_DEPARTMENTS_QUERY_ALIAS } from '@/libConst/department.const';
+import { USER_DEPARTMENTS_QUERY_ALIAS } from '@/departmentConst/department.const';
 import {
   ASSIGNED_BY_USER_QUERY_ALIAS,
   CREATEDBY_USER_QUERY_ALIAS,
   USER_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import { UserDepartments } from '@/userEntities/userDepartments.entity';
 import { UserRole } from '@/userEntities/userRoles.entity';

@@ -10,19 +10,19 @@ import {
   DELETE_DEPARTMENT,
   READ_DEPARTMENT,
   UPDATE_DEPARTMENT,
-} from '@/libConst/department.const';
+} from '@/departmentConst/department.const';
 import {
   CREATE_PERMISSION,
   DELETE_PERMISSION,
   READ_PERMISSION,
   UPDATE_PERMISSION,
-} from '@/libConst/permission.const';
+} from '@/roleConst/permission.const';
 import {
   CREATE_ROLE,
   DELETE_ROLE,
   READ_ROLE,
   UPDATE_ROLE,
-} from '@/libConst/role.const';
+} from '@/roleConst/role.const';
 import {
   CREATE_USER,
   CREATE_USER_ROLE,
@@ -32,7 +32,7 @@ import {
   READ_USER_ROLE,
   UPDATE_USER,
   UPDATE_USER_ROLE,
-} from '@/libConst/user.const';
+} from '@/userConst/user.const';
 import { UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 

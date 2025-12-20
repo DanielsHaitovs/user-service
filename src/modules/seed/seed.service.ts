@@ -1,5 +1,3 @@
-import { Departments } from '@/departmentEntities/department.entity';
-import { RandomCountry } from '@/libConst/countries.const';
 import {
   CREATE_DEPARTMENT,
   CREATE_USER_DEPARTMENT,
@@ -9,19 +7,23 @@ import {
   READ_USER_DEPARTMENT,
   UPDATE_DEPARTMENT,
   UPDATE_USER_DEPARTMENT,
-} from '@/libConst/department.const';
+} from '@/departmentConst/department.const';
+import { Departments } from '@/departmentEntities/department.entity';
+import { RandomCountry } from '@/lib/countries.const';
 import {
   CREATE_PERMISSION,
   DELETE_PERMISSION,
   READ_PERMISSION,
   UPDATE_PERMISSION,
-} from '@/libConst/permission.const';
+} from '@/roleConst/permission.const';
 import {
   CREATE_ROLE,
   DELETE_ROLE,
   READ_ROLE,
   UPDATE_ROLE,
-} from '@/libConst/role.const';
+} from '@/roleConst/role.const';
+import { Permission } from '@/roleEntities/permissions.entity';
+import { Roles } from '@/roleEntities/role.entity';
 import {
   ASSIGN_USER_DEPARTMENT,
   ASSIGN_USER_ROLE,
@@ -35,9 +37,7 @@ import {
   SYSTEM_USER_PASSWORD,
   UPDATE_USER,
   UPDATE_USER_ROLE,
-} from '@/libConst/user.const';
-import { Permission } from '@/roleEntities/permissions.entity';
-import { Roles } from '@/roleEntities/role.entity';
+} from '@/userConst/user.const';
 import { User } from '@/userEntities/user.entity';
 import { UserDepartments } from '@/userEntities/userDepartments.entity';
 import { UserRole } from '@/userEntities/userRoles.entity';

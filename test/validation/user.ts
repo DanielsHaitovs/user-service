@@ -3,7 +3,7 @@ import type { User } from '@/user/entities/user.entity';
 
 import type { UUID } from 'crypto';
 
-import type { COUNTRIES } from '../../src/lib/const/countries.const';
+import type { COUNTRIES } from '../../src/lib/countries.const';
 import { getUserProperties } from '../../src/modules/user/helper/user-fields.util';
 
 import { validateDepartmentsResponse } from './department';

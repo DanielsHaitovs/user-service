@@ -5,7 +5,7 @@
  */
 
 import { DepartmentListResponseDto } from '@/departmentDto/department.dto';
-import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
+import { INPUT_BAD_REQUEST_MSG } from '@/lib/system.const';
 // import { INPUT_BAD_REQUEST_MSG } from '@/lib/system.const';
 
 /**

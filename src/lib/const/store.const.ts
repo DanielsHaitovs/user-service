@@ -1,0 +1,126 @@
+/**
+ * STORE-related constants for testing, documentation, and API examples.
+ * These values should be used consistently across tests and documentation
+ * to maintain uniformity in examples and mock data.
+ */
+
+import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
+
+/**
+ * Sample UUID v4 for STORE identification in tests and API documentation.
+ * Format follows RFC 4122 standard for universally unique identifiers.
+ */
+export const EXAMPLE_STORE_ID =
+  '123e4567-e89b-12d3-a456-426614174000' as string;
+
+/**
+ * Standard example name used in API documentation and test fixtures.
+ * Represents a STORE name that is commonly used for testing scenarios.
+ */
+export const EXAMPLE_STORE_NAME = 'German Shoe STORE' as string;
+
+/**
+ * Standard example code used in API documentation and test fixtures.
+ * Represents a STORE code that is commonly used for testing scenarios.
+ */
+export const EXAMPLE_STORE_CODE = 'store_de' as string;
+
+/**
+ * Standard example view code used in API documentation and test fixtures.
+ * Represents a STORE view code that is commonly used for testing scenarios.
+ */
+export const EXAMPLE_STORE_VIEW_CODE = 'de_de' as string;
+
+/**
+ * Standard example name used in API documentation and test fixtures.
+ * Represents a STORE name that is commonly used for testing scenarios.
+ */
+export const STORE_QUERY_ALIAS = 'stores' as string;
+
+export const USER_STORES_QUERY_ALIAS = 'userStores' as string;
+
+/**
+ * Standard example message used in API documentation and test fixtures.
+ * Represents a STORE not found message that is commonly used for testing scenarios.
+ */
+export const STORE_NOT_FOUND_MSG = 'STORE not found' as string;
+
+/**
+ * Standard example message used in API documentation and test fixtures.
+ * Represents a STORE name exists message that is commonly used for testing scenarios.
+ */
+export const STORE_NAME_EXISTS_MSG =
+  'STORE with this name already exists' as string;
+
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a STORE description that is commonly used for testing scenarios.
+ */
+export const READ_STORE = 'STORE:read' as string;
+
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a STORE description that is commonly used for testing scenarios.
+ */
+export const CREATE_STORE = 'STORE:create' as string;
+
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a STORE description that is commonly used for testing scenarios.
+ */
+export const UPDATE_STORE = 'STORE:update' as string;
+
+/**
+ * Standard example description used in API documentation and test fixtures.
+ * Represents a STORE description that is commonly used for testing scenarios.
+ */
+export const DELETE_STORE = 'STORE:delete' as string;
+
+export const READ_USER_STORE = 'user-store:read' as string;
+
+export const CREATE_USER_STORE = 'user-store:create' as string;
+
+export const UPDATE_USER_STORE = 'user-store:update' as string;
+
+export const DELETE_USER_STORE = 'user-store:delete' as string;
+
+export const ASSIGN_USER_STORE = 'user-store:assign' as string;
+
+export const STORE_API_OK_RESPONSE_MSG = 'STORE retrieved successfully';
+
+export const STORE_GENERIC_BAD_REQUEST_MSG = [
+  'country must be a valid ISO country code',
+  'name should not be empty',
+];
+
+export const STORE_MIN_OPERATION_BAD_REQUEST_MSG = [
+  'Each selectUserField must be a valid user field',
+  'Each selectSTOREField must be a valid STORE field',
+  'includeCreatedBy must be a boolean value',
+  'includeSTOREs must be a boolean value',
+  'includeUsers must be a boolean value',
+  'sortField must be a valid STORE field',
+  ...INPUT_BAD_REQUEST_MSG,
+];
+
+export const STORE_FULL_OPERATION_BAD_REQUEST_MSG = [
+  'Each id must be a valid UUIDv4',
+  'Each name must be a string',
+  'Each country must be a valid ISO country code',
+  'eachUserId must be a valid UUIDv4',
+  'createdAt must be a valid ISO 8601 date string',
+  'updatedAt must be a valid ISO 8601 date string',
+  'each createdById must be a valid UUIDv4',
+  ...STORE_MIN_OPERATION_BAD_REQUEST_MSG,
+];
+
+// export const STORE_MIN_API_OK_LIST = {
+//   badRequestMessages: {
+//     examples: STORE_MIN_OPERATION_BAD_REQUEST_MSG,
+//   },
+//   okOperation: {
+//     description: STORE_API_OK_RESPONSE_MSG,
+//     type: STOREListResponseDto,
+//     isArray: false,
+//   },
+// };

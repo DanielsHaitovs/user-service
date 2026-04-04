@@ -1,21 +1,17 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { AuthModule } from '@/auth/auth.module';
-import { BaseModule } from '@/base/base.module';
 import { DepartmentModule } from '@/department/department.module';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
-import { SeedModule } from '@/seed/seed.module';
+import { StoreModule } from '@/store/store.module';
 import { UserModule } from '@/user/user.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AppController } from './modules/app.controller';
-
 @Module({
-  controllers: [AppController],
+  controllers: [],
   providers: [],
   imports: [
     ConfigModule.forRoot({
@@ -72,12 +68,11 @@ import { AppController } from './modules/app.controller';
       }),
       inject: [ConfigService],
     }),
-    BaseModule,
     UserModule,
-    RolesModule,
     DepartmentModule,
-    AuthModule,
-    ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
+    RolesModule,
+    StoreModule,
+    // ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
 })
 export class AppModule implements NestModule {

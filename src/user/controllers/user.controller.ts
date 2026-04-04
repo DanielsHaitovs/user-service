@@ -1,0 +1,128 @@
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { READ_DEPARTMENT } from '@/libConst/department.const';
+import { READ_ROLE } from '@/libConst/role.const';
+import {
+  CREATE_USER,
+  CREATE_USER_ROLE,
+  EMAIL_EXISTS_MSG,
+  EXAMPLE_USER_ID,
+  READ_USER,
+  READ_USER_ROLE,
+  USER_MIN_API_OK_LIST,
+} from '@/libConst/user.const';
+import { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
+import { ApiParam, ApiTags } from '@nestjs/swagger';
+
+import { UUID } from 'crypto';
+
+import { UserPipelineService } from '../user.pipeline';
+
+/**
+ * REST API controller for comprehensive user management operations.
+ *
+ * Implements standardized CRUD operations with advanced querying capabilities,
+ * comprehensive error handling, and detailed OpenAPI documentation. Follows
+ * RESTful conventions while providing both ID-based and email-based access patterns
+ * for flexible client integration.
+ */
+@ApiTags('Users')
+@Controller('user')
+@TraceController()
+export class UserController {
+  constructor(protected readonly userPipelineService: UserPipelineService) {}
+
+  /**
+   * Creates a new user account.
+   *
+   * Validates input data, checks for email uniqueness, and associates
+   * the creator's information. Returns the created user entity.
+   * @param createDto - Data for the new user
+   * @param createdByUser - JWT payload of the user creating the account
+   * @returns The created user entity
+   * @throws ConflictException if the email already exists
+   * @throws BadRequestException for validation errors
+   * @throws EntityNotFoundError if the creator user does not exist
+   * @throws EntityNotFoundError if the provided department or role IDs do not exist
+   */
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOkList({
+    permissions: [
+      CREATE_USER,
+      READ_USER,
+      READ_DEPARTMENT,
+      READ_ROLE,
+      CREATE_USER_ROLE,
+      READ_USER_ROLE,
+    ],
+    operation: {
+      summary: 'Create a new user',
+      description:
+        'Creates a new user account with the provided information. Email must be unique.',
+    },
+    body: {
+      type: CreateUserDto,
+      description: 'User creation data',
+    },
+    createdResponse: {
+      description: 'User successfully created',
+      type: UserResponseDto,
+    },
+    conflictMessage: {
+      description: EMAIL_EXISTS_MSG,
+    },
+    badRequestMessages: {
+      examples: [
+        'firstName should not be empty',
+        'email must be an email',
+        'password must be longer than or equal to 8 characters',
+      ],
+    },
+  })
+  async create(
+    @Body() createDto: CreateUserDto,
+    // @CurrentUser() createdByUser: JWTPayload,
+  ): Promise<UserResponseDto> {
+    return await this.userPipelineService.create({
+      createDto,
+      createdById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+    });
+  }
+
+  @Get('attribute/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkList({
+    permissions: [READ_USER],
+    operation: {
+      summary: 'Searches for users by ID',
+      description: 'Searches for users by their unique identifiers',
+    },
+    ...USER_MIN_API_OK_LIST,
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Comma-separated list of user IDs to search for',
+    example: EXAMPLE_USER_ID,
+  })
+  async findByIds(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    // @CurrentUser() requestedByUser: JWTPayload,
+  ): Promise<UserResponseDto> {
+    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
+    //   this.extractAccess(requestedByUser);
+
+    return await this.userPipelineService.getByIdOrThrow(id);
+  }
+}

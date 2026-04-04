@@ -62,7 +62,7 @@ function simplifyRequest(req: Request): Record<string, unknown> {
   return {
     method: req.method,
     url: req.url,
-    user: req.user,
+    // user: req.user,
     query: req.query,
     params: req.params,
     body: req.body,

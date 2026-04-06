@@ -2,11 +2,10 @@ import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
 import { ResponseTimeInterceptor } from '@/interceptors/response-time.interceptor';
+import { AppModule } from '@/src/app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-
-import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);

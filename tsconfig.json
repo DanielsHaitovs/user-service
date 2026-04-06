@@ -51,11 +51,13 @@
       "@/userDto/*": ["src/user/dto/*"],
       "@/user/*": ["src/user/*"],
       "@/seed/*": ["src/seed/*"],
-      "@/rolePermissionDto/*": ["src/role/dto/permission/*"],
-      "@/roleDto/*": ["src/role/dto/role/*"],
+      "@/permissionServices/*": ["src/role/permission/services/*"],
+      "@/permissionDto/*": ["src/role/permission/dto/*"],
+      "@/permissionEntities/*": ["src/role/permission/entities/*"],
+      "@/permission/*": ["src/role/permission/*"],
+      "@/roleDto/*": ["src/role/dto/*"],
       "@/roleHelper/*": ["src/role/helper/*"],
-      "@/roleServices/*": ["src/role/services/role/*"],
-      "@/rolePermissionServices/*": ["src/role/services/permission/*"],
+      "@/roleServices/*": ["src/role/services/*"],
       "@/roleEntities/*": ["src/role/entities/*"],
       "@/role/*": ["src/role/*"],
       "@/authHelper/*": ["src/auth/helper/*"],
@@ -71,7 +73,8 @@
       "@/storeServices/*": ["src/store/services/*"],
       "@/storeHelper/*": ["src/store/helper/*"],
       "@/storeEntities/*": ["src/store/entities/*"],
-      "@/store/*": ["src/store/*"]
+      "@/store/*": ["src/store/*"],
+      "@/src/*": ["src/*"]
     }
   },
   "include": [

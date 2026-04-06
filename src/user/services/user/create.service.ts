@@ -1,25 +1,24 @@
 import { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
+import { UserHelperService } from '@/userService/user/helper.service.';
 import { Injectable } from '@nestjs/common';
 
 import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { DataSource } from 'typeorm';
 
-import { UserService } from './user.service.';
-
 @Injectable()
 export class CreateService {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly userService: UserService,
+    private readonly userHelper: UserHelperService,
   ) {}
 
   /**
    * Creates a new user with the provided details and assigns the creator.
    * Password is hashed before saving to the database.
    *
-   * @param user - The user details for the new user
+   * @param createDto - The details of the user to create, including name, email, password, etc.
    * @param createdById - The ID of the user creating this new user
    * @returns The created User entity
    * @throws Error if the creator user is not found
@@ -31,7 +30,7 @@ export class CreateService {
     createDto: CreateUserDto;
     createdById: UUID;
   }): Promise<UserResponseDto> {
-    const createdBy = await this.userService.getByIdOrThrow(createdById);
+    await this.userHelper.validateIfExists({ id: createdById });
 
     createDto.password = await bcrypt.hash(createDto.password, 10);
 
@@ -39,7 +38,7 @@ export class CreateService {
       const newUser = manager.create(User, createDto);
 
       newUser.createdBy = {
-        id: createdBy.id,
+        id: createdById,
       } as User;
 
       // TO DO: Handle department and role assignments here if needed

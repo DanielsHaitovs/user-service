@@ -1,5 +1,5 @@
 import { MecBaseEntity } from '@/base/mec.entity';
-import { Permission } from '@/roleEntities/permissions.entity';
+import { Permission } from '@/permissionEntities/permissions.entity';
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 

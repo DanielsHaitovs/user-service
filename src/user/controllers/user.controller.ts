@@ -6,11 +6,13 @@ import {
   CREATE_USER,
   CREATE_USER_ROLE,
   EMAIL_EXISTS_MSG,
+  EXAMPLE_USER_EMAIL,
   EXAMPLE_USER_ID,
   READ_USER,
   READ_USER_ROLE,
   USER_MIN_API_OK_LIST,
 } from '@/libConst/user.const';
+import { UserPipelineService } from '@/user/user.pipeline';
 import { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
 import {
   Body,
@@ -25,8 +27,6 @@ import {
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { UserPipelineService } from '../user.pipeline';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -100,7 +100,7 @@ export class UserController {
     });
   }
 
-  @Get('attribute/:id')
+  @Get('id/:id')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER],
@@ -116,7 +116,7 @@ export class UserController {
     description: 'Comma-separated list of user IDs to search for',
     example: EXAMPLE_USER_ID,
   })
-  async findByIds(
+  async findById(
     @Param('id', ParseUUIDPipe) id: UUID,
     // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserResponseDto> {
@@ -124,5 +124,31 @@ export class UserController {
     //   this.extractAccess(requestedByUser);
 
     return await this.userPipelineService.getByIdOrThrow(id);
+  }
+
+  @Get('email/:email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkList({
+    permissions: [READ_USER],
+    operation: {
+      summary: 'Searches for users by email',
+      description: 'Searches for users by their email addresses',
+    },
+    ...USER_MIN_API_OK_LIST,
+  })
+  @ApiParam({
+    name: 'email',
+    type: String,
+    description: 'Email address of the user to search for',
+    example: EXAMPLE_USER_EMAIL,
+  })
+  async findByEmail(
+    @Param('email') email: string,
+    // @CurrentUser() requestedByUser: JWTPayload,
+  ): Promise<UserResponseDto> {
+    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
+    //   this.extractAccess(requestedByUser);
+
+    return await this.userPipelineService.getByEmailOrThrow(email);
   }
 }

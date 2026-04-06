@@ -5,7 +5,7 @@ import {
   EXAMPLE_PERMISSION_NAME,
 } from '@/libConst/permission.const';
 import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
-import { RoleResponseDto } from '@/roleDto/role.dto';
+import { RelatedRoleDto } from '@/role/dto/role.dto';
 import { GetCreatedByDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
@@ -80,7 +80,7 @@ export class CreatePermissionDto extends PermissionBaseDto {
 
 export class UpdatePermissionDto extends PartialType(PermissionBaseDto) {}
 
-export class PermissionResponseDto extends PermissionBaseDto {
+export class GetPermissionDto extends PermissionBaseDto {
   @ApiProperty({
     example: EXAMPLE_PERMISSION_ID,
     description: 'Unique identifier of the permission',
@@ -92,15 +92,6 @@ export class PermissionResponseDto extends PermissionBaseDto {
   id: UUID;
 
   @ApiProperty({
-    type: RoleResponseDto,
-    isArray: true,
-    description: 'Roles associated with this permission',
-  })
-  @Type(() => RoleResponseDto)
-  @ValidateNested({ each: true })
-  roles: RoleResponseDto[];
-
-  @ApiProperty({
     description: 'Creation timestamp of the permission',
     example: '2023-10-01T12:00:00Z',
     readOnly: true,
@@ -108,15 +99,6 @@ export class PermissionResponseDto extends PermissionBaseDto {
   })
   @IsDate()
   createdAt: Date;
-
-  @ApiProperty({
-    description: 'Information about the user who created the permission',
-    type: () => GetCreatedByDto,
-    isArray: false,
-  })
-  @Type(() => GetCreatedByDto)
-  @ValidateNested()
-  createdBy?: GetCreatedByDto;
 
   @ApiProperty({
     description: 'Last update timestamp of the permission',
@@ -131,17 +113,49 @@ export class PermissionResponseDto extends PermissionBaseDto {
     id: UUID,
     name: string,
     code: string,
-    roles: RoleResponseDto[],
-    createdBy: GetCreatedByDto,
     createdAt: Date,
     updatedAt: Date,
   ) {
     super(name, code);
     this.id = id;
-    this.roles = roles;
-    this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+  }
+}
+
+export class RelatedPermissionDto extends GetPermissionDto {}
+
+export class PermissionResponseDto extends GetPermissionDto {
+  @ApiProperty({
+    type: RelatedRoleDto,
+    isArray: true,
+    description: 'Roles associated with this permission',
+  })
+  @Type(() => RelatedRoleDto)
+  @ValidateNested({ each: true })
+  roles: RelatedRoleDto[];
+
+  @ApiProperty({
+    description: 'Information about the user who created the permission',
+    type: () => GetCreatedByDto,
+    isArray: false,
+  })
+  @Type(() => GetCreatedByDto)
+  @ValidateNested()
+  createdBy: GetCreatedByDto;
+
+  constructor(
+    id: UUID,
+    name: string,
+    code: string,
+    roles: RelatedRoleDto[],
+    createdBy: GetCreatedByDto,
+    createdAt: Date,
+    updatedAt: Date,
+  ) {
+    super(id, name, code, createdAt, updatedAt);
+    this.roles = roles;
+    this.createdBy = createdBy;
   }
 }
 

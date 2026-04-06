@@ -1,5 +1,8 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { COUNTRIES } from '@/libConst/countries.const';
+import { UserDepartments } from '@/userEntities/userDepartments.entity';
+import { UserRoles } from '@/userEntities/userRoles.entity';
+import { UserStores } from '@/userEntities/userStores.entity';
 import {
   generateEmailVerificationToken,
   generatePasswordResetToken,
@@ -22,10 +25,6 @@ import {
   OneToMany,
   Unique,
 } from 'typeorm';
-
-import { UserDepartments } from './userDepartments.entity';
-import { UserRoles } from './userRoles.entity';
-import { UserStores } from './userStores.entity';
 
 @Entity('users')
 @Unique('UQ_USER_EMAIL', ['email'], { deferrable: 'INITIALLY IMMEDIATE' })

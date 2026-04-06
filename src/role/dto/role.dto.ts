@@ -1,7 +1,7 @@
 import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
 import { EXAMPLE_PERMISSION_ID } from '@/libConst/permission.const';
 import { EXAMPLE_ROLE_ID, EXAMPLE_ROLE_NAME } from '@/libConst/role.const';
-import { PermissionResponseDto } from '@/rolePermissionDto/permission.dto';
+import { RelatedPermissionDto } from '@/permissionDto/permission.dto';
 import { GetCreatedByDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
@@ -158,6 +158,8 @@ export class GetRoleDto extends RoleBaseDto {
   }
 }
 
+export class RelatedRoleDto extends GetRoleDto {}
+
 /**
  * DTO for role response, extending GetRoleDto and adding properties for associated permissions and creator information.
  * The RoleResponseDto provides a detailed representation of a role, including its unique identifier, name, timestamps, associated permissions, and information about the user who created the role.
@@ -165,15 +167,15 @@ export class GetRoleDto extends RoleBaseDto {
  */
 export class RoleResponseDto extends GetRoleDto {
   @ApiProperty({
-    type: PermissionResponseDto,
+    type: RelatedPermissionDto,
     isArray: true,
     description: 'List of permissions associated with this role',
     example: [EXAMPLE_PERMISSION_ID],
   })
-  @Type(() => PermissionResponseDto)
+  @Type(() => RelatedPermissionDto)
   @ValidateNested({ each: true })
   @IsOptional()
-  permissions: PermissionResponseDto[];
+  permissions: RelatedPermissionDto[];
 
   @ApiProperty({
     description: 'Information about the user who created the role',
@@ -190,7 +192,7 @@ export class RoleResponseDto extends GetRoleDto {
     createdAt: Date,
     updatedAt: Date,
     createdBy: GetCreatedByDto,
-    permissions?: PermissionResponseDto[],
+    permissions?: RelatedPermissionDto[],
   ) {
     super(id, name, createdAt, updatedAt);
     this.id = id;

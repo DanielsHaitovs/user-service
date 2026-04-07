@@ -42,7 +42,7 @@ export class RoleService {
    * @returns A promise that resolves to the RoleResponseDto containing the role and its permissions.
    * @throws EntityNotFoundException if no role with the given ID is found.
    */
-  async getPermissionsByRoleId(id: UUID): Promise<RoleResponseDto> {
+  async getPermissionsByIdOrThrow(id: UUID): Promise<RoleResponseDto> {
     return await this.roleRepository.findOneOrFail({
       where: { id },
       relations: ['permissions'],
@@ -71,7 +71,7 @@ export class RoleService {
       );
     }
 
-    const { permissions } = await this.getPermissionsByRoleId(roleId);
+    const { permissions } = await this.getPermissionsByIdOrThrow(roleId);
 
     if (permissions.length) {
       permissionCodes = permissions
@@ -95,7 +95,7 @@ export class RoleService {
       }),
     });
 
-    return await this.getPermissionsByRoleId(roleId);
+    return await this.getPermissionsByIdOrThrow(roleId);
   }
 
   /**
@@ -120,7 +120,7 @@ export class RoleService {
       );
     }
 
-    const { permissions } = await this.getPermissionsByRoleId(roleId);
+    const { permissions } = await this.getPermissionsByIdOrThrow(roleId);
 
     const remainingPermissionIds = permissions
       .filter((permission) => !permissionCodes.includes(permission.code))
@@ -141,6 +141,6 @@ export class RoleService {
       }),
     });
 
-    return await this.getPermissionsByRoleId(roleId);
+    return await this.getPermissionsByIdOrThrow(roleId);
   }
 }

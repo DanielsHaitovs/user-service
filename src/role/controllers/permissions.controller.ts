@@ -145,6 +145,6 @@ export class RolePermissionsController {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 
-    return await this.pipelineService.getPermissionsByRoleId(id);
+    return await this.pipelineService.getPermissionsByIdOrThrow(id);
   }
 }

@@ -1,6 +1,5 @@
 import { MecBaseEntity } from '@/base/mec.entity';
 import { COUNTRIES } from '@/libConst/countries.const';
-import { UserDepartments } from '@/userEntities/userDepartments.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserStores } from '@/userEntities/userStores.entity';
 import {
@@ -101,9 +100,6 @@ export class User extends MecBaseEntity {
   @IsNotEmpty()
   twoFactorSecret: string;
 
-  @OneToMany(() => UserDepartments, (userDepartment) => userDepartment.users)
-  userDepartments: UserDepartments[];
-
   @OneToMany(() => UserRoles, (userRole) => userRole.users)
   userRoles: UserRoles[];
 
@@ -127,7 +123,6 @@ export class User extends MecBaseEntity {
     createdAt: Date,
     updatedAt: Date,
     twoFactorSecret: string,
-    userDepartments: UserDepartments[],
     userRoles: UserRoles[],
     userStores: UserStores[],
     createdBy: User,
@@ -148,7 +143,6 @@ export class User extends MecBaseEntity {
     const resetExpiryDate = new Date();
     resetExpiryDate.setMonth(resetExpiryDate.getMonth() + 3);
     this.passwordResetExpires = resetExpiryDate; // 3 months from now
-    this.userDepartments = userDepartments;
     this.isTwoFactorEnabled = true;
     this.twoFactorSecret = twoFactorSecret;
     this.userRoles = userRoles;

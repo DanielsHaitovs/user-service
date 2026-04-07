@@ -36,26 +36,26 @@ export class RoleHelperService {
   }
 
   /**
-   * Validates that a role with the given names do not already exist.
-   * @param names - The names of the roles to validate.
+   * Validates that a role with the given ids do not already exist.
+   * @param ids - The ids of the roles to validate.
    * @returns The IDs of the existing roles with the given names.
    * @throws UnprocessableEntityException if any of the provided role names do not exist.
    */
-  async validateRolesExist(names?: string[]): Promise<UUID[]> {
-    if (names == undefined || names.length === 0) {
+  async validateRolesExist(ids?: string[]): Promise<UUID[]> {
+    if (ids == undefined || ids.length === 0) {
       return [];
     }
 
     const existingRoles = await this.roleRepository.find({
       where: {
-        name: In(names),
+        id: In(ids),
       },
     });
 
-    if (existingRoles.length != names.length) {
+    if (existingRoles.length != ids.length) {
       throw new UnprocessableEntityException(
-        `Failed to create role. The following role names do not exist: ${names
-          .filter((name) => !existingRoles.some((r) => r.name === name))
+        `Failed to create role. The following role ids do not exist: ${ids
+          .filter((id) => !existingRoles.some((r) => r.id === id))
           .join(', ')}`,
       );
     }

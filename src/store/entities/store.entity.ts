@@ -17,6 +17,10 @@ import {
 @Entity('stores')
 @Unique('UQ_STORE_ID', ['id'], { deferrable: 'INITIALLY IMMEDIATE' })
 @Unique('UQ_STORE_NAME', ['name'], { deferrable: 'INITIALLY IMMEDIATE' })
+@Unique('UQ_STORE_CODE', ['code'], { deferrable: 'INITIALLY IMMEDIATE' })
+@Unique('UQ_STORE_VIEW_CODE', ['viewCode'], {
+  deferrable: 'INITIALLY IMMEDIATE',
+})
 @Index('IX_STORE_ID_NAME', ['id', 'name'])
 @Index('IX_STORE_ID_CODE', ['id', 'code'])
 @Index('IX_STORE_ID_VIEW_CODE', ['id', 'viewCode'])

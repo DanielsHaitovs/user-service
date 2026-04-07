@@ -7,7 +7,6 @@ import {
 } from '@/lib/const/permission.const';
 import {
   CONFLICT_ROLE_NAME_MSG,
-  EXAMPLE_ROLE_ID,
   EXAMPLE_ROLE_NAME,
   READ_ROLE,
   ROLE_GENERIC_BAD_REQUEST_MSG,
@@ -150,42 +149,5 @@ export class RoleController {
     //   this.extractAccess(requestedByUser);
 
     return await this.pipelineService.getByNameOrThrow(name);
-  }
-
-  @Get('permissions/:id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOkList({
-    permissions: [READ_ROLE],
-    operation: {
-      summary: 'Get role by ID with permissions',
-      description:
-        'Retrieves a role by its unique ID along with its permissions.',
-    },
-    okOperation: {
-      description: 'Role found and returned successfully',
-      type: RoleResponseDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    notFound: {
-      description: ROLE_NOT_FOUND_MSG,
-    },
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    description: 'Unique ID of the role to search for',
-    example: EXAMPLE_ROLE_ID,
-  })
-  async findByIdWithPermissions(
-    @Param('id', ParseUUIDPipe) id: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<RoleResponseDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
-    return await this.pipelineService.getPermissionsByRoleId(id);
   }
 }

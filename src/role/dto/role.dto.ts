@@ -1,4 +1,5 @@
 import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
 import { EXAMPLE_PERMISSION_ID } from '@/libConst/permission.const';
 import { EXAMPLE_ROLE_ID, EXAMPLE_ROLE_NAME } from '@/libConst/role.const';
 import { RelatedPermissionDto } from '@/permissionDto/permission.dto';
@@ -75,43 +76,30 @@ export class UpdateRoleDto extends PartialType(RoleBaseDto) {}
  * The AssignPermissionsToRoleDto allows clients to associate permissions with a role by specifying either the permission IDs or their string codes.
  * This design provides flexibility in how permissions are referenced when assigning them to roles, accommodating different client needs and data structures.
  */
-export class AssignPermissionsToRoleDto {
+export class PermissionsToRoleDto {
   @ApiProperty({
     type: String,
     isArray: true,
     description: 'Permission codes to associate with this role',
     example: ['manage_users', 'create_order'],
+    required: true,
   })
-  @IsArray()
+  @ToArray()
   @IsString({ each: true })
-  @IsOptional()
+  @IsNotEmpty()
   permissionCodes: string[];
 
   @ApiProperty({
-    type: String,
-    isArray: true,
-    description: 'Permission IDs to associate with this role',
-    example: [EXAMPLE_PERMISSION_ID],
-  })
-  @IsArray()
-  @IsUUID('4', { each: true })
-  @Type(() => String)
-  @IsOptional()
-  permissionIds: UUID[];
-
-  @ApiProperty({
-    example: [EXAMPLE_ROLE_ID],
+    example: EXAMPLE_ROLE_ID,
     description: 'Unique identifier of the role',
     type: String,
     format: 'uuid',
-    readOnly: true,
   })
   @IsUUID()
   roleId: UUID;
 
-  constructor(roleId: UUID, permissionIds: UUID[], permissionCodes: string[]) {
+  constructor(roleId: UUID, permissionCodes: string[]) {
     this.roleId = roleId;
-    this.permissionIds = permissionIds;
     this.permissionCodes = permissionCodes;
   }
 }

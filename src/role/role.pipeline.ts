@@ -1,4 +1,9 @@
-import { CreateRoleDto, GetRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
+import {
+  CreateRoleDto,
+  GetRoleDto,
+  PermissionsToRoleDto,
+  RoleResponseDto,
+} from '@/roleDto/role.dto';
 import { CreateService } from '@/roleServices/create.service';
 import { RoleService } from '@/roleServices/role.service';
 import { Injectable } from '@nestjs/common';
@@ -37,10 +42,7 @@ export class RolePipelineService {
   async assignPermissionsToRole({
     roleId,
     permissionCodes,
-  }: {
-    roleId: UUID;
-    permissionCodes: string[];
-  }): Promise<RoleResponseDto> {
+  }: PermissionsToRoleDto): Promise<RoleResponseDto> {
     return await this.roleService.assignPermissionsToRole({
       roleId,
       permissionCodes,
@@ -50,10 +52,7 @@ export class RolePipelineService {
   async unassignPermissionsFromRole({
     roleId,
     permissionCodes,
-  }: {
-    roleId: UUID;
-    permissionCodes: string[];
-  }): Promise<RoleResponseDto> {
+  }: PermissionsToRoleDto): Promise<RoleResponseDto> {
     return await this.roleService.unassignPermissionsFromRole({
       roleId,
       permissionCodes,

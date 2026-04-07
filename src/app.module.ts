@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { DepartmentModule } from '@/department/department.module';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
@@ -69,7 +68,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       inject: [ConfigService],
     }),
     UserModule,
-    DepartmentModule,
     RolesModule,
     StoreModule,
     // ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),

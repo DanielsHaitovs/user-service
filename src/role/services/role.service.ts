@@ -86,7 +86,8 @@ export class RoleService {
       ...permissions.flatMap((p) => p.id),
     ] as UUID[];
 
-    await this.roleRepository.update(roleId, {
+    await this.roleRepository.save({
+      id: roleId,
       permissions: permissionIds.map((id) => {
         return {
           id,
@@ -131,7 +132,8 @@ export class RoleService {
       );
     }
 
-    await this.roleRepository.update(roleId, {
+    await this.roleRepository.save({
+      id: roleId,
       permissions: remainingPermissionIds.map((id) => {
         return {
           id,

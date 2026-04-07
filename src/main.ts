@@ -38,6 +38,7 @@ async function bootstrap(): Promise<void> {
     .addTag('Auth', 'Auth in management operations')
     .addTag('Users', 'User management operations')
     .addTag('Roles', 'Roles management operations')
+    .addTag('Roles Permissions', 'Roles permissions management operations')
     .addTag('Permissions', 'Permissions management operations')
     .addTag('Departments', 'Departments management operations')
     .addServer('/users')

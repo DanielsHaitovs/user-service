@@ -100,7 +100,7 @@ export class User extends MecBaseEntity {
   @IsNotEmpty()
   twoFactorSecret: string;
 
-  @OneToMany(() => UserRoles, (userRole) => userRole.users)
+  @OneToMany(() => UserRoles, (userRole) => userRole.user)
   userRoles: UserRoles[];
 
   @OneToMany(() => UserStores, (userStore) => userStore.users)

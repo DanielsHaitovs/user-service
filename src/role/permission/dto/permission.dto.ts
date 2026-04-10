@@ -5,7 +5,7 @@ import {
   EXAMPLE_PERMISSION_NAME,
 } from '@/libConst/permission.const';
 import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
-import { RelatedRoleDto } from '@/role/dto/role.dto';
+import { GetRelatedRoleDto } from '@/role/dto/role.dto';
 import { GetCreatedByDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
@@ -127,13 +127,13 @@ export class RelatedPermissionDto extends GetPermissionDto {}
 
 export class PermissionResponseDto extends GetPermissionDto {
   @ApiProperty({
-    type: RelatedRoleDto,
+    type: GetRelatedRoleDto,
     isArray: true,
     description: 'Roles associated with this permission',
   })
-  @Type(() => RelatedRoleDto)
+  @Type(() => GetRelatedRoleDto)
   @ValidateNested({ each: true })
-  roles: RelatedRoleDto[];
+  roles: GetRelatedRoleDto[];
 
   @ApiProperty({
     description: 'Information about the user who created the permission',
@@ -148,7 +148,7 @@ export class PermissionResponseDto extends GetPermissionDto {
     id: UUID,
     name: string,
     code: string,
-    roles: RelatedRoleDto[],
+    roles: GetRelatedRoleDto[],
     createdBy: GetCreatedByDto,
     createdAt: Date,
     updatedAt: Date,

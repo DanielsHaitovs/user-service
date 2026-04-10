@@ -1,4 +1,4 @@
-import { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
+import { CreateUserDto, GetUserDto, UserResponseDto } from '@/userDto/user.dto';
 import { CreateService } from '@/userService/user/create.service';
 import { UserService } from '@/userService/user/user.service.';
 import { Injectable } from '@nestjs/common';
@@ -12,11 +12,11 @@ export class UserPipelineService {
     private readonly createService: CreateService,
   ) {}
 
-  async getByIdOrThrow(id: UUID): Promise<UserResponseDto> {
+  async getByIdOrThrow(id: UUID): Promise<GetUserDto> {
     return await this.userService.getByIdOrThrow(id);
   }
 
-  async getByEmailOrThrow(email: string): Promise<UserResponseDto> {
+  async getByEmailOrThrow(email: string): Promise<GetUserDto> {
     return await this.userService.getByEmailOrThrow(email);
   }
 

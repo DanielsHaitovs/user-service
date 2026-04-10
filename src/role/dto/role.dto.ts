@@ -146,7 +146,7 @@ export class GetRoleDto extends RoleBaseDto {
   }
 }
 
-export class RelatedRoleDto extends GetRoleDto {}
+export class GetRelatedRoleDto extends GetRoleDto {}
 
 /**
  * DTO for role response, extending GetRoleDto and adding properties for associated permissions and creator information.

@@ -1,5 +1,8 @@
+import { Roles } from '@/roleEntities/role.entity';
+import { RoleHelperService } from '@/roleServices/helper.service';
 import { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
+import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserHelperService } from '@/userService/user/helper.service.';
 import { Injectable } from '@nestjs/common';
 
@@ -12,6 +15,7 @@ export class CreateService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly userHelper: UserHelperService,
+    private readonly roleHelper: RoleHelperService,
   ) {}
 
   /**
@@ -35,17 +39,34 @@ export class CreateService {
     createDto.password = await bcrypt.hash(createDto.password, 10);
 
     return this.dataSource.transaction(async (manager) => {
-      const newUser = manager.create(User, createDto);
+      const payload = manager.create(User, createDto);
+      const { roleIds } = createDto;
 
-      newUser.createdBy = {
+      payload.createdBy = {
         id: createdById,
+        userRoles: roleIds.map((roleId) => ({ id: roleId })),
       } as User;
 
-      // TO DO: Handle department and role assignments here if needed
+      if (roleIds.length > 0) {
+        await this.roleHelper.validateRolesExist(roleIds);
+      }
 
-      await manager.save(User, newUser);
+      // TO DO: Handle store and role assignments here if needed
 
-      return {} as UserResponseDto;
+      const newUser = await manager.save(User, payload);
+
+      const userRoles = await manager.save(
+        UserRoles,
+        roleIds.map((roleId) => ({
+          users: { id: newUser.id } as User,
+          roles: { id: roleId } as Roles,
+          assignedBy: { id: createdById } as User,
+        })),
+      );
+
+      newUser.userRoles = userRoles;
+
+      return newUser;
     });
   }
 }

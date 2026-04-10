@@ -10,10 +10,11 @@ import {
   EXAMPLE_USER_ID,
   READ_USER,
   READ_USER_ROLE,
-  USER_MIN_API_OK_LIST,
+  USER_API_OK_RESPONSE_MSG,
+  USER_MIN_OPERATION_BAD_REQUEST_MSG,
 } from '@/libConst/user.const';
 import { UserPipelineService } from '@/user/user.pipeline';
-import { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
+import { CreateUserDto, GetUserDto, UserResponseDto } from '@/userDto/user.dto';
 import {
   Body,
   Controller,
@@ -108,7 +109,14 @@ export class UserController {
       summary: 'Searches for users by ID',
       description: 'Searches for users by their unique identifiers',
     },
-    ...USER_MIN_API_OK_LIST,
+    badRequestMessages: {
+      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
+    },
+    okOperation: {
+      description: USER_API_OK_RESPONSE_MSG,
+      type: GetUserDto,
+      isArray: false,
+    },
   })
   @ApiParam({
     name: 'id',
@@ -119,7 +127,7 @@ export class UserController {
   async findById(
     @Param('id', ParseUUIDPipe) id: UUID,
     // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<UserResponseDto> {
+  ): Promise<GetUserDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 
@@ -134,7 +142,14 @@ export class UserController {
       summary: 'Searches for users by email',
       description: 'Searches for users by their email addresses',
     },
-    ...USER_MIN_API_OK_LIST,
+    badRequestMessages: {
+      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
+    },
+    okOperation: {
+      description: USER_API_OK_RESPONSE_MSG,
+      type: GetUserDto,
+      isArray: false,
+    },
   })
   @ApiParam({
     name: 'email',
@@ -145,7 +160,7 @@ export class UserController {
   async findByEmail(
     @Param('email') email: string,
     // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<UserResponseDto> {
+  ): Promise<GetUserDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 

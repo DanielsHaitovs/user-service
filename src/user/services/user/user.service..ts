@@ -1,4 +1,4 @@
-import { UserResponseDto } from '@/userDto/user.dto';
+import { GetUserDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,11 +13,11 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async getByIdOrThrow(id: UUID): Promise<UserResponseDto> {
+  async getByIdOrThrow(id: UUID): Promise<GetUserDto> {
     return await this.userRepository.findOneByOrFail({ id });
   }
 
-  async getByEmailOrThrow(email: string): Promise<UserResponseDto> {
+  async getByEmailOrThrow(email: string): Promise<GetUserDto> {
     return await this.userRepository.findOneByOrFail({ email });
   }
 }

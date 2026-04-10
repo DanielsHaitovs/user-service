@@ -3,7 +3,7 @@ import { ToArray } from '@/commonDecorators/array.decorator';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { COUNTRIES } from '@/libConst/countries.const';
 import { EXAMPLE_USER_ID } from '@/libConst/user.const';
-import { RelatedRoleDto } from '@/roleDto/role.dto';
+import { GetUserRoleDto } from '@/userDto/roles.dto';
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -156,7 +156,10 @@ export class UserBaseDto {
   }
 }
 
-/** DTO for user creation requests - inherits all validation from UserBaseDto. */
+/**
+ * DTO for creating a new user account with required and optional fields.
+ * Extends UserBaseDto with additional fields for account activation, role and store assignments.
+ */
 export class CreateUserDto extends UserBaseDto {
   @ApiProperty({
     description: 'Account activation status - false for suspended accounts',
@@ -207,10 +210,6 @@ export class CreateUserDto extends UserBaseDto {
     );
     this.isActive = isActive;
     this.roleIds = roleIds;
-    // this.isEmailVerified = false;
-    // this.emailVerificationToken = generateEmailVerificationToken();
-    // this.passwordResetToken = generatePasswordResetToken();
-    // this.isTwoFactorEnabled = true;
   }
 }
 
@@ -375,6 +374,20 @@ export class GetCreatedByDto extends OmitType(GetUserDto, [
 ]) {}
 
 /**
+ * DTO for representing the user who assigned a role to another user in API responses.
+ * Extends GetRelatedUserDto to provide a consistent structure for user information while ensuring sensitive fields are excluded.
+ */
+export class GetAssignedByDto extends OmitType(GetUserDto, [
+  'password',
+  'twoFactorSecret',
+  'isEmailVerified',
+  'emailVerificationToken',
+  'passwordResetToken',
+  'passwordResetExpires',
+  'isTwoFactorEnabled',
+]) {}
+
+/**
  * Complete user data DTO for API responses including system-generated fields.
  *
  * Extends UserBaseDto with read-only fields like ID, account status, and security tokens
@@ -383,21 +396,21 @@ export class GetCreatedByDto extends OmitType(GetUserDto, [
 export class UserResponseDto extends GetUserDto {
   @ApiProperty({
     description: 'User that created the user',
-    type: () => GetUserDto,
+    type: GetCreatedByDto,
     isArray: false,
   })
-  @Type(() => GetUserDto)
+  @Type(() => GetCreatedByDto)
   @ValidateNested()
-  createdBy?: GetUserDto;
+  createdBy?: GetCreatedByDto;
 
   @ApiProperty({
     description: 'List of roles assigned to the user',
-    type: RelatedRoleDto,
+    type: GetUserRoleDto,
     isArray: true,
   })
-  @Type(() => RelatedRoleDto)
+  @Type(() => GetUserRoleDto)
   @ValidateNested({ each: true })
-  userRoles?: RelatedRoleDto[];
+  userRoles?: GetUserRoleDto[];
 
   constructor(
     id: UUID,
@@ -417,8 +430,8 @@ export class UserResponseDto extends GetUserDto {
     isTwoFactorEnabled: boolean,
     createdAt: Date,
     updatedAt: Date,
-    createdBy: GetUserDto,
-    userRoles?: RelatedRoleDto[],
+    createdBy: GetCreatedByDto,
+    userRoles?: GetUserRoleDto[],
   ) {
     super(
       id,

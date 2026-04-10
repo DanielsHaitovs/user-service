@@ -241,17 +241,6 @@ export const USER_FULL_BAD_REQUEST_MSG = [
 
 export const USER_API_OK_RESPONSE_MSG = 'User retrieved successfully';
 
-export const USER_MIN_API_OK_LIST = {
-  badRequestMessages: {
-    examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
-  },
-  // okOperation: {
-  //   description: USER_API_OK_RESPONSE_MSG,
-  //   type: UserListResponseDto,
-  //   isArray: false,
-  // },
-};
-
 export const USER_UPDATE_API_OK_LIST = {
   permissions: [UPDATE_USER, READ_USER],
   // body: {

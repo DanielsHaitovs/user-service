@@ -27,7 +27,7 @@ export class Roles extends MecBaseEntity {
   @IsString()
   name: string;
 
-  @OneToMany(() => UserRoles, (userRole) => userRole.roles)
+  @OneToMany(() => UserRoles, (userRole) => userRole.role)
   userRoles: UserRoles[];
 
   @ManyToMany(() => Permission, (permission) => permission.roles)

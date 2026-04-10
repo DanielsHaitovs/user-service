@@ -111,7 +111,7 @@ export class RolePermissionsController {
     return await this.pipelineService.unassignPermissionsFromRole(unAssignDto);
   }
 
-  @Get(':id')
+  @Get(':roleId')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_ROLE],
@@ -133,18 +133,18 @@ export class RolePermissionsController {
     },
   })
   @ApiParam({
-    name: 'id',
+    name: 'roleId',
     type: String,
     description: 'Unique ID of the role to search for',
     example: EXAMPLE_ROLE_ID,
   })
   async findByIdWithPermissions(
-    @Param('id', ParseUUIDPipe) id: UUID,
+    @Param('id', ParseUUIDPipe) roleId: UUID,
     // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<RoleResponseDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 
-    return await this.pipelineService.getPermissionsByIdOrThrow(id);
+    return await this.pipelineService.getPermissionsOrThrow(roleId);
   }
 }

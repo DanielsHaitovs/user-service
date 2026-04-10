@@ -15,6 +15,7 @@ import { EXAMPLE_USER_ID } from '@/libConst/user.const';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import {
   CreatePermissionDto,
+  GetPermissionDto,
   PermissionResponseDto,
 } from '@/permissionDto/permission.dto';
 import {
@@ -113,7 +114,7 @@ export class PermissionController {
     },
     okOperation: {
       description: 'Permission found and returned successfully',
-      type: PermissionResponseDto,
+      type: GetPermissionDto,
       isArray: false,
     },
     badRequestMessages: {
@@ -126,13 +127,13 @@ export class PermissionController {
   @ApiParam({
     name: 'id',
     type: String,
-    description: 'Comma-separated list of user IDs to search for',
+    description: 'Permission id to search for',
     example: EXAMPLE_USER_ID,
   })
   async findById(
     @Param('id', ParseUUIDPipe) id: UUID,
     // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<PermissionResponseDto> {
+  ): Promise<GetPermissionDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 
@@ -149,7 +150,7 @@ export class PermissionController {
     },
     okOperation: {
       description: 'Permission found and returned successfully',
-      type: PermissionResponseDto,
+      type: GetPermissionDto,
       isArray: false,
     },
     badRequestMessages: {
@@ -168,7 +169,7 @@ export class PermissionController {
   async findByCode(
     @Param('code') code: string,
     // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<PermissionResponseDto> {
+  ): Promise<GetPermissionDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 

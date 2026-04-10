@@ -102,7 +102,7 @@ export class RoleController {
   @ApiParam({
     name: 'id',
     type: String,
-    description: 'Comma-separated list of user IDs to search for',
+    description: 'Role id to search for',
     example: EXAMPLE_USER_ID,
   })
   async findById(

@@ -1,5 +1,6 @@
 import {
   CreatePermissionDto,
+  GetPermissionDto,
   PermissionResponseDto,
 } from '@/permissionDto/permission.dto';
 import { CreateService } from '@/permissionServices/create.service';
@@ -15,11 +16,11 @@ export class PermissionPipelineService {
     private readonly createService: CreateService,
   ) {}
 
-  async getByIdOrThrow(id: UUID): Promise<PermissionResponseDto> {
+  async getByIdOrThrow(id: UUID): Promise<GetPermissionDto> {
     return await this.permissionService.getByIdOrThrow(id);
   }
 
-  async getByCodeOrThrow(code: string): Promise<PermissionResponseDto> {
+  async getByCodeOrThrow(code: string): Promise<GetPermissionDto> {
     return await this.permissionService.getByCodeOrThrow(code);
   }
 

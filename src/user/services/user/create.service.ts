@@ -43,7 +43,9 @@ export class CreateService {
 
       // TO DO: Handle department and role assignments here if needed
 
-      return await manager.save(User, newUser);
+      await manager.save(User, newUser);
+
+      return {} as UserResponseDto;
     });
   }
 }

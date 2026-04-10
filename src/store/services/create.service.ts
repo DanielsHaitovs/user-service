@@ -18,6 +18,14 @@ export class CreateService {
     private readonly storeHelper: StoreHelperService,
   ) {}
 
+  /**
+   * Creates a new store with the provided details and associates it with the user who created it.
+   * @param createDto - The data transfer object containing the details of the store to be created.
+   * @param createdById - The unique identifier of the user who is creating the store.
+   * @returns A promise that resolves to a StoreResponseDto containing the details of the newly created store.
+   * @throws NotFoundException if the user with the provided ID does not exist.
+   * @throws ConflictException if a store with the same name, code, or view code already exists.
+   */
   async create({
     createDto,
     createdById,

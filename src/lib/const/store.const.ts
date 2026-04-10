@@ -86,11 +86,17 @@ export const DELETE_USER_STORE = 'user-store:delete' as string;
 
 export const ASSIGN_USER_STORE = 'user-store:assign' as string;
 
+export const CONFLICT_STORE_NAME_MSG = 'A STORE already exists' as string;
+
 export const STORE_API_OK_RESPONSE_MSG = 'STORE retrieved successfully';
 
 export const STORE_GENERIC_BAD_REQUEST_MSG = [
-  'country must be a valid ISO country code',
   'name should not be empty',
+  'name must be a string',
+  'code should not be empty',
+  'code must be a string',
+  'viewCode should not be empty',
+  'viewCode must be a string',
 ];
 
 export const STORE_MIN_OPERATION_BAD_REQUEST_MSG = [

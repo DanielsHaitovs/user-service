@@ -25,8 +25,8 @@ export class RolePipelineService {
     return await this.roleService.getByNameOrThrow(name);
   }
 
-  async getPermissionsByIdOrThrow(id: UUID): Promise<RoleResponseDto> {
-    return await this.roleService.getPermissionsByIdOrThrow(id);
+  async getPermissionsOrThrow(roleId: UUID): Promise<RoleResponseDto> {
+    return await this.roleService.getPermissionsOrThrow(roleId);
   }
 
   async create({

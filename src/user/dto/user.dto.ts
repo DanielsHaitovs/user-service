@@ -1,6 +1,9 @@
 import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { ToArray } from '@/commonDecorators/array.decorator';
+import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { COUNTRIES } from '@/libConst/countries.const';
 import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+import { RelatedRoleDto } from '@/roleDto/role.dto';
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -165,6 +168,21 @@ export class CreateUserDto extends UserBaseDto {
   @IsBoolean()
   isActive: boolean;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    title: 'User Role IDs',
+    description:
+      'Role IDs to assign to the user - must be valid UUIDs of existing roles',
+    example: [EXAMPLE_ROLE_ID],
+    required: false,
+  })
+  @ToArray()
+  @IsUUID('all', { each: true })
+  @IsOptional()
+  roleIds: UUID[];
+
   constructor(
     country: COUNTRIES,
     firstName: string,
@@ -175,8 +193,7 @@ export class CreateUserDto extends UserBaseDto {
     phone: string,
     dateOfBirth: Date,
     isActive: boolean,
-    // departmentIds: UUID[],
-    // roleIds: UUID[],
+    roleIds: UUID[],
   ) {
     super(
       country,
@@ -189,6 +206,7 @@ export class CreateUserDto extends UserBaseDto {
       dateOfBirth,
     );
     this.isActive = isActive;
+    this.roleIds = roleIds;
     // this.isEmailVerified = false;
     // this.emailVerificationToken = generateEmailVerificationToken();
     // this.passwordResetToken = generatePasswordResetToken();
@@ -329,7 +347,7 @@ export class GetUserDto extends UserBaseDto {
 /**
  * DTO for representing related user information in API responses without sensitive fields.
  *
- * Used for nested user representations such as the creator of an entity or users assigned to a department,
+ * Used for nested user representations such as the creator of an entity or users assigned role, store,
  * while omitting sensitive fields that should not be exposed in these contexts.
  */
 export class GetRelatedUserDto extends OmitType(GetUserDto, [
@@ -372,22 +390,14 @@ export class UserResponseDto extends GetUserDto {
   @ValidateNested()
   createdBy?: GetUserDto;
 
-  // @ApiProperty({
-  //   description: 'Department information associated with the user',
-  //   type: UserDepartmentResponseDto,
-  // })
-  // @Type(() => UserDepartmentResponseDto)
-  // @ValidateNested({ each: true })
-  // userDepartments?: UserDepartmentResponseDto[];
-
-  // @ApiProperty({
-  //   description: 'List of roles assigned to the user',
-  //   type: UserRoleResponseDto,
-  //   isArray: true,
-  // })
-  // @Type(() => UserRoleResponseDto)
-  // @ValidateNested({ each: true })
-  // userRoles?: UserRoleResponseDto[];
+  @ApiProperty({
+    description: 'List of roles assigned to the user',
+    type: RelatedRoleDto,
+    isArray: true,
+  })
+  @Type(() => RelatedRoleDto)
+  @ValidateNested({ each: true })
+  userRoles?: RelatedRoleDto[];
 
   constructor(
     id: UUID,
@@ -408,8 +418,7 @@ export class UserResponseDto extends GetUserDto {
     createdAt: Date,
     updatedAt: Date,
     createdBy: GetUserDto,
-    // userDepartments?: UserDepartmentResponseDto[],
-    // userRoles?: UserRoleResponseDto[],
+    userRoles?: RelatedRoleDto[],
   ) {
     super(
       id,
@@ -430,9 +439,8 @@ export class UserResponseDto extends GetUserDto {
       createdAt,
       updatedAt,
     );
-    // this.userDepartments = userDepartments ?? [];
     this.createdBy = createdBy;
-    // this.userRoles = userRoles ?? [];
+    this.userRoles = userRoles ?? [];
   }
 }
 

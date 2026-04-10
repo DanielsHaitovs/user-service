@@ -38,13 +38,13 @@ export class RoleService {
 
   /**
    * Retrieves a role along with its associated permissions by the role's ID.
-   * @param id - The UUID of the role to retrieve.
+   * @param roleId - The UUID of the role to retrieve.
    * @returns A promise that resolves to the RoleResponseDto containing the role and its permissions.
    * @throws EntityNotFoundException if no role with the given ID is found.
    */
-  async getPermissionsByIdOrThrow(id: UUID): Promise<RoleResponseDto> {
+  async getPermissionsOrThrow(roleId: UUID): Promise<RoleResponseDto> {
     return await this.roleRepository.findOneOrFail({
-      where: { id },
+      where: { id: roleId },
       relations: ['permissions'],
     });
   }
@@ -71,7 +71,7 @@ export class RoleService {
       );
     }
 
-    const { permissions } = await this.getPermissionsByIdOrThrow(roleId);
+    const { permissions } = await this.getPermissionsOrThrow(roleId);
 
     if (permissions.length) {
       permissionCodes = permissions
@@ -95,7 +95,7 @@ export class RoleService {
       }),
     });
 
-    return await this.getPermissionsByIdOrThrow(roleId);
+    return await this.getPermissionsOrThrow(roleId);
   }
 
   /**
@@ -120,7 +120,7 @@ export class RoleService {
       );
     }
 
-    const { permissions } = await this.getPermissionsByIdOrThrow(roleId);
+    const { permissions } = await this.getPermissionsOrThrow(roleId);
 
     const remainingPermissionIds = permissions
       .filter((permission) => !permissionCodes.includes(permission.code))
@@ -141,6 +141,6 @@ export class RoleService {
       }),
     });
 
-    return await this.getPermissionsByIdOrThrow(roleId);
+    return await this.getPermissionsOrThrow(roleId);
   }
 }

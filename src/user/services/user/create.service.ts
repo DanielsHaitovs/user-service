@@ -1,6 +1,11 @@
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
-import { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
+import { GetUserRoleDto } from '@/userDto/roles.dto';
+import {
+  CreateUserDto,
+  GetCreatedByDto,
+  UserResponseDto,
+} from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserHelperService } from '@/userService/user/helper.service.';
@@ -44,7 +49,6 @@ export class CreateService {
 
       payload.createdBy = {
         id: createdById,
-        userRoles: roleIds.map((roleId) => ({ id: roleId })),
       } as User;
 
       if (roleIds.length > 0) {
@@ -53,18 +57,25 @@ export class CreateService {
 
       // TO DO: Handle store and role assignments here if needed
 
-      const newUser = await manager.save(User, payload);
+      const newUser: UserResponseDto = await manager.save(User, payload);
 
       const userRoles = await manager.save(
         UserRoles,
         roleIds.map((roleId) => ({
-          users: { id: newUser.id } as User,
-          roles: { id: roleId } as Roles,
+          user: { id: newUser.id } as User,
+          role: { id: roleId } as Roles,
           assignedBy: { id: createdById } as User,
         })),
       );
 
-      newUser.userRoles = userRoles;
+      newUser.createdBy = { id: createdById } as GetCreatedByDto;
+      newUser.userRoles = userRoles.map(
+        ({ role, assignedBy }) =>
+          ({
+            role,
+            assignedBy,
+          }) as GetUserRoleDto,
+      );
 
       return newUser;
     });

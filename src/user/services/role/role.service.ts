@@ -51,7 +51,6 @@ export class UserRolesService {
    */
   async getPermissionsOrThrow(userId: UUID): Promise<string[]> {
     const userRoles = await this.getRolesOrThrow(userId);
-
     const roleIds = userRoles.map((userRole) => userRole.role?.id);
 
     if (roleIds.length === 0) {

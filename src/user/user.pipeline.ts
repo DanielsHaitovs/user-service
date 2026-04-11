@@ -1,4 +1,5 @@
 import { CreateUserDto, GetUserDto, UserResponseDto } from '@/userDto/user.dto';
+import { UserRolesService } from '@/userService/role/role.service';
 import { CreateService } from '@/userService/user/create.service';
 import { UserService } from '@/userService/user/user.service.';
 import { Injectable } from '@nestjs/common';
@@ -10,6 +11,7 @@ export class UserPipelineService {
   constructor(
     private readonly userService: UserService,
     private readonly createService: CreateService,
+    private readonly userRolesService: UserRolesService,
   ) {}
 
   async getByIdOrThrow(id: UUID): Promise<GetUserDto> {

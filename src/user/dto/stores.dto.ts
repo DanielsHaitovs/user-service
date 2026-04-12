@@ -2,7 +2,7 @@ import { ToArray } from '@/commonDecorators/array.decorator';
 import { EXAMPLE_STORE_ID } from '@/lib/const/store.const';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import { GetAssignedByDto, GetRelatedUserDto } from '@/userDto/user.dto';
-import { ApiProperty, OmitType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
 import { IsOptional, IsUUID, ValidateNested } from 'class-validator';
@@ -96,16 +96,6 @@ export class AssignStoresToUserDto {
   userId: UUID;
 
   @ApiProperty({
-    title: 'Id of the user assigning the stores',
-    description: 'User unique identifier - must be a valid UUID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    type: String,
-    format: 'uuid',
-  })
-  @IsUUID()
-  assignedById: UUID;
-
-  @ApiProperty({
     type: String,
     format: 'uuid',
     isArray: true,
@@ -120,13 +110,10 @@ export class AssignStoresToUserDto {
   @IsOptional()
   storeIds: UUID[];
 
-  constructor(userId: UUID, assignedById: UUID, storeIds: UUID[]) {
+  constructor(userId: UUID, storeIds: UUID[]) {
     this.userId = userId;
-    this.assignedById = assignedById;
     this.storeIds = storeIds;
   }
 }
 
-export class UnassignStoresFromUserDto extends OmitType(AssignStoresToUserDto, [
-  'assignedById',
-] as const) {}
+export class UnassignStoresFromUserDto extends AssignStoresToUserDto {}

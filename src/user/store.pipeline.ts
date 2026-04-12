@@ -17,13 +17,14 @@ export class UserStorePipelineService {
   }
 
   async assignStoresToUser({
-    userId,
-    storeIds,
+    data,
     assignedById,
-  }: AssignStoresToUserDto): Promise<void> {
+  }: {
+    data: AssignStoresToUserDto;
+    assignedById: UUID;
+  }): Promise<void> {
     await this.userStoresService.assignStoresToUser({
-      userId,
-      storeIds,
+      data,
       assignedById,
     });
   }

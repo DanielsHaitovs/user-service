@@ -95,10 +95,13 @@ export class UserRolesService {
    * @throws An EntityNotFoundError if the user or the assigning user does not exist.
    */
   async assignRolesToUser({
-    userId,
-    roleIds,
+    data,
     assignedById,
-  }: AssignRolesToUserDto): Promise<void> {
+  }: {
+    data: AssignRolesToUserDto;
+    assignedById: UUID;
+  }): Promise<void> {
+    const { userId, roleIds } = data;
     await this.userHelperService.validateIfExists({ id: userId });
     await this.userHelperService.validateIfExists({ id: assignedById });
     await this.roleHelperService.validateRolesExist(roleIds);

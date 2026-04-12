@@ -21,13 +21,14 @@ export class UserRolePipelineService {
   }
 
   async assignRolesToUser({
-    userId,
-    roleIds,
+    data,
     assignedById,
-  }: AssignRolesToUserDto): Promise<void> {
+  }: {
+    data: AssignRolesToUserDto;
+    assignedById: UUID;
+  }): Promise<void> {
     await this.userRolesService.assignRolesToUser({
-      userId,
-      roleIds,
+      data,
       assignedById,
     });
   }

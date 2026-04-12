@@ -6,6 +6,7 @@ import {
   READ_USER_STORE,
 } from '@/lib/const/store.const';
 import { EXAMPLE_USER_ID, READ_USER } from '@/lib/const/user.const';
+import { UserStorePipelineService } from '@/user/store.pipeline';
 import {
   AssignStoresToUserDto,
   GetUserStoreDto,
@@ -25,8 +26,6 @@ import {
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { UserStorePipelineService } from '../store.pipeline';
 
 /**
  * REST API controller for comprehensive user store management operations.
@@ -69,7 +68,10 @@ export class UserStoresController {
     @Body() assignDto: AssignStoresToUserDto,
     // @CurrentUser() createdByUser: JWTPayload,
   ): Promise<void> {
-    await this.userStorePipelineService.assignStoresToUser(assignDto);
+    await this.userStorePipelineService.assignStoresToUser({
+      data: assignDto,
+      assignedById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+    });
   }
 
   @Delete()
@@ -100,7 +102,7 @@ export class UserStoresController {
     await this.userStorePipelineService.unassignStoresFromUser(unassignDto);
   }
 
-  @Get('userId/:userId')
+  @Get('/:userId')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER_STORE, READ_STORE, READ_USER],

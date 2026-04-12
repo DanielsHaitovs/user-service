@@ -55,10 +55,13 @@ export class UserStoresService {
    * @throws An EntityNotFoundError if the user or the assigning user does not exist.
    */
   async assignStoresToUser({
-    userId,
-    storeIds,
+    data,
     assignedById,
-  }: AssignStoresToUserDto): Promise<void> {
+  }: {
+    data: AssignStoresToUserDto;
+    assignedById: UUID;
+  }): Promise<void> {
+    const { userId, storeIds } = data;
     await this.userHelperService.validateIfExists({ id: userId });
     await this.userHelperService.validateIfExists({ id: assignedById });
     await this.storeHelperService.validateStoresExists(storeIds);

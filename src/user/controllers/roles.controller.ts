@@ -4,6 +4,7 @@ import { READ_PERMISSION } from '@/lib/const/permission.const';
 import { READ_ROLE } from '@/lib/const/role.const';
 import {
   CREATE_USER_ROLE,
+  DELETE_USER_ROLE,
   EXAMPLE_USER_ID,
   READ_USER,
   READ_USER_ROLE,
@@ -70,13 +71,16 @@ export class UserRolesController {
     @Body() assignDto: AssignRolesToUserDto,
     // @CurrentUser() createdByUser: JWTPayload,
   ): Promise<void> {
-    await this.userRolePipelineService.assignRolesToUser(assignDto);
+    await this.userRolePipelineService.assignRolesToUser({
+      data: assignDto,
+      assignedById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+    });
   }
 
   @Delete()
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
-    permissions: [READ_USER, READ_ROLE, CREATE_USER_ROLE, READ_USER_ROLE],
+    permissions: [READ_USER, READ_ROLE, DELETE_USER_ROLE, READ_USER_ROLE],
     operation: {
       summary: 'Remove roles from a user',
       description:
@@ -101,10 +105,10 @@ export class UserRolesController {
     await this.userRolePipelineService.unassignRolesFromUser(unassignDto);
   }
 
-  @Get('userId/:userId')
+  @Get('/:userId')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
-    permissions: [READ_USER_ROLE, READ_ROLE],
+    permissions: [READ_USER_ROLE, READ_ROLE, READ_USER],
     operation: {
       summary: 'Searches for user roles by user ID',
       description: 'Searches for user roles by their user unique identifiers',
@@ -133,10 +137,10 @@ export class UserRolesController {
     return await this.userRolePipelineService.getRolesOrThrow(userId);
   }
 
-  @Get('permissions/userId/:userId')
+  @Get('permissions/:userId')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
-    permissions: [READ_USER_ROLE, READ_ROLE, READ_PERMISSION],
+    permissions: [READ_USER_ROLE, READ_ROLE, READ_PERMISSION, READ_USER],
     operation: {
       summary: 'Searches for user roles by user ID',
       description: 'Searches for user roles by their user unique identifiers',

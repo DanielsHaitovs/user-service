@@ -8,6 +8,7 @@ import { hashObject } from '@/utils/token-generator.util';
 import { ForbiddenException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
+import { isEmpty } from 'class-validator';
 import { UUID } from 'crypto';
 import {
   EntityManager,
@@ -217,6 +218,48 @@ export class EntityQueryService {
     const limit = pagination?.limit ?? 10;
 
     query.skip((page - 1) * limit).take(limit);
+  }
+
+  async getAll<T extends ObjectLiteral>({
+    query,
+    cache,
+  }: {
+    query: SelectQueryBuilder<T>;
+    cache?: boolean;
+  }): Promise<T[]> {
+    const response = new Array<T>();
+    const action = {
+      isEmpty: false,
+      total: 0,
+      step: 100,
+      page: 1,
+    };
+
+    while (!action.isEmpty) {
+      this.paginate<T>({
+        query,
+        pagination: {
+          page: action.page,
+          limit: action.step,
+        },
+      });
+
+      if (cache === true) {
+        this.cacheQuery<T>({ query });
+      }
+
+      const result = await query.getMany();
+
+      if (isEmpty(result)) {
+        action.isEmpty = true;
+      } else {
+        response.push(...result);
+        action.total += result.length;
+        action.page += 1;
+      }
+    }
+
+    return response;
   }
 
   /**
@@ -477,13 +520,15 @@ export class EntityQueryService {
     requestedByUserId,
   }: {
     query: SelectQueryBuilder<T>;
-    expireAtMs: number;
+    expireAtMs?: number;
     requestedByUserId?: UUID | undefined;
   }): void {
     const cacheKey = hashObject({
       requestedByUserId,
       query: query.getQueryAndParameters(),
     });
+
+    expireAtMs ??= 300000;
 
     query.cache(cacheKey, expireAtMs);
   }

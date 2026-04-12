@@ -37,10 +37,10 @@ async function bootstrap(): Promise<void> {
     .addTag('App', 'Health check and basic operations')
     .addTag('Auth', 'Auth in management operations')
     .addTag('Users', 'User management operations')
+    .addTag('User Roles', 'User roles management operations')
     .addTag('Roles', 'Roles management operations')
     .addTag('Roles Permissions', 'Roles permissions management operations')
     .addTag('Permissions', 'Permissions management operations')
-    .addTag('Departments', 'Departments management operations')
     .addServer('/users')
     .addBearerAuth(
       {
@@ -54,9 +54,9 @@ async function bootstrap(): Promise<void> {
       'JWT-auth',
     );
 
-  if (process.env.NODE_ENV === 'development') {
-    config.addTag('Seed', 'Seed operations');
-  }
+  // if (process.env.NODE_ENV === 'development') {
+  //   config.addTag('Seed', 'Seed operations');
+  // }
 
   const logger = new Logger(bootstrap.name);
 

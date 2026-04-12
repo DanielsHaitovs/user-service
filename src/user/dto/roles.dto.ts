@@ -2,7 +2,7 @@ import { ToArray } from '@/commonDecorators/array.decorator';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { GetAssignedByDto, GetRelatedUserDto } from '@/userDto/user.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
 import { IsOptional, IsUUID, ValidateNested } from 'class-validator';
@@ -83,3 +83,50 @@ export class UserRolesResponseDto {
     this.roles = roles;
   }
 }
+
+export class AssignRolesToUserDto {
+  @ApiProperty({
+    title: 'User ID',
+    description: 'User unique identifier - must be a valid UUID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: String,
+    format: 'uuid',
+  })
+  @IsUUID()
+  userId: UUID;
+
+  @ApiProperty({
+    title: 'Id of the user assigning the roles',
+    description: 'User unique identifier - must be a valid UUID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: String,
+    format: 'uuid',
+  })
+  @IsUUID()
+  assignedById: UUID;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    title: 'User Role IDs',
+    description:
+      'Role IDs to assign to the user - must be valid UUIDs of existing roles',
+    example: [EXAMPLE_ROLE_ID],
+    required: true,
+  })
+  @ToArray()
+  @IsUUID('all', { each: true })
+  @IsOptional()
+  roleIds: UUID[];
+
+  constructor(userId: UUID, assignedById: UUID, roleIds: UUID[]) {
+    this.userId = userId;
+    this.assignedById = assignedById;
+    this.roleIds = roleIds;
+  }
+}
+
+export class UnassignRolesFromUserDto extends OmitType(AssignRolesToUserDto, [
+  'assignedById',
+] as const) {}

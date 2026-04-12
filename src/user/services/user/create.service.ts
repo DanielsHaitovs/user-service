@@ -55,7 +55,7 @@ export class CreateService {
         await this.roleHelper.validateRolesExist(roleIds);
       }
 
-      // TO DO: Handle store and role assignments here if needed
+      // TO DO: Handle store assignments here if needed
 
       const newUser: UserResponseDto = await manager.save(User, payload);
 

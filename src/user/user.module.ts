@@ -1,6 +1,9 @@
+import { EntityQueryService } from '@/base/service/query.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
+import { UserRolesController } from '@/user/controllers/roles.controller';
 import { UserController } from '@/user/controllers/user.controller';
+import { UserRolePipelineService } from '@/user/role.pipeline';
 import { UserPipelineService } from '@/user/user.pipeline';
 import { User } from '@/userEntities/user.entity';
 import { UserRolesService } from '@/userService/role/role.service';
@@ -12,14 +15,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Roles])],
-  controllers: [UserController],
+  controllers: [UserController, UserRolesController],
   providers: [
     CreateService,
     UserService,
     UserHelperService,
     UserRolesService,
     UserPipelineService,
+    UserRolePipelineService,
     RoleHelperService,
+    EntityQueryService,
   ],
   exports: [UserPipelineService, UserHelperService],
 })

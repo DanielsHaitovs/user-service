@@ -1,6 +1,11 @@
+import { EntityQueryService } from '@/base/service/query.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
-import { GetUserRoleDto } from '@/userDto/roles.dto';
+import {
+  AssignRolesToUserDto,
+  GetUserRoleDto,
+  UnassignRolesFromUserDto,
+} from '@/userDto/roles.dto';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserHelperService } from '@/userService/user/helper.service.';
 import { Injectable } from '@nestjs/common';
@@ -16,6 +21,7 @@ export class UserRolesService {
     private readonly entityManager: EntityManager,
     private readonly userHelperService: UserHelperService,
     private readonly roleHelperService: RoleHelperService,
+    private readonly queryService: EntityQueryService,
   ) {}
 
   /**
@@ -57,15 +63,20 @@ export class UserRolesService {
       return [];
     }
 
-    const permissions = await this.entityManager
+    const query = this.entityManager
       .createQueryBuilder(Roles, 'role')
       .leftJoinAndSelect('role.permissions', 'permission')
       .where('role.id IN (:...roleIds)', { roleIds })
-      .getMany();
+      .select(['role.id', 'permission.code']);
+
+    const roles = await this.queryService.getAll<Roles>({
+      query,
+      cache: true,
+    });
 
     const permissionCodes = new Set<string>();
 
-    permissions.forEach((role) => {
+    roles.forEach((role) => {
       role.permissions.forEach((permission) => {
         permissionCodes.add(permission.code);
       });
@@ -87,11 +98,7 @@ export class UserRolesService {
     userId,
     roleIds,
     assignedById,
-  }: {
-    userId: UUID;
-    roleIds: UUID[];
-    assignedById: UUID;
-  }): Promise<void> {
+  }: AssignRolesToUserDto): Promise<void> {
     await this.userHelperService.validateIfExists({ id: userId });
     await this.userHelperService.validateIfExists({ id: assignedById });
     await this.roleHelperService.validateRolesExist(roleIds);
@@ -113,13 +120,10 @@ export class UserRolesService {
    * @returns A promise that resolves when the roles have been successfully removed from the user.
    * @throws An EntityNotFoundError if the user does not exist.
    */
-  async removeRolesFromUser({
+  async unassignRolesFromUser({
     userId,
     roleIds,
-  }: {
-    userId: UUID;
-    roleIds: UUID[];
-  }): Promise<void> {
+  }: UnassignRolesFromUserDto): Promise<void> {
     await this.userHelperService.validateIfExists({ id: userId });
     await this.roleHelperService.validateRolesExist(roleIds);
 

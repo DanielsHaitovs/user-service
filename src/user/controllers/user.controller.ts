@@ -121,7 +121,7 @@ export class UserController {
   @ApiParam({
     name: 'id',
     type: String,
-    description: 'Comma-separated list of user IDs to search for',
+    description: 'User unique identifier - must be a valid UUID',
     example: EXAMPLE_USER_ID,
   })
   async findById(

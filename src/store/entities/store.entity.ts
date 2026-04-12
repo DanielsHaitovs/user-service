@@ -42,7 +42,7 @@ export class Store extends MecBaseEntity {
   @IsString()
   viewCode: string;
 
-  @OneToMany(() => UserStores, (userStore) => userStore.stores)
+  @OneToMany(() => UserStores, (userStore) => userStore.store)
   userStores: UserStores[];
 
   @ManyToOne(() => User, { nullable: false })

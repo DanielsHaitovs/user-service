@@ -6,13 +6,13 @@ import { UUID } from 'crypto';
 import { Entity, Index, ManyToOne } from 'typeorm';
 
 @Entity('userStores')
-@Index('IX_USER_STORES', ['users', 'stores'])
+@Index('IX_USER_STORES', ['user', 'store'])
 export class UserStores extends MecBaseEntity {
   @ManyToOne(() => Store, (store) => store.userStores)
-  stores: Store;
+  store: Store;
 
   @ManyToOne(() => User, (user) => user.userStores)
-  users: User;
+  user: User;
 
   @ManyToOne(() => User, { nullable: true })
   assignedBy: User;
@@ -22,15 +22,15 @@ export class UserStores extends MecBaseEntity {
     createdAt: Date,
     updatedAt: Date,
     assignedBy: User,
-    stores: Store,
-    users: User,
+    store: Store,
+    user: User,
   ) {
     super(id, createdAt, updatedAt);
     this.id = id;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.assignedBy = assignedBy;
-    this.stores = stores;
-    this.users = users;
+    this.store = store;
+    this.user = user;
   }
 }

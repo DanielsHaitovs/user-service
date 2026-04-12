@@ -1,4 +1,8 @@
-import { GetUserRoleDto } from '@/userDto/roles.dto';
+import {
+  AssignRolesToUserDto,
+  GetUserRoleDto,
+  UnassignRolesFromUserDto,
+} from '@/userDto/roles.dto';
 import { UserRolesService } from '@/userService/role/role.service';
 import { Injectable } from '@nestjs/common';
 
@@ -20,11 +24,7 @@ export class UserRolePipelineService {
     userId,
     roleIds,
     assignedById,
-  }: {
-    userId: UUID;
-    roleIds: UUID[];
-    assignedById: UUID;
-  }): Promise<void> {
+  }: AssignRolesToUserDto): Promise<void> {
     await this.userRolesService.assignRolesToUser({
       userId,
       roleIds,
@@ -35,10 +35,7 @@ export class UserRolePipelineService {
   async unassignRolesFromUser({
     userId,
     roleIds,
-  }: {
-    userId: UUID;
-    roleIds: UUID[];
-  }): Promise<void> {
+  }: UnassignRolesFromUserDto): Promise<void> {
     await this.userRolesService.unassignRolesFromUser({ userId, roleIds });
   }
 }

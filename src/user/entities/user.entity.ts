@@ -103,7 +103,7 @@ export class User extends MecBaseEntity {
   @OneToMany(() => UserRoles, (userRole) => userRole.user)
   userRoles: UserRoles[];
 
-  @OneToMany(() => UserStores, (userStore) => userStore.users)
+  @OneToMany(() => UserStores, (userStore) => userStore.user)
   userStores: UserStores[];
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })

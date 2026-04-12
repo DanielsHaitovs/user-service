@@ -372,7 +372,6 @@ export const swaggerSetupOptions = {
     persistAuthorization: true,
     docExpansion: 'none',
     filter: true,
-    tagsSorter: 'alpha',
     operationsSorter: 'alpha',
     showRequestDuration: true,
   },

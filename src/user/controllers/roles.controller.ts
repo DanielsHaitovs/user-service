@@ -37,7 +37,7 @@ import { UUID } from 'crypto';
  * RESTful conventions while providing both ID-based and email-based access patterns
  * for flexible client integration.
  */
-@ApiTags('User Roles')
+@ApiTags('Users Roles')
 @Controller('user/roles')
 @TraceController()
 export class UserRolesController {

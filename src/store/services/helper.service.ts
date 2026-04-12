@@ -44,22 +44,22 @@ export class StoreHelperService {
   }
 
   /**
-   * Validates that a store with the given codes exists.
-   * @param codes - The codes of the stores to validate.
-   * @return The IDs of the existing stores with the given codes.
-   * @throws UnprocessableEntityException if any of the provided store codes do not exist.
+   * Validates that a store with the given ids exists.
+   * @param ids - The ids of the stores to validate.
+   * @return The IDs of the existing stores with the given ids.
+   * @throws UnprocessableEntityException if any of the provided store ids do not exist.
    */
-  async validateStoreExists(codes: string[]): Promise<UUID[]> {
+  async validateStoresExists(ids: string[]): Promise<UUID[]> {
     const existingStores = await this.storeRepository.find({
       where: {
-        code: In(codes),
+        id: In(ids),
       },
     });
 
-    if (existingStores.length != codes.length) {
+    if (existingStores.length != ids.length) {
       throw new UnprocessableEntityException(
-        `Failed to create role. The following permission codes do not exist: ${codes
-          .filter((code) => !existingStores.some((p) => p.code === code))
+        `Failed to create role. The following permission ids do not exist: ${ids
+          .filter((id) => !existingStores.some((s) => s.id === id))
           .join(', ')}`,
       );
     }

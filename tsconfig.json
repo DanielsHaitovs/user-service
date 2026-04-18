@@ -69,12 +69,6 @@
       "@/src/*": ["src/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "test/**/*",
-    "*.config.ts",
-    "jest.setup.ts",
-    "../.tmp/user/user-deprecated.controller.ts"
-  ],
+  "include": ["src/**/*", "test/**/*", "*.config.ts", "jest.setup.ts"],
   "exclude": ["node_modules", "dist"]
 }

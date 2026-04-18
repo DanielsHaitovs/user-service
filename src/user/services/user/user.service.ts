@@ -13,10 +13,22 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  /**
+   * Get user by id or throw an error if not found
+   * @param id - User id
+   * @throws EntityNotFoundException if user is not found
+   * @returns User data transfer object
+   */
   async getByIdOrThrow(id: UUID): Promise<GetUserDto> {
     return await this.userRepository.findOneByOrFail({ id });
   }
 
+  /**
+   * Get user by email or throw an error if not found
+   * @param email - User email
+   * @throws EntityNotFoundException if user is not found
+   * @returns User data transfer object
+   */
   async getByEmailOrThrow(email: string): Promise<GetUserDto> {
     return await this.userRepository.findOneByOrFail({ email });
   }

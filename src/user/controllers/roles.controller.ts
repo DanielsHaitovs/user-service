@@ -12,8 +12,9 @@ import {
 import { UserRolePipelineService } from '@/user/role.pipeline';
 import {
   AssignRolesToUserDto,
-  GetUserRoleDto,
   UnassignRolesFromUserDto,
+  UserRolesListResponseDto,
+  UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
 import {
   Body,
@@ -25,8 +26,9 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -105,7 +107,7 @@ export class UserRolesController {
     await this.userRolePipelineService.unassignRolesFromUser(unassignDto);
   }
 
-  @Get('/:userId')
+  @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER_ROLE, READ_ROLE, READ_USER],
@@ -118,23 +120,29 @@ export class UserRolesController {
     },
     okOperation: {
       description: 'Returns a list of user roles matching the provided user ID',
-      type: GetUserRoleDto,
-      isArray: true,
+      type: UserRolesListResponseDto,
+      isArray: false,
     },
   })
-  @ApiParam({
-    name: 'userId',
-    type: String,
-    description: 'User unique identifier - must be a valid UUID',
-    example: EXAMPLE_USER_ID,
+  // @ApiParam({
+  //   name: 'userId',
+  //   type: String,
+  //   description: 'User unique identifier - must be a valid UUID',
+  //   example: EXAMPLE_USER_ID,
+  // })
+  @ApiQuery({
+    name: 'query',
+    type: UserRolesQueryRequest,
+    required: true,
+    description: 'Query parameters for searching user roles by user ID',
   })
   async findRolesByUserId(
-    @Param('userId', ParseUUIDPipe) userId: UUID,
+    @Query('query') query: UserRolesQueryRequest,
     // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetUserRoleDto[]> {
+  ): Promise<UserRolesListResponseDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
-    return await this.userRolePipelineService.getRolesOrThrow(userId);
+    return await this.userRolePipelineService.getRolesOrThrow(query);
   }
 
   @Get('permissions/:userId')
@@ -142,15 +150,15 @@ export class UserRolesController {
   @ApiOkList({
     permissions: [READ_USER_ROLE, READ_ROLE, READ_PERMISSION, READ_USER],
     operation: {
-      summary: 'Searches for user roles by user ID',
-      description: 'Searches for user roles by their user unique identifiers',
+      summary: 'Searches for user permissions by user ID',
+      description: 'Searches for user permissions by user unique identifiers',
     },
     badRequestMessages: {
       examples: ['user id must be a valid UUID', 'user id is required'],
     },
     okOperation: {
       description:
-        'Returns a list of user roles permissions matching the provided user ID',
+        'Returns a list of user permissions matching the provided user ID',
       type: String,
       isArray: true,
     },

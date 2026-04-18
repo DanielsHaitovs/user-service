@@ -1,7 +1,8 @@
 import {
   AssignRolesToUserDto,
-  GetUserRoleDto,
   UnassignRolesFromUserDto,
+  UserRolesListResponseDto,
+  UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
 import { UserRolesService } from '@/userRoleServices/role.service';
 import { Injectable } from '@nestjs/common';
@@ -12,8 +13,10 @@ import { UUID } from 'crypto';
 export class UserRolePipelineService {
   constructor(private readonly userRolesService: UserRolesService) {}
 
-  async getRolesOrThrow(userId: UUID): Promise<GetUserRoleDto[]> {
-    return await this.userRolesService.getRolesOrThrow(userId);
+  async getRolesOrThrow(
+    query: UserRolesQueryRequest,
+  ): Promise<UserRolesListResponseDto> {
+    return await this.userRolesService.getRolesOrThrow(query);
   }
 
   async getPermissionsOrThrow(userId: UUID): Promise<string[]> {

@@ -1,7 +1,15 @@
+import {
+  PaginatedResponseDto,
+  PaginationDto,
+  QueryRequestDto,
+  SortDto,
+} from '@/baseDto/pagination.dto';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
+import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { GetAssignedByDto, GetRelatedUserDto } from '@/userDto/user.dto';
+import { UserRoles } from '@/userEntities/userRoles.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -117,3 +125,48 @@ export class AssignRolesToUserDto {
 }
 
 export class UnassignRolesFromUserDto extends AssignRolesToUserDto {}
+
+export class UserRolesQueryRequest extends QueryRequestDto {
+  @ApiProperty({
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+    type: String,
+    format: 'uuid',
+  })
+  @IsUUID()
+  userId: string;
+
+  constructor(
+    userId: string,
+    pagination: PaginationDto,
+    sort: SortDto,
+    dateFrom?: Date,
+    dateTo?: Date,
+    dateFilterParam?: string,
+  ) {
+    super(pagination, sort, dateFrom, dateTo, dateFilterParam);
+    this.userId = userId;
+  }
+}
+
+export class UserRolesListResponseDto extends PaginatedResponseDto {
+  @ApiProperty({
+    description: 'List of user roles matching the provided user ID',
+    type: UserRoles,
+    isArray: true,
+  })
+  @Type(() => UserRoles)
+  @ValidateNested({ each: true })
+  data: UserRoles[];
+
+  constructor(
+    data: UserRoles[],
+    total: number,
+    page: number,
+    limit: number,
+    totalPages: number,
+  ) {
+    super(total, page, limit, totalPages);
+    this.data = data;
+  }
+}

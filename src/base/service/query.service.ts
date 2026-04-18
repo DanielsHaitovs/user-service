@@ -210,9 +210,11 @@ export class EntityQueryService {
   paginate<T extends ObjectLiteral>({
     query,
     pagination,
+    cache,
   }: {
     query: SelectQueryBuilder<T>;
     pagination?: PaginationDto;
+    cache?: boolean;
   }): void {
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 10;
@@ -533,15 +535,13 @@ export class EntityQueryService {
     query.cache(cacheKey, expireAtMs);
   }
 
-  async paginatedResult<T extends ObjectLiteral, K extends string>({
+  async paginatedResult<T extends ObjectLiteral>({
     query,
-    alias,
     requestedByUserId,
   }: {
     query: SelectQueryBuilder<T>;
-    alias: K;
     requestedByUserId?: UUID | undefined;
-  }): Promise<PaginatedResponseDto & Record<K, T[]>> {
+  }): Promise<PaginatedResponseDto & { data: T[] }> {
     const page = query.expressionMap.skip ?? 0;
     const limit = query.expressionMap.take ?? 10;
 
@@ -560,8 +560,8 @@ export class EntityQueryService {
       page: page / limit + 1,
       limit,
       totalPages: Math.ceil(totalCount / limit),
-      [alias]: items,
-    } as PaginatedResponseDto & Record<K, T[]>;
+      data: items,
+    } as PaginatedResponseDto & { data: T[] };
   }
 
   private validateResponseSelectPayload<T extends ObjectLiteral>({

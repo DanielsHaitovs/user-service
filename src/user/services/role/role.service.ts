@@ -3,8 +3,9 @@ import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import {
   AssignRolesToUserDto,
-  GetUserRoleDto,
   UnassignRolesFromUserDto,
+  UserRolesListResponseDto,
+  UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserHelperService } from '@/userServices/helper.service';
@@ -12,7 +13,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { EntityManager, EntityNotFoundError, In } from 'typeorm';
+import { EntityManager, In } from 'typeorm';
 
 @Injectable()
 export class UserRolesService {
@@ -31,21 +32,72 @@ export class UserRolesService {
    * @returns A promise that resolves to an array of GetUserRoleDto objects representing the user's roles.
    * @throws An EntityNotFoundError if the user does not exist.
    */
-  async getRolesOrThrow(userId: UUID): Promise<GetUserRoleDto[]> {
-    return await this.entityManager
-      .findBy(UserRoles, {
-        user: { id: userId },
-      })
-      .then((userRoles) => {
-        if (userRoles.length === 0) {
-          throw new EntityNotFoundError(
-            UserRoles,
-            `No roles found for user with ID ${userId}`,
-          );
-        }
+  async getRolesOrThrow(
+    data: UserRolesQueryRequest,
+  ): Promise<UserRolesListResponseDto> {
+    const { userId, pagination, sort, dateFilterParam, dateFrom, dateTo } =
+      data;
 
-        return userRoles;
+    const query = this.queryService.initQuery<UserRoles>({
+      entity: UserRoles,
+      alias: 'userRole',
+    });
+
+    this.queryService.joinRelation<UserRoles>({
+      query,
+      alias: 'user',
+    });
+
+    this.queryService.where<UserRoles>({
+      query,
+      field: 'user.id',
+      condition: 'AND',
+      value: userId,
+    });
+
+    if (dateFilterParam != undefined) {
+      this.queryService.dateGreaterThan<UserRoles>({
+        query,
+        field: `userRole.${dateFilterParam}`,
+        condition: 'AND',
+        date: dateFrom,
       });
+      this.queryService.dateLessThan<UserRoles>({
+        query,
+        field: `userRole.${dateFilterParam}`,
+        condition: 'AND',
+        date: dateTo,
+      });
+    }
+
+    this.queryService.sort<UserRoles>({
+      query,
+      sort,
+    });
+
+    this.queryService.paginate<UserRoles>({
+      query,
+      pagination,
+    });
+
+    return await this.queryService.paginatedResult({
+      query,
+    });
+
+    // return await this.entityManager
+    //   .findBy(UserRoles, {
+    //     user: { id: userId },
+    //   })
+    //   .then((userRoles) => {
+    //     if (userRoles.length === 0) {
+    //       throw new EntityNotFoundError(
+    //         UserRoles,
+    //         `No roles found for user with ID ${userId}`,
+    //       );
+    //     }
+
+    //     return userRoles;
+    //   });
   }
 
   /**
@@ -56,8 +108,13 @@ export class UserRolesService {
    * @throws An EntityNotFoundError if the user does not exist or if no roles are found for the user.
    */
   async getPermissionsOrThrow(userId: UUID): Promise<string[]> {
-    const userRoles = await this.getRolesOrThrow(userId);
-    const roleIds = userRoles.map((userRole) => userRole.role?.id);
+    const { data: userRoles } = await this.getRolesOrThrow({
+      userId,
+      pagination: { page: 1, limit: 100 },
+      sort: { sortField: 'assignedAt', sortOrder: 'DESC' },
+    });
+
+    const roleIds = userRoles.map((userRole) => userRole.role.id);
 
     if (roleIds.length === 0) {
       return [];

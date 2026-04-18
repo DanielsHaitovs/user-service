@@ -1,6 +1,6 @@
 import { CreateUserDto, GetUserDto, UserResponseDto } from '@/userDto/user.dto';
-import { CreateService } from '@/userService/user/create.service';
-import { UserService } from '@/userService/user/user.service.';
+import { CreateService } from '@/userServices/create.service';
+import { UserService } from '@/userServices/user.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';

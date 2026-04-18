@@ -7,7 +7,7 @@ import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { User } from '@/userEntities/user.entity';
-import { UserHelperService } from '@/userService/user/helper.service.';
+import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 

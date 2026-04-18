@@ -5,7 +5,7 @@ import { CreateService } from '@/storeServices/create.service';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import { StoreService } from '@/storeServices/store.service';
 import { User } from '@/userEntities/user.entity';
-import { UserHelperService } from '@/userService/user/helper.service.';
+import { UserHelperService } from '@/userServices/helper.service';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 

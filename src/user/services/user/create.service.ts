@@ -10,7 +10,7 @@ import {
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserStores } from '@/userEntities/userStores.entity';
-import { UserHelperService } from '@/userService/user/helper.service.';
+import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 
 import * as bcrypt from 'bcrypt';

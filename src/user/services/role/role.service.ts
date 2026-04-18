@@ -7,7 +7,7 @@ import {
   UnassignRolesFromUserDto,
 } from '@/userDto/roles.dto';
 import { UserRoles } from '@/userEntities/userRoles.entity';
-import { UserHelperService } from '@/userService/user/helper.service.';
+import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 

@@ -3,7 +3,7 @@ import {
   GetUserRoleDto,
   UnassignRolesFromUserDto,
 } from '@/userDto/roles.dto';
-import { UserRolesService } from '@/userService/role/role.service';
+import { UserRolesService } from '@/userRoleServices/role.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';

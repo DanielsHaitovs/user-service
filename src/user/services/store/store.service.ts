@@ -5,7 +5,7 @@ import {
   UnassignStoresFromUserDto,
 } from '@/userDto/stores.dto';
 import { UserStores } from '@/userEntities/userStores.entity';
-import { UserHelperService } from '@/userService/user/helper.service.';
+import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 

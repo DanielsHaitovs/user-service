@@ -3,7 +3,7 @@ import {
   GetUserStoreDto,
   UnassignStoresFromUserDto,
 } from '@/userDto/stores.dto';
-import { UserStoresService } from '@/userService/store/store.service';
+import { UserStoresService } from '@/userStoreServices/store.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';

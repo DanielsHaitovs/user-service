@@ -10,11 +10,11 @@ import { UserRolePipelineService } from '@/user/role.pipeline';
 import { UserStorePipelineService } from '@/user/store.pipeline';
 import { UserPipelineService } from '@/user/user.pipeline';
 import { User } from '@/userEntities/user.entity';
-import { UserRolesService } from '@/userService/role/role.service';
-import { UserStoresService } from '@/userService/store/store.service';
-import { CreateService } from '@/userService/user/create.service';
-import { UserHelperService } from '@/userService/user/helper.service.';
-import { UserService } from '@/userService/user/user.service.';
+import { UserRolesService } from '@/userRoleServices/role.service';
+import { CreateService } from '@/userServices/create.service';
+import { UserHelperService } from '@/userServices/helper.service';
+import { UserService } from '@/userServices/user.service';
+import { UserStoresService } from '@/userStoreServices/store.service';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 

@@ -2,7 +2,7 @@ import { CreateStoreDto, StoreResponseDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import { User } from '@/userEntities/user.entity';
-import { UserHelperService } from '@/userService/user/helper.service.';
+import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 

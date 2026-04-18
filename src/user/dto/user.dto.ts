@@ -4,6 +4,7 @@ import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { COUNTRIES } from '@/libConst/countries.const';
 import { EXAMPLE_USER_ID } from '@/libConst/user.const';
 import { GetUserRoleDto } from '@/userDto/roles.dto';
+import { GetUserStoreDto } from '@/userDto/stores.dto';
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -186,6 +187,21 @@ export class CreateUserDto extends UserBaseDto {
   @IsOptional()
   roleIds: UUID[];
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    isArray: true,
+    title: 'User Store IDs',
+    description:
+      'Store IDs to assign to the user - must be valid UUIDs of existing stores',
+    example: [EXAMPLE_ROLE_ID],
+    required: false,
+  })
+  @ToArray()
+  @IsUUID('all', { each: true })
+  @IsOptional()
+  storeIds: UUID[];
+
   constructor(
     country: COUNTRIES,
     firstName: string,
@@ -197,6 +213,7 @@ export class CreateUserDto extends UserBaseDto {
     dateOfBirth: Date,
     isActive: boolean,
     roleIds: UUID[],
+    storeIds: UUID[],
   ) {
     super(
       country,
@@ -210,6 +227,7 @@ export class CreateUserDto extends UserBaseDto {
     );
     this.isActive = isActive;
     this.roleIds = roleIds;
+    this.storeIds = storeIds;
   }
 }
 
@@ -396,7 +414,7 @@ export class GetAssignedByDto extends OmitType(GetUserDto, [
 export class UserResponseDto extends GetUserDto {
   @ApiProperty({
     description: 'User that created the user',
-    type: GetCreatedByDto,
+    type: () => GetCreatedByDto,
     isArray: false,
   })
   @Type(() => GetCreatedByDto)
@@ -405,12 +423,21 @@ export class UserResponseDto extends GetUserDto {
 
   @ApiProperty({
     description: 'List of roles assigned to the user',
-    type: GetUserRoleDto,
+    type: () => GetUserRoleDto,
     isArray: true,
   })
   @Type(() => GetUserRoleDto)
   @ValidateNested({ each: true })
   userRoles?: GetUserRoleDto[];
+
+  @ApiProperty({
+    description: 'List of stores assigned to the user',
+    type: () => GetUserStoreDto,
+    isArray: true,
+  })
+  @Type(() => GetUserStoreDto)
+  @ValidateNested({ each: true })
+  userStores?: GetUserStoreDto[];
 
   constructor(
     id: UUID,
@@ -432,6 +459,7 @@ export class UserResponseDto extends GetUserDto {
     updatedAt: Date,
     createdBy: GetCreatedByDto,
     userRoles?: GetUserRoleDto[],
+    userStores?: GetUserStoreDto[],
   ) {
     super(
       id,
@@ -454,6 +482,7 @@ export class UserResponseDto extends GetUserDto {
     );
     this.createdBy = createdBy;
     this.userRoles = userRoles ?? [];
+    this.userStores = userStores ?? [];
   }
 }
 

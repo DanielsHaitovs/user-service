@@ -143,7 +143,7 @@ export class GetRelatedStoreDto extends GetStoreDto {}
 export class StoreResponseDto extends GetStoreDto {
   @ApiProperty({
     description: 'User that created the store',
-    type: GetCreatedByDto,
+    type: () => GetCreatedByDto,
     isArray: false,
   })
   @Type(() => GetCreatedByDto)

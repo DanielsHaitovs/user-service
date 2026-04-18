@@ -1,5 +1,7 @@
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
+import { Store } from '@/storeEntities/store.entity';
+import { StoreHelperService } from '@/storeServices/helper.service';
 import { GetUserRoleDto } from '@/userDto/roles.dto';
 import {
   CreateUserDto,
@@ -8,6 +10,7 @@ import {
 } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
+import { UserStores } from '@/userEntities/userStores.entity';
 import { UserHelperService } from '@/userService/user/helper.service.';
 import { Injectable } from '@nestjs/common';
 
@@ -21,6 +24,7 @@ export class CreateService {
     private readonly dataSource: DataSource,
     private readonly userHelper: UserHelperService,
     private readonly roleHelper: RoleHelperService,
+    private readonly storeHelper: StoreHelperService,
   ) {}
 
   /**
@@ -45,7 +49,7 @@ export class CreateService {
 
     return this.dataSource.transaction(async (manager) => {
       const payload = manager.create(User, createDto);
-      const { roleIds } = createDto;
+      const { roleIds, storeIds } = createDto;
 
       payload.createdBy = {
         id: createdById,
@@ -55,9 +59,15 @@ export class CreateService {
         await this.roleHelper.validateRolesExist(roleIds);
       }
 
+      if (storeIds.length > 0) {
+        await this.storeHelper.validateStoresExists(storeIds);
+      }
+
       // TO DO: Handle store assignments here if needed
 
       const newUser: UserResponseDto = await manager.save(User, payload);
+
+      newUser.createdBy = { id: createdById } as GetCreatedByDto;
 
       const userRoles = await manager.save(
         UserRoles,
@@ -68,7 +78,6 @@ export class CreateService {
         })),
       );
 
-      newUser.createdBy = { id: createdById } as GetCreatedByDto;
       newUser.userRoles = userRoles.map(
         ({ role, assignedBy }) =>
           ({
@@ -76,6 +85,20 @@ export class CreateService {
             assignedBy,
           }) as GetUserRoleDto,
       );
+
+      const userStores = await manager.save(
+        UserStores,
+        storeIds.map((storeId) => ({
+          user: { id: newUser.id } as User,
+          store: { id: storeId } as Store,
+          assignedBy: { id: createdById } as User,
+        })),
+      );
+
+      newUser.userStores = userStores.map(({ store, assignedBy }) => ({
+        store,
+        assignedBy,
+      }));
 
       return newUser;
     });

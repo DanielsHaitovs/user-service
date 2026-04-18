@@ -71,7 +71,7 @@ export class UserStoresResponseDto {
 
   @ApiProperty({
     description: 'List of stores assigned to the user',
-    type: GetUserStoreDto,
+    type: () => GetUserStoreDto,
     isArray: true,
   })
   @Type(() => GetUserStoreDto)

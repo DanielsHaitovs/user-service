@@ -2,7 +2,6 @@ import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { Store } from '@/storeEntities/store.entity';
 import { StoreHelperService } from '@/storeServices/helper.service';
-import { GetUserRoleDto } from '@/userDto/roles.dto';
 import {
   CreateUserDto,
   GetCreatedByDto,
@@ -43,6 +42,7 @@ export class CreateService {
     createDto: CreateUserDto;
     createdById: UUID;
   }): Promise<UserResponseDto> {
+    await this.userHelper.throwIfExists([createDto.email]);
     await this.userHelper.validateIfExists({ id: createdById });
 
     createDto.password = await bcrypt.hash(createDto.password, 10);
@@ -55,17 +55,15 @@ export class CreateService {
         id: createdById,
       } as User;
 
+      const newUser: UserResponseDto = await manager.save(User, payload);
+
       if (roleIds.length > 0) {
-        await this.roleHelper.validateRolesExist(roleIds);
+        await this.roleHelper.validateIfExist(roleIds);
       }
 
       if (storeIds.length > 0) {
         await this.storeHelper.validateStoresExists(storeIds);
       }
-
-      // TO DO: Handle store assignments here if needed
-
-      const newUser: UserResponseDto = await manager.save(User, payload);
 
       newUser.createdBy = { id: createdById } as GetCreatedByDto;
 
@@ -78,18 +76,14 @@ export class CreateService {
         })),
       );
 
-      newUser.userRoles = userRoles.map(
-        ({ role, assignedBy }) =>
-          ({
-            role,
-            assignedBy,
-          }) as GetUserRoleDto,
-      );
+      newUser.userRoles = userRoles.map(({ role, assignedBy }) => ({
+        role,
+        assignedBy,
+      }));
 
       const userStores = await manager.save(
         UserStores,
         storeIds.map((storeId) => ({
-          user: { id: newUser.id } as User,
           store: { id: storeId } as Store,
           assignedBy: { id: createdById } as User,
         })),

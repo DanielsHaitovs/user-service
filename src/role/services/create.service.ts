@@ -2,6 +2,7 @@ import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { CreateRoleDto, RoleResponseDto } from '@/role/dto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
+import { RoleHelperService } from '@/roleServices/helper.service';
 import { User } from '@/userEntities/user.entity';
 import { UserHelperService } from '@/userService/user/helper.service.';
 import { Injectable } from '@nestjs/common';
@@ -17,6 +18,7 @@ export class CreateService {
     private readonly roleRepository: Repository<Roles>,
     private readonly userHelper: UserHelperService,
     private readonly permissionHelper: PermissionHelperService,
+    private readonly roleHelper: RoleHelperService,
   ) {}
 
   /**
@@ -38,6 +40,7 @@ export class CreateService {
   }): Promise<RoleResponseDto> {
     const { permissions, ...roleDto } = createDto;
 
+    await this.roleHelper.throwIfExists([roleDto.name]);
     await this.userHelper.validateIfExists({ id: createdById });
     const permissionIds =
       await this.permissionHelper.validatePermissionsExist(permissions);

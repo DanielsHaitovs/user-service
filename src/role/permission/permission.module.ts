@@ -6,12 +6,13 @@ import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { PermissionService } from '@/permissionServices/permission.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
+import { User } from '@/userEntities/user.entity';
 import { UserHelperService } from '@/userService/user/helper.service.';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Permission, Roles])],
+  imports: [TypeOrmModule.forFeature([Permission, Roles, User])],
   controllers: [PermissionController],
   providers: [
     PermissionService,

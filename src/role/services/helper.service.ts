@@ -41,7 +41,7 @@ export class RoleHelperService {
    * @returns The IDs of the existing roles with the given names.
    * @throws UnprocessableEntityException if any of the provided role names do not exist.
    */
-  async validateRolesExist(ids?: string[]): Promise<UUID[]> {
+  async validateIfExist(ids?: string[]): Promise<UUID[]> {
     if (ids == undefined || ids.length === 0) {
       return [];
     }

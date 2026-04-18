@@ -104,7 +104,7 @@ export class UserRolesService {
     const { userId, roleIds } = data;
     await this.userHelperService.validateIfExists({ id: userId });
     await this.userHelperService.validateIfExists({ id: assignedById });
-    await this.roleHelperService.validateRolesExist(roleIds);
+    await this.roleHelperService.validateIfExist(roleIds);
 
     const userRoles = roleIds.map((roleId) => ({
       user: { id: userId },
@@ -128,7 +128,7 @@ export class UserRolesService {
     roleIds,
   }: UnassignRolesFromUserDto): Promise<void> {
     await this.userHelperService.validateIfExists({ id: userId });
-    await this.roleHelperService.validateRolesExist(roleIds);
+    await this.roleHelperService.validateIfExist(roleIds);
 
     await this.entityManager.delete(UserRoles, {
       user: { id: userId },

@@ -42,9 +42,9 @@ export class CreateService {
   }): Promise<PermissionResponseDto> {
     const { roleIds, ...permissionDto } = createDto;
 
-    await this.userHelper.validateIfExists({ id: createdById });
     await this.permissionHelper.throwIfExists([permissionDto.code]);
-    await this.roleHelper.validateRolesExist(roleIds);
+    await this.userHelper.validateIfExists({ id: createdById });
+    await this.roleHelper.validateIfExist(roleIds);
 
     const newPermission = this.permissionRepository.create(permissionDto);
 

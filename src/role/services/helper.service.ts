@@ -1,3 +1,4 @@
+import { EntityQueryService } from '@/base/service/query.service';
 import { Roles } from '@/roleEntities/role.entity';
 import {
   ConflictException,
@@ -14,6 +15,7 @@ export class RoleHelperService {
   constructor(
     @InjectRepository(Roles)
     private readonly roleRepository: Repository<Roles>,
+    private readonly queryService: EntityQueryService,
   ) {}
 
   /**
@@ -61,5 +63,33 @@ export class RoleHelperService {
     }
 
     return existingRoles.map((r) => r.id);
+  }
+
+  /**
+   * Retrieves all unique permission codes associated with the given role IDs.
+   * @param roleIds - An array of role IDs for which to retrieve permissions.
+   * @returns A promise that resolves to an array of unique permission codes.
+   */
+  async getAllPermissions(roleIds: UUID[]): Promise<string[]> {
+    const query = this.roleRepository
+      .createQueryBuilder('role')
+      .leftJoinAndSelect('role.permissions', 'permission')
+      .where('role.id IN (:...roleIds)', { roleIds })
+      .select(['role.id', 'permission.code']);
+
+    const roles = await this.queryService.getAll<Roles>({
+      query,
+      cache: true,
+    });
+
+    const permissionCodes = new Set<string>();
+
+    roles.forEach((role) => {
+      role.permissions.forEach((permission) => {
+        permissionCodes.add(permission.code);
+      });
+    });
+
+    return Array.from(permissionCodes);
   }
 }

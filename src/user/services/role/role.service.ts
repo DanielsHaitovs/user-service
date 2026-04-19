@@ -1,5 +1,4 @@
 import { EntityQueryService } from '@/base/service/query.service';
-import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import {
   AssignRolesToUserDto,
@@ -8,20 +7,22 @@ import {
   UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
 import { UserRoles } from '@/userEntities/userRoles.entity';
+import { UserRoleHelperService } from '@/userRoleServices/helper.service';
 import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
-import { InjectEntityManager } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { EntityManager, In } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class UserRolesService {
   constructor(
-    @InjectEntityManager()
-    private readonly entityManager: EntityManager,
+    @InjectRepository(UserRoles)
+    private readonly roleRepository: Repository<UserRoles>,
     private readonly userHelperService: UserHelperService,
     private readonly roleHelperService: RoleHelperService,
+    private readonly userRoleHelperService: UserRoleHelperService,
     private readonly queryService: EntityQueryService,
   ) {}
 
@@ -30,13 +31,21 @@ export class UserRolesService {
    *
    * @param userId - The unique identifier of the user (UUID).
    * @returns A promise that resolves to an array of GetUserRoleDto objects representing the user's roles.
-   * @throws An EntityNotFoundError if the user does not exist.
    */
-  async getRolesOrThrow(
+  async getRoles(
     data: UserRolesQueryRequest,
   ): Promise<UserRolesListResponseDto> {
-    const { userId, pagination, sort, dateFilterParam, dateFrom, dateTo } =
-      data;
+    const {
+      userId,
+      page,
+      limit,
+      sortField,
+      sortOrder,
+      dateFilterParam,
+      dateFrom,
+      dateTo,
+    } = data;
+    await this.userHelperService.validateIfExists({ id: userId });
 
     const query = this.queryService.initQuery<UserRoles>({
       entity: UserRoles,
@@ -46,6 +55,11 @@ export class UserRolesService {
     this.queryService.joinRelation<UserRoles>({
       query,
       alias: 'user',
+    });
+
+    this.queryService.joinRelation<UserRoles>({
+      query,
+      alias: 'role',
     });
 
     this.queryService.where<UserRoles>({
@@ -72,32 +86,32 @@ export class UserRolesService {
 
     this.queryService.sort<UserRoles>({
       query,
-      sort,
+      sort: {
+        sortField,
+        sortOrder,
+      },
     });
+
+    query.select([
+      'userRole.id',
+      'userRole.createdAt',
+      'userRole.updatedAt',
+      'role.id',
+      'role.name',
+      'role.createdAt',
+    ]);
 
     this.queryService.paginate<UserRoles>({
       query,
-      pagination,
+      pagination: {
+        page,
+        limit,
+      },
     });
 
     return await this.queryService.paginatedResult({
       query,
     });
-
-    // return await this.entityManager
-    //   .findBy(UserRoles, {
-    //     user: { id: userId },
-    //   })
-    //   .then((userRoles) => {
-    //     if (userRoles.length === 0) {
-    //       throw new EntityNotFoundError(
-    //         UserRoles,
-    //         `No roles found for user with ID ${userId}`,
-    //       );
-    //     }
-
-    //     return userRoles;
-    //   });
   }
 
   /**
@@ -108,38 +122,15 @@ export class UserRolesService {
    * @throws An EntityNotFoundError if the user does not exist or if no roles are found for the user.
    */
   async getPermissionsOrThrow(userId: UUID): Promise<string[]> {
-    const { data: userRoles } = await this.getRolesOrThrow({
-      userId,
-      pagination: { page: 1, limit: 100 },
-      sort: { sortField: 'assignedAt', sortOrder: 'DESC' },
-    });
+    const userRoles = await this.userRoleHelperService.getAssignedRoles(userId);
 
-    const roleIds = userRoles.map((userRole) => userRole.role.id);
-
-    if (roleIds.length === 0) {
+    if (userRoles.length === 0) {
       return [];
     }
 
-    const query = this.entityManager
-      .createQueryBuilder(Roles, 'role')
-      .leftJoinAndSelect('role.permissions', 'permission')
-      .where('role.id IN (:...roleIds)', { roleIds })
-      .select(['role.id', 'permission.code']);
+    const roleIds = userRoles.map((userRole) => userRole.id);
 
-    const roles = await this.queryService.getAll<Roles>({
-      query,
-      cache: true,
-    });
-
-    const permissionCodes = new Set<string>();
-
-    roles.forEach((role) => {
-      role.permissions.forEach((permission) => {
-        permissionCodes.add(permission.code);
-      });
-    });
-
-    return Array.from(permissionCodes);
+    return await this.roleHelperService.getAllPermissions(roleIds);
   }
 
   /**
@@ -169,7 +160,7 @@ export class UserRolesService {
       assignedBy: { id: assignedById },
     }));
 
-    await this.entityManager.save(UserRoles, userRoles);
+    await this.roleRepository.save(userRoles);
   }
 
   /**
@@ -187,7 +178,7 @@ export class UserRolesService {
     await this.userHelperService.validateIfExists({ id: userId });
     await this.roleHelperService.validateIfExist(roleIds);
 
-    await this.entityManager.delete(UserRoles, {
+    await this.roleRepository.delete({
       user: { id: userId },
       role: { id: In(roleIds) },
     });

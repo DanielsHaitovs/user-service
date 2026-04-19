@@ -13,10 +13,10 @@ import { UUID } from 'crypto';
 export class UserRolePipelineService {
   constructor(private readonly userRolesService: UserRolesService) {}
 
-  async getRolesOrThrow(
+  async getRoles(
     query: UserRolesQueryRequest,
   ): Promise<UserRolesListResponseDto> {
-    return await this.userRolesService.getRolesOrThrow(query);
+    return await this.userRolesService.getRoles(query);
   }
 
   async getPermissionsOrThrow(userId: UUID): Promise<string[]> {

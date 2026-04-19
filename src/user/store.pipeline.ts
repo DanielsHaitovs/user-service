@@ -1,7 +1,8 @@
 import {
   AssignStoresToUserDto,
-  GetUserStoreDto,
   UnassignStoresFromUserDto,
+  UserStoresListResponseDto,
+  UserStoresQueryRequest,
 } from '@/userDto/stores.dto';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { Injectable } from '@nestjs/common';
@@ -12,8 +13,10 @@ import { UUID } from 'crypto';
 export class UserStorePipelineService {
   constructor(private readonly userStoresService: UserStoresService) {}
 
-  async getStoresOrThrow(userId: UUID): Promise<GetUserStoreDto[]> {
-    return await this.userStoresService.getStoresOrThrow(userId);
+  async getStores(
+    data: UserStoresQueryRequest,
+  ): Promise<UserStoresListResponseDto> {
+    return await this.userStoresService.getStores(data);
   }
 
   async assignStoresToUser({

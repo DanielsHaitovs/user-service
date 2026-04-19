@@ -28,7 +28,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -124,25 +124,13 @@ export class UserRolesController {
       isArray: false,
     },
   })
-  // @ApiParam({
-  //   name: 'userId',
-  //   type: String,
-  //   description: 'User unique identifier - must be a valid UUID',
-  //   example: EXAMPLE_USER_ID,
-  // })
-  @ApiQuery({
-    name: 'query',
-    type: UserRolesQueryRequest,
-    required: true,
-    description: 'Query parameters for searching user roles by user ID',
-  })
   async findRolesByUserId(
-    @Query('query') query: UserRolesQueryRequest,
+    @Query() query: UserRolesQueryRequest,
     // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserRolesListResponseDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
-    return await this.userRolePipelineService.getRolesOrThrow(query);
+    return await this.userRolePipelineService.getRoles(query);
   }
 
   @Get('permissions/:userId')

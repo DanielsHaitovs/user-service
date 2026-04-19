@@ -56,15 +56,16 @@ export class EntityQueryService {
     if (!values || values.length === 0) return;
 
     const alias = relationAlias ?? query.alias;
-    const fieldPath = `${alias}.${field}`;
+    const fieldPath = this.resolveFieldPath({ alias, field });
+    const parameterKey = `${alias}_${this.getFieldParameterSuffix(field)}s`;
 
     if (condition === 'OR') {
-      query.orWhere(`${fieldPath} IN (:...${alias}_${field}s)`, {
-        [`${alias}_${field}s`]: values,
+      query.orWhere(`${fieldPath} IN (:...${parameterKey})`, {
+        [parameterKey]: values,
       });
     } else {
-      query.andWhere(`${fieldPath} IN (:...${alias}_${field}s)`, {
-        [`${alias}_${field}s`]: values,
+      query.andWhere(`${fieldPath} IN (:...${parameterKey})`, {
+        [parameterKey]: values,
       });
     }
   }
@@ -85,15 +86,16 @@ export class EntityQueryService {
     if (value == undefined) return;
 
     const alias = relationAlias ?? query.alias;
-    const fieldPath = `${alias}.${field}`;
+    const fieldPath = this.resolveFieldPath({ alias, field });
+    const parameterKey = `${alias}_${this.getFieldParameterSuffix(field)}_to`;
 
     if (condition === 'OR') {
-      query.orWhere(`${fieldPath} = :${alias}_${field}_to`, {
-        [`${alias}_${field}_to`]: value,
+      query.orWhere(`${fieldPath} = :${parameterKey}`, {
+        [parameterKey]: value,
       });
     } else {
-      query.andWhere(`${fieldPath} = :${alias}_${field}_to`, {
-        [`${alias}_${field}_to`]: value,
+      query.andWhere(`${fieldPath} = :${parameterKey}`, {
+        [parameterKey]: value,
       });
     }
   }
@@ -122,18 +124,19 @@ export class EntityQueryService {
   }): void {
     if (date == undefined) return;
     const alias = relationAlias ?? query.alias;
-    const fieldPath = `${alias}.${field}`;
+    const fieldPath = this.resolveFieldPath({ alias, field });
+    const parameterKey = `${alias}_${this.getFieldParameterSuffix(field)}_from`;
 
     if (condition === 'OR') {
-      query.orWhere(`${fieldPath} > :${alias}_${field}_from`, {
-        [`${alias}_${field}_from`]: date,
+      query.orWhere(`${fieldPath} > :${parameterKey}`, {
+        [parameterKey]: date,
       });
 
       return;
     }
 
-    query.andWhere(`${fieldPath} > :${alias}_${field}_from`, {
-      [`${alias}_${field}_from`]: date,
+    query.andWhere(`${fieldPath} > :${parameterKey}`, {
+      [parameterKey]: date,
     });
   }
 
@@ -162,19 +165,34 @@ export class EntityQueryService {
     if (date == undefined) return;
 
     const alias = relationAlias ?? query.alias;
-    const fieldPath = `${alias}.${field}`;
+    const fieldPath = this.resolveFieldPath({ alias, field });
+    const parameterKey = `${alias}_${this.getFieldParameterSuffix(field)}`;
 
     if (condition === 'OR') {
-      query.orWhere(`${fieldPath} < :${alias}_${field}`, {
-        [`${alias}_${field}`]: date,
+      query.orWhere(`${fieldPath} < :${parameterKey}`, {
+        [parameterKey]: date,
       });
 
       return;
     }
 
-    query.andWhere(`${fieldPath} < :${alias}_${field}`, {
-      [`${alias}_${field}`]: date,
+    query.andWhere(`${fieldPath} < :${parameterKey}`, {
+      [parameterKey]: date,
     });
+  }
+
+  private resolveFieldPath({
+    alias,
+    field,
+  }: {
+    alias: string;
+    field: string;
+  }): string {
+    return field.includes('.') ? field : `${alias}.${field}`;
+  }
+
+  private getFieldParameterSuffix(field: string): string {
+    return field.replace(/\W/g, '_');
   }
 
   /**
@@ -210,11 +228,9 @@ export class EntityQueryService {
   paginate<T extends ObjectLiteral>({
     query,
     pagination,
-    cache,
   }: {
     query: SelectQueryBuilder<T>;
     pagination?: PaginationDto;
-    cache?: boolean;
   }): void {
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 10;
@@ -230,35 +246,32 @@ export class EntityQueryService {
     cache?: boolean;
   }): Promise<T[]> {
     const response = new Array<T>();
-    const action = {
-      isEmpty: false,
-      total: 0,
-      step: 100,
-      page: 1,
-    };
+    const batchSize = 100;
+    let offset = 0;
 
-    while (!action.isEmpty) {
-      this.paginate<T>({
-        query,
-        pagination: {
-          page: action.page,
-          limit: action.step,
-        },
-      });
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    while (true) {
+      const batchQuery = query.clone();
+
+      batchQuery.skip(offset).take(batchSize);
 
       if (cache === true) {
-        this.cacheQuery<T>({ query });
+        this.cacheQuery<T>({ query: batchQuery });
       }
 
-      const result = await query.getMany();
+      const result = await batchQuery.getMany();
 
       if (isEmpty(result)) {
-        action.isEmpty = true;
-      } else {
-        response.push(...result);
-        action.total += result.length;
-        action.page += 1;
+        break; // No more results, exit loop
       }
+
+      response.push(...result);
+
+      if (result.length < batchSize) {
+        break;
+      }
+
+      offset += batchSize;
     }
 
     return response;
@@ -284,22 +297,14 @@ export class EntityQueryService {
     if (sort?.sortField == undefined) return;
 
     const { sortField, sortOrder } = sort;
-    const field = sortField.split('.')[1];
-
-    if (field == undefined) return;
 
     const metadata = query.expressionMap.mainAlias?.metadata;
     if (!metadata) return;
 
-    const column = metadata.findColumnWithPropertyName(field);
+    const column = metadata.findColumnWithPropertyName(sortField);
     if (!column) return;
 
-    const dbColumn = column.databaseName;
-    const orderAlias = `${field}_order`;
-
-    query
-      .addSelect(`"${query.alias}"."${dbColumn}"::text`, orderAlias)
-      .orderBy(`"${orderAlias}"`, sortOrder);
+    query.orderBy(`${query.alias}.${sortField}`, sortOrder);
   }
 
   validateRelationSelect<T extends ObjectLiteral>({

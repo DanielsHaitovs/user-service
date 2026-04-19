@@ -1,12 +1,22 @@
 import { ToArray } from '@/commonDecorators/array.decorator';
-import { EXAMPLE_STORE_ID } from '@/lib/const/store.const';
+import {
+  EXAMPLE_STORE_CODE,
+  EXAMPLE_STORE_ID,
+  EXAMPLE_STORE_VIEW_CODE,
+} from '@/lib/const/store.const';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
-import { GetAssignedByDto, GetRelatedUserDto } from '@/userDto/user.dto';
+import { GetAssignedByDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
-import { IsOptional, IsUUID, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { UUID } from 'crypto';
+
+import {
+  PaginatedResponseDto,
+  QueryRequestDto,
+} from '../../base/dto/pagination.dto';
+import { EXAMPLE_USER_ID } from '../../lib/const/user.const';
 
 export class CreateUserStoresDto {
   @ApiProperty({
@@ -59,31 +69,6 @@ export class GetUserStoreDto {
   assignedBy?: GetAssignedByDto;
 }
 
-export class UserStoresResponseDto {
-  @ApiProperty({
-    description: 'User to which the stores are assigned',
-    type: GetRelatedUserDto,
-    isArray: false,
-  })
-  @Type(() => GetRelatedUserDto)
-  @ValidateNested()
-  user?: GetRelatedUserDto;
-
-  @ApiProperty({
-    description: 'List of stores assigned to the user',
-    type: () => GetUserStoreDto,
-    isArray: true,
-  })
-  @Type(() => GetUserStoreDto)
-  @ValidateNested({ each: true })
-  stores: GetUserStoreDto[];
-
-  constructor(user: GetRelatedUserDto, stores: GetUserStoreDto[]) {
-    this.user = user;
-    this.stores = stores;
-  }
-}
-
 export class AssignStoresToUserDto {
   @ApiProperty({
     title: 'User ID',
@@ -117,3 +102,82 @@ export class AssignStoresToUserDto {
 }
 
 export class UnassignStoresFromUserDto extends AssignStoresToUserDto {}
+
+export class UserStoresQueryRequest extends QueryRequestDto {
+  @ApiProperty({
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+    type: String,
+    format: 'uuid',
+  })
+  @IsUUID()
+  userId: UUID;
+
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    title: 'Store Codes',
+    description:
+      'Store codes to filter the user stores - must be valid codes of existing stores',
+    example: [EXAMPLE_STORE_CODE],
+    required: false,
+  })
+  @ToArray()
+  @IsString({ each: true })
+  @IsOptional()
+  codes: string[];
+
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    title: 'Store View Codes',
+    description:
+      'Store view codes to filter the user stores - must be valid view codes of existing stores',
+    example: [EXAMPLE_STORE_VIEW_CODE],
+    required: false,
+  })
+  @ToArray()
+  @IsString({ each: true })
+  @IsOptional()
+  viewCodes: string[];
+
+  constructor(
+    userId: UUID,
+    page: number,
+    limit: number,
+    codes?: string[],
+    viewCodes?: string[],
+    sortField?: string,
+    sortOrder?: 'ASC' | 'DESC',
+    dateFrom?: Date,
+    dateTo?: Date,
+    dateFilterParam?: string,
+  ) {
+    super(sortField, sortOrder, page, limit, dateFrom, dateTo, dateFilterParam);
+    this.userId = userId;
+    this.codes = codes ?? [];
+    this.viewCodes = viewCodes ?? [];
+  }
+}
+
+export class UserStoresListResponseDto extends PaginatedResponseDto {
+  @ApiProperty({
+    description: 'List of user stores matching the provided user ID',
+    type: GetUserStoreDto,
+    isArray: true,
+  })
+  @Type(() => GetUserStoreDto)
+  @ValidateNested({ each: true })
+  data: GetUserStoreDto[];
+
+  constructor(
+    data: GetUserStoreDto[],
+    total: number,
+    page: number,
+    limit: number,
+    totalPages: number,
+  ) {
+    super(total, page, limit, totalPages);
+    this.data = data;
+  }
+}

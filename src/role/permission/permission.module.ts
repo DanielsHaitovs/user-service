@@ -1,3 +1,4 @@
+import { EntityQueryService } from '@/base/service/query.service';
 import { PermissionController } from '@/permission/controllers/permission.controller';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import { Permission } from '@/permissionEntities/permissions.entity';
@@ -21,6 +22,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     UserHelperService,
     PermissionHelperService,
     RoleHelperService,
+    EntityQueryService,
   ],
   exports: [PermissionPipelineService, PermissionHelperService],
 })

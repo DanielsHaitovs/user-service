@@ -5,12 +5,13 @@ import {
   READ_STORE,
   READ_USER_STORE,
 } from '@/lib/const/store.const';
-import { EXAMPLE_USER_ID, READ_USER } from '@/lib/const/user.const';
+import { READ_USER } from '@/lib/const/user.const';
 import { UserStorePipelineService } from '@/user/store.pipeline';
 import {
   AssignStoresToUserDto,
-  GetUserStoreDto,
   UnassignStoresFromUserDto,
+  UserStoresListResponseDto,
+  UserStoresQueryRequest,
 } from '@/userDto/stores.dto';
 import {
   Body,
@@ -19,11 +20,10 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -102,7 +102,7 @@ export class UserStoresController {
     await this.userStorePipelineService.unassignStoresFromUser(unassignDto);
   }
 
-  @Get('/:userId')
+  @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER_STORE, READ_STORE, READ_USER],
@@ -116,22 +116,16 @@ export class UserStoresController {
     okOperation: {
       description:
         'Returns a list of user stores matching the provided user ID',
-      type: GetUserStoreDto,
-      isArray: true,
+      type: UserStoresListResponseDto,
+      isArray: false,
     },
   })
-  @ApiParam({
-    name: 'userId',
-    type: String,
-    description: 'User unique identifier - must be a valid UUID',
-    example: EXAMPLE_USER_ID,
-  })
   async findStoresByUserId(
-    @Param('userId', ParseUUIDPipe) userId: UUID,
+    @Query() query: UserStoresQueryRequest,
     // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetUserStoreDto[]> {
+  ): Promise<UserStoresListResponseDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
-    return await this.userStorePipelineService.getStoresOrThrow(userId);
+    return await this.userStorePipelineService.getStores(query);
   }
 }

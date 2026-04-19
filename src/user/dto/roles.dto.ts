@@ -1,15 +1,12 @@
 import {
   PaginatedResponseDto,
-  PaginationDto,
   QueryRequestDto,
-  SortDto,
 } from '@/baseDto/pagination.dto';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
-import { GetAssignedByDto, GetRelatedUserDto } from '@/userDto/user.dto';
-import { UserRoles } from '@/userEntities/userRoles.entity';
+import { GetAssignedByDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -67,31 +64,6 @@ export class GetUserRoleDto {
   assignedBy?: GetAssignedByDto;
 }
 
-export class UserRolesResponseDto {
-  @ApiProperty({
-    description: 'User to which the roles are assigned',
-    type: GetRelatedUserDto,
-    isArray: false,
-  })
-  @Type(() => GetRelatedUserDto)
-  @ValidateNested()
-  user?: GetRelatedUserDto;
-
-  @ApiProperty({
-    description: 'List of roles assigned to the user',
-    type: GetUserRoleDto,
-    isArray: true,
-  })
-  @Type(() => GetUserRoleDto)
-  @ValidateNested({ each: true })
-  roles: GetUserRoleDto[];
-
-  constructor(user: GetRelatedUserDto, roles: GetUserRoleDto[]) {
-    this.user = user;
-    this.roles = roles;
-  }
-}
-
 export class AssignRolesToUserDto {
   @ApiProperty({
     title: 'User ID',
@@ -134,17 +106,19 @@ export class UserRolesQueryRequest extends QueryRequestDto {
     format: 'uuid',
   })
   @IsUUID()
-  userId: string;
+  userId: UUID;
 
   constructor(
-    userId: string,
-    pagination: PaginationDto,
-    sort: SortDto,
+    userId: UUID,
+    page: number,
+    limit: number,
+    sortField?: string,
+    sortOrder?: 'ASC' | 'DESC',
     dateFrom?: Date,
     dateTo?: Date,
     dateFilterParam?: string,
   ) {
-    super(pagination, sort, dateFrom, dateTo, dateFilterParam);
+    super(sortField, sortOrder, page, limit, dateFrom, dateTo, dateFilterParam);
     this.userId = userId;
   }
 }
@@ -152,15 +126,15 @@ export class UserRolesQueryRequest extends QueryRequestDto {
 export class UserRolesListResponseDto extends PaginatedResponseDto {
   @ApiProperty({
     description: 'List of user roles matching the provided user ID',
-    type: UserRoles,
+    type: GetUserRoleDto,
     isArray: true,
   })
-  @Type(() => UserRoles)
+  @Type(() => GetUserRoleDto)
   @ValidateNested({ each: true })
-  data: UserRoles[];
+  data: GetUserRoleDto[];
 
   constructor(
-    data: UserRoles[],
+    data: GetUserRoleDto[],
     total: number,
     page: number,
     limit: number,

@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  IntersectionType,
+} from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
 import {
@@ -9,7 +13,6 @@ import {
   IsOptional,
   IsString,
   Min,
-  ValidateNested,
 } from 'class-validator';
 
 /**
@@ -185,60 +188,8 @@ export class QueryDateRequestDto {
   }
 }
 
-export class QueryRequestDto {
-  @ApiProperty({
-    description:
-      'Pagination parameters to control page size and number of results',
-    type: PaginationDto,
-    required: true,
-  })
-  @Type(() => PaginationDto)
-  @ValidateNested()
-  pagination: PaginationDto;
-
-  @ApiProperty({
-    description:
-      'Pagination parameters to control page size and number of results',
-    type: SortDto,
-    required: true,
-  })
-  @Type(() => SortDto)
-  @ValidateNested()
-  sort: SortDto;
-
-  @ApiPropertyOptional({
-    description: 'Filter results created from this date onwards',
-    type: Date,
-    required: false,
-  })
-  dateFrom?: Date | undefined;
-
-  @ApiPropertyOptional({
-    description: 'Filter results created up to this date',
-    type: Date,
-    required: false,
-  })
-  dateTo?: Date | undefined;
-
-  @ApiPropertyOptional({
-    description: 'Additional date filter parameter for custom filtering logic',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  dateFilterParam?: string | undefined;
-
-  constructor(
-    pagination: PaginationDto,
-    sort: SortDto,
-    dateFrom?: Date,
-    dateTo?: Date,
-    dateFilterParam?: string,
-  ) {
-    this.pagination = pagination;
-    this.sort = sort;
-    this.dateFilterParam = dateFilterParam;
-    this.dateFrom = dateFrom;
-    this.dateTo = dateTo;
-  }
-}
+export class QueryRequestDto extends IntersectionType(
+  PaginationDto,
+  SortDto,
+  QueryDateRequestDto,
+) {}

@@ -10,16 +10,22 @@ import { UserRolePipelineService } from '@/user/role.pipeline';
 import { UserStorePipelineService } from '@/user/store.pipeline';
 import { UserPipelineService } from '@/user/user.pipeline';
 import { User } from '@/userEntities/user.entity';
+import { UserRoles } from '@/userEntities/userRoles.entity';
+import { UserStores } from '@/userEntities/userStores.entity';
+import { UserRoleHelperService } from '@/userRoleServices/helper.service';
 import { UserRolesService } from '@/userRoleServices/role.service';
 import { CreateService } from '@/userServices/create.service';
 import { UserHelperService } from '@/userServices/helper.service';
 import { UserService } from '@/userServices/user.service';
+import { UserStoreHelperService } from '@/userStoreServices/helper.service';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Roles, Store])],
+  imports: [
+    TypeOrmModule.forFeature([User, Roles, Store, UserRoles, UserStores]),
+  ],
   controllers: [UserController, UserRolesController, UserStoresController],
   providers: [
     CreateService,
@@ -32,6 +38,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     UserStorePipelineService,
     StoreHelperService,
     RoleHelperService,
+    UserRoleHelperService,
+    UserStoreHelperService,
     EntityQueryService,
   ],
   exports: [UserPipelineService, UserHelperService],

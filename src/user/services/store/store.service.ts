@@ -1,24 +1,27 @@
+import { EntityQueryService } from '@/base/service/query.service';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import {
   AssignStoresToUserDto,
-  GetUserStoreDto,
   UnassignStoresFromUserDto,
+  UserStoresListResponseDto,
+  UserStoresQueryRequest,
 } from '@/userDto/stores.dto';
 import { UserStores } from '@/userEntities/userStores.entity';
 import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
-import { InjectEntityManager } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { EntityManager, EntityNotFoundError, In } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class UserStoresService {
   constructor(
-    @InjectEntityManager()
-    private readonly entityManager: EntityManager,
+    @InjectRepository(UserStores)
+    private readonly storeRepository: Repository<UserStores>,
     private readonly userHelperService: UserHelperService,
     private readonly storeHelperService: StoreHelperService,
+    private readonly queryService: EntityQueryService,
   ) {}
 
   /**
@@ -26,23 +29,105 @@ export class UserStoresService {
    *
    * @param userId - The unique identifier of the user (UUID).
    * @returns A promise that resolves to an array of GetUserStoreDto objects representing the user's stores.
-   * @throws An EntityNotFoundError if the user does not exist.
    */
-  async getStoresOrThrow(userId: UUID): Promise<GetUserStoreDto[]> {
-    return await this.entityManager
-      .findBy(UserStores, {
-        user: { id: userId },
-      })
-      .then((userStores) => {
-        if (userStores.length === 0) {
-          throw new EntityNotFoundError(
-            UserStores,
-            `No stores found for user with ID ${userId}`,
-          );
-        }
+  async getStores(
+    data: UserStoresQueryRequest,
+  ): Promise<UserStoresListResponseDto> {
+    const {
+      userId,
+      codes,
+      viewCodes,
+      page,
+      limit,
+      sortField,
+      sortOrder,
+      dateFilterParam,
+      dateFrom,
+      dateTo,
+    } = data;
+    await this.userHelperService.validateIfExists({ id: userId });
 
-        return userStores;
+    const query = this.queryService.initQuery<UserStores>({
+      entity: UserStores,
+      alias: 'userStore',
+    });
+
+    this.queryService.joinRelation<UserStores>({
+      query,
+      alias: 'user',
+    });
+
+    this.queryService.joinRelation<UserStores>({
+      query,
+      alias: 'store',
+    });
+
+    this.queryService.where<UserStores>({
+      query,
+      field: 'user.id',
+      condition: 'AND',
+      value: userId,
+    });
+
+    this.queryService.whereIn<UserStores>({
+      query,
+      field: 'store.code',
+      condition: 'AND',
+      values: codes,
+    });
+
+    this.queryService.whereIn<UserStores>({
+      query,
+      field: 'store.viewCode',
+      condition: 'AND',
+      values: viewCodes,
+    });
+
+    if (dateFilterParam != undefined) {
+      this.queryService.dateGreaterThan<UserStores>({
+        query,
+        field: `userStore.${dateFilterParam}`,
+        condition: 'AND',
+        date: dateFrom,
       });
+      this.queryService.dateLessThan<UserStores>({
+        query,
+        field: `userStore.${dateFilterParam}`,
+        condition: 'AND',
+        date: dateTo,
+      });
+    }
+
+    this.queryService.sort<UserStores>({
+      query,
+      sort: {
+        sortField,
+        sortOrder,
+      },
+    });
+
+    query.select([
+      'userStore.id',
+      'userStore.createdAt',
+      'userStore.updatedAt',
+      'store.id',
+      'store.name',
+      'store.code',
+      'store.viewCode',
+      'store.createdAt',
+    ]);
+
+    this.queryService.paginate<UserStores>({
+      query,
+      pagination: {
+        page,
+        limit,
+      },
+    });
+
+    return await this.queryService.paginatedResult({
+      query,
+    });
   }
 
   /**
@@ -72,7 +157,7 @@ export class UserStoresService {
       assignedBy: { id: assignedById },
     }));
 
-    await this.entityManager.save(UserStores, userStores);
+    await this.storeRepository.save(userStores);
   }
 
   /**
@@ -90,7 +175,7 @@ export class UserStoresService {
     await this.userHelperService.validateIfExists({ id: userId });
     await this.storeHelperService.validateStoresExists(storeIds);
 
-    await this.entityManager.delete(UserStores, {
+    await this.storeRepository.delete({
       user: { id: userId },
       store: { id: In(storeIds) },
     });

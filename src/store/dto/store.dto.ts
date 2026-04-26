@@ -183,29 +183,29 @@ export class StoreResponseDto extends GetStoreDto {
 
 /**
  * DTO for paginated response when retrieving a list of STOREs, including metadata about pagination and an array of STORE details.
- * This class extends the PaginatedResponseDto to include a list of StoreResponseDto objects, providing both the pagination information and the detailed data for each STORE in the response.
+ * This class extends the PaginatedResponseDto to include a list of GetStoreDto objects, providing both the pagination information and the detailed data for each STORE in the response.
  * It is used in API endpoints that return a list of STOREs, allowing clients to easily navigate through paginated results while also accessing comprehensive information about each STORE.
  * The constructor initializes the pagination metadata and the array of STORE details, ensuring that the response is structured correctly for client consumption.
  */
 export class StoreListResponseDto extends PaginatedResponseDto {
   @ApiProperty({
-    type: StoreResponseDto,
+    type: GetStoreDto,
     isArray: true,
     description: 'List of stores',
   })
-  @Type(() => StoreResponseDto)
+  @Type(() => GetStoreDto)
   @ValidateNested({ each: true })
-  stores: StoreResponseDto[];
+  data: GetStoreDto[];
 
   constructor(
     total: number,
     page: number,
     limit: number,
     totalPages: number,
-    stores: StoreResponseDto[],
+    data: GetStoreDto[],
   ) {
     super(total, page, limit, totalPages);
-    this.stores = stores;
+    this.data = data;
   }
 }
 

@@ -1,6 +1,8 @@
+import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
   CreateStoreDto,
   GetStoreDto,
+  StoreListResponseDto,
   StoreResponseDto,
 } from '@/storeDto/store.dto';
 import { CreateService } from '@/storeServices/create.service';
@@ -15,6 +17,10 @@ export class StorePipelineService {
     private readonly storeService: StoreService,
     private readonly createService: CreateService,
   ) {}
+
+  async getMany(data: StoreQueryRequest): Promise<StoreListResponseDto> {
+    return await this.storeService.getMany(data);
+  }
 
   async getByIdOrThrow(id: UUID): Promise<GetStoreDto> {
     return await this.storeService.getByIdOrThrow(id);

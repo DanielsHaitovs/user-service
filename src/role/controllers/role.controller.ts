@@ -15,7 +15,13 @@ import {
 } from '@/libConst/role.const';
 import { EXAMPLE_USER_ID } from '@/libConst/user.const';
 import { RolePipelineService } from '@/role/role.pipeline';
-import { CreateRoleDto, GetRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
+import { RolesQueryRequest } from '@/roleDto/query.dto';
+import {
+  CreateRoleDto,
+  GetRoleDto,
+  RoleListResponseDto,
+  RoleResponseDto,
+} from '@/roleDto/role.dto';
 import {
   Body,
   Controller,
@@ -25,6 +31,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
@@ -149,5 +156,32 @@ export class RoleController {
     //   this.extractAccess(requestedByUser);
 
     return await this.pipelineService.getByNameOrThrow(name);
+  }
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @ApiOkList({
+    permissions: [READ_ROLE],
+    operation: {
+      summary: 'Searches for roles',
+      description:
+        'Searches for roles by their unique identifiers or names. If no query parameters are provided, returns all roles.',
+    },
+    badRequestMessages: {
+      examples: ['user id must be a valid UUID', 'user id is required'],
+    },
+    okOperation: {
+      description: 'Returns a list of user roles matching the provided user ID',
+      type: RoleListResponseDto,
+      isArray: false,
+    },
+  })
+  async findRoles(
+    @Query() query: RolesQueryRequest,
+    // @CurrentUser() requestedByUser: JWTPayload,
+  ): Promise<RoleListResponseDto> {
+    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
+    //   this.extractAccess(requestedByUser);
+    return await this.pipelineService.getMany(query);
   }
 }

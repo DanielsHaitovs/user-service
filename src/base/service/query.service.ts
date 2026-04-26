@@ -561,9 +561,9 @@ export class EntityQueryService {
     const [items, totalCount] = await query.getManyAndCount();
 
     return {
-      total: totalCount,
       page: page / limit + 1,
       limit,
+      total: totalCount,
       totalPages: Math.ceil(totalCount / limit),
       data: items,
     } as PaginatedResponseDto & { data: T[] };

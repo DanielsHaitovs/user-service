@@ -1,7 +1,9 @@
+import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {
   CreateRoleDto,
   GetRoleDto,
   PermissionsToRoleDto,
+  RoleListResponseDto,
   RoleResponseDto,
 } from '@/roleDto/role.dto';
 import { CreateService } from '@/roleServices/create.service';
@@ -16,6 +18,10 @@ export class RolePipelineService {
     private readonly roleService: RoleService,
     private readonly createService: CreateService,
   ) {}
+
+  async getMany(data: RolesQueryRequest): Promise<RoleListResponseDto> {
+    return await this.roleService.getMany(data);
+  }
 
   async getByIdOrThrow(id: UUID): Promise<GetRoleDto> {
     return await this.roleService.getByIdOrThrow(id);

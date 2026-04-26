@@ -16,6 +16,7 @@ import { StorePipelineService } from '@/store/store.pipeline';
 import {
   CreateStoreDto,
   GetStoreDto,
+  StoreListResponseDto,
   StoreResponseDto,
 } from '@/storeDto/store.dto';
 import {
@@ -27,10 +28,13 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+
+import { StoreQueryRequest } from '../dto/query.dto';
 
 @ApiTags('Stores')
 @Controller('store')
@@ -191,5 +195,33 @@ export class StoreController {
     //   this.extractAccess(requestedByUser);
 
     return await this.pipelineService.getByViewCodeOrThrow(viewCode);
+  }
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @ApiOkList({
+    permissions: [READ_STORE],
+    operation: {
+      summary: 'Searches for stores by various parameters',
+      description:
+        'Searches for stores by their unique identifiers, names, codes or viewCodes. If no query parameters are provided, returns all stores.',
+    },
+    badRequestMessages: {
+      examples: ['store id must be a valid UUID', 'store id is required'],
+    },
+    okOperation: {
+      description:
+        'Returns a list of stores matching the provided query parameters',
+      type: StoreListResponseDto,
+      isArray: false,
+    },
+  })
+  async findStores(
+    @Query() query: StoreQueryRequest,
+    // @CurrentUser() requestedByUser: JWTPayload,
+  ): Promise<StoreListResponseDto> {
+    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
+    //   this.extractAccess(requestedByUser);
+    return await this.pipelineService.getMany(query);
   }
 }

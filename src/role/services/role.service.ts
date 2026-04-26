@@ -1,6 +1,12 @@
+import { EntityQueryService } from '@/base/service/query.service';
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
-import { GetRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
+import { RolesQueryRequest } from '@/roleDto/query.dto';
+import {
+  GetRoleDto,
+  RoleListResponseDto,
+  RoleResponseDto,
+} from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,7 +20,81 @@ export class RoleService {
     @InjectRepository(Roles)
     private readonly roleRepository: Repository<Roles>,
     private readonly permissionHelper: PermissionHelperService,
+    private readonly queryService: EntityQueryService,
   ) {}
+
+  /**
+   * Retrieves a list of roles based on the provided query parameters, including pagination, sorting, and filtering options.
+   * @param data - An object containing the query parameters for retrieving roles, such as IDs, names, pagination details, sorting options, and date filters.
+   * @returns A promise that resolves to a RoleListResponseDto containing the paginated list of roles matching the query criteria.
+   */
+  async getMany(data: RolesQueryRequest): Promise<RoleListResponseDto> {
+    const {
+      ids,
+      names,
+      page,
+      limit,
+      sortField,
+      sortOrder,
+      dateFilterParam,
+      dateFrom,
+      dateTo,
+    } = data;
+
+    const query = this.queryService.initQuery<Roles>({
+      entity: Roles,
+      alias: 'roles',
+    });
+
+    this.queryService.whereIn<Roles>({
+      query,
+      field: 'roles.name',
+      condition: 'AND',
+      values: names,
+    });
+
+    this.queryService.whereIn<Roles>({
+      query,
+      field: 'roles.id',
+      condition: 'AND',
+      values: ids,
+    });
+
+    if (dateFilterParam != undefined) {
+      this.queryService.dateGreaterThan<Roles>({
+        query,
+        field: `roles.${dateFilterParam}`,
+        condition: 'AND',
+        date: dateFrom,
+      });
+      this.queryService.dateLessThan<Roles>({
+        query,
+        field: `roles.${dateFilterParam}`,
+        condition: 'AND',
+        date: dateTo,
+      });
+    }
+
+    this.queryService.sort<Roles>({
+      query,
+      sort: {
+        sortField,
+        sortOrder,
+      },
+    });
+
+    this.queryService.paginate<Roles>({
+      query,
+      pagination: {
+        page,
+        limit,
+      },
+    });
+
+    return await this.queryService.paginatedResult({
+      query,
+    });
+  }
 
   /**
    * Retrieves a role by its ID or throws an exception if not found.

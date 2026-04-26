@@ -198,22 +198,22 @@ export class RoleResponseDto extends GetRoleDto {
  */
 export class RoleListResponseDto extends PaginatedResponseDto {
   @ApiProperty({
-    type: RoleResponseDto,
+    type: GetRoleDto,
     isArray: true,
     description: 'List of roles',
   })
-  @Type(() => RoleResponseDto)
+  @Type(() => GetRoleDto)
   @ValidateNested({ each: true })
-  roles: RoleResponseDto[];
+  data: GetRoleDto[];
 
   constructor(
     total: number,
     page: number,
     limit: number,
     totalPages: number,
-    roles: RoleResponseDto[],
+    data: GetRoleDto[],
   ) {
     super(total, page, limit, totalPages);
-    this.roles = roles;
+    this.data = data;
   }
 }

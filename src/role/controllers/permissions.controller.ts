@@ -139,7 +139,7 @@ export class RolePermissionsController {
     example: EXAMPLE_ROLE_ID,
   })
   async findByIdWithPermissions(
-    @Param('id', ParseUUIDPipe) roleId: UUID,
+    @Param('roleId', ParseUUIDPipe) roleId: UUID,
     // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<RoleResponseDto> {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =

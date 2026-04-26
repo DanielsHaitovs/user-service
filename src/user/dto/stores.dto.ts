@@ -1,9 +1,14 @@
+import {
+  PaginatedResponseDto,
+  QueryRequestDto,
+} from '@/baseDto/pagination.dto';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import {
   EXAMPLE_STORE_CODE,
   EXAMPLE_STORE_ID,
   EXAMPLE_STORE_VIEW_CODE,
 } from '@/lib/const/store.const';
+import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import { GetAssignedByDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
@@ -11,12 +16,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { UUID } from 'crypto';
-
-import {
-  PaginatedResponseDto,
-  QueryRequestDto,
-} from '../../base/dto/pagination.dto';
-import { EXAMPLE_USER_ID } from '../../lib/const/user.const';
 
 export class CreateUserStoresDto {
   @ApiProperty({

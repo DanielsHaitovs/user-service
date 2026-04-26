@@ -14,7 +14,13 @@ import {
   USER_MIN_OPERATION_BAD_REQUEST_MSG,
 } from '@/libConst/user.const';
 import { UserPipelineService } from '@/user/user.pipeline';
-import { CreateUserDto, GetUserDto, UserResponseDto } from '@/userDto/user.dto';
+import { UserQueryRequest } from '@/userDto/query.dto';
+import {
+  CreateUserDto,
+  GetUserDto,
+  UserListResponseDto,
+  UserResponseDto,
+} from '@/userDto/user.dto';
 import {
   Body,
   Controller,
@@ -24,6 +30,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
@@ -41,7 +48,7 @@ import { UUID } from 'crypto';
 @Controller('user')
 @TraceController()
 export class UserController {
-  constructor(protected readonly userPipelineService: UserPipelineService) {}
+  constructor(protected readonly pipelineService: UserPipelineService) {}
 
   /**
    * Creates a new user account.
@@ -95,7 +102,7 @@ export class UserController {
     @Body() createDto: CreateUserDto,
     // @CurrentUser() createdByUser: JWTPayload,
   ): Promise<UserResponseDto> {
-    return await this.userPipelineService.create({
+    return await this.pipelineService.create({
       createDto,
       createdById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
     });
@@ -131,7 +138,7 @@ export class UserController {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 
-    return await this.userPipelineService.getByIdOrThrow(id);
+    return await this.pipelineService.getByIdOrThrow(id);
   }
 
   @Get('email/:email')
@@ -164,6 +171,34 @@ export class UserController {
     // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
     //   this.extractAccess(requestedByUser);
 
-    return await this.userPipelineService.getByEmailOrThrow(email);
+    return await this.pipelineService.getByEmailOrThrow(email);
+  }
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @ApiOkList({
+    permissions: [READ_USER],
+    operation: {
+      summary: 'Searches for users by various parameters',
+      description:
+        'Searches for users by their unique identifiers, names, emails, or other attributes. If no query parameters are provided, returns all users.',
+    },
+    badRequestMessages: {
+      examples: ['user id must be a valid UUID', 'user id is required'],
+    },
+    okOperation: {
+      description:
+        'Returns a list of users matching the provided query parameters',
+      type: UserListResponseDto,
+      isArray: false,
+    },
+  })
+  async findUsers(
+    @Query() query: UserQueryRequest,
+    // @CurrentUser() requestedByUser: JWTPayload,
+  ): Promise<UserListResponseDto> {
+    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
+    //   this.extractAccess(requestedByUser);
+    return await this.pipelineService.getMany(query);
   }
 }

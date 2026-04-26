@@ -17,6 +17,10 @@ import {
   SelectQueryBuilder,
 } from 'typeorm';
 
+type QueryField<T extends ObjectLiteral> =
+  | Extract<keyof T, string>
+  | `${string}.${string}`;
+
 /**
  * Base service providing reusable TypeORM query building utilities.
  *
@@ -48,7 +52,7 @@ export class EntityQueryService {
     relationAlias,
   }: {
     query: SelectQueryBuilder<T>;
-    field: string;
+    field: QueryField<T>;
     values: unknown[] | undefined;
     condition: 'OR' | 'AND';
     relationAlias?: string;
@@ -78,7 +82,7 @@ export class EntityQueryService {
     relationAlias,
   }: {
     query: SelectQueryBuilder<T>;
-    field: string;
+    field: QueryField<T>;
     value: unknown;
     condition: 'OR' | 'AND';
     relationAlias?: string;
@@ -451,7 +455,7 @@ export class EntityQueryService {
       if (Array.isArray(values) && values.length > 0) {
         this.whereIn({
           query,
-          field,
+          field: field as QueryField<T>,
           values,
           condition,
           relationAlias,

@@ -72,13 +72,13 @@ export class UserRolesService {
     if (dateFilterParam != undefined) {
       this.queryService.dateGreaterThan<UserRoles>({
         query,
-        field: `userRole.${dateFilterParam}`,
+        field: dateFilterParam,
         condition: 'AND',
         date: dateFrom,
       });
       this.queryService.dateLessThan<UserRoles>({
         query,
-        field: `userRole.${dateFilterParam}`,
+        field: dateFilterParam,
         condition: 'AND',
         date: dateTo,
       });

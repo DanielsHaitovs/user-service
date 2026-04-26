@@ -13,6 +13,7 @@ import {
   STORE_NOT_FOUND_MSG,
 } from '@/lib/const/store.const';
 import { StorePipelineService } from '@/store/store.pipeline';
+import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
   CreateStoreDto,
   GetStoreDto,
@@ -33,8 +34,6 @@ import {
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { StoreQueryRequest } from '../dto/query.dto';
 
 @ApiTags('Stores')
 @Controller('store')

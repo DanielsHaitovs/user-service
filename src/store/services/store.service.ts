@@ -1,4 +1,5 @@
 import { EntityQueryService } from '@/base/service/query.service';
+import { STORE_QUERY_ALIAS } from '@/lib/const/store.const';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import { GetStoreDto, StoreListResponseDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
@@ -38,33 +39,33 @@ export class StoreService {
 
     const query = this.queryService.initQuery<Store>({
       entity: Store,
-      alias: 'store',
+      alias: STORE_QUERY_ALIAS,
     });
 
     this.queryService.whereIn<Store>({
       query,
-      field: 'store.name',
+      field: 'name',
       condition: 'AND',
       values: names,
     });
 
     this.queryService.whereIn<Store>({
       query,
-      field: 'store.id',
+      field: 'id',
       condition: 'AND',
       values: ids,
     });
 
     this.queryService.whereIn<Store>({
       query,
-      field: 'store.code',
+      field: 'code',
       condition: 'AND',
       values: codes,
     });
 
     this.queryService.whereIn<Store>({
       query,
-      field: 'store.viewCode',
+      field: 'viewCode',
       condition: 'AND',
       values: viewCodes,
     });
@@ -72,13 +73,13 @@ export class StoreService {
     if (dateFilterParam != undefined) {
       this.queryService.dateGreaterThan<Store>({
         query,
-        field: `store.${dateFilterParam}`,
+        field: dateFilterParam,
         condition: 'AND',
         date: dateFrom,
       });
       this.queryService.dateLessThan<Store>({
         query,
-        field: `store.${dateFilterParam}`,
+        field: dateFilterParam,
         condition: 'AND',
         date: dateTo,
       });

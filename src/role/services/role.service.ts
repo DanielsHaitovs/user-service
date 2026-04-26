@@ -1,4 +1,5 @@
 import { EntityQueryService } from '@/base/service/query.service';
+import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
@@ -43,19 +44,19 @@ export class RoleService {
 
     const query = this.queryService.initQuery<Roles>({
       entity: Roles,
-      alias: 'roles',
+      alias: ROLE_QUERY_ALIAS,
     });
 
     this.queryService.whereIn<Roles>({
       query,
-      field: 'roles.name',
+      field: 'name',
       condition: 'AND',
       values: names,
     });
 
     this.queryService.whereIn<Roles>({
       query,
-      field: 'roles.id',
+      field: 'id',
       condition: 'AND',
       values: ids,
     });
@@ -63,13 +64,13 @@ export class RoleService {
     if (dateFilterParam != undefined) {
       this.queryService.dateGreaterThan<Roles>({
         query,
-        field: `roles.${dateFilterParam}`,
+        field: dateFilterParam,
         condition: 'AND',
         date: dateFrom,
       });
       this.queryService.dateLessThan<Roles>({
         query,
-        field: `roles.${dateFilterParam}`,
+        field: dateFilterParam,
         condition: 'AND',
         date: dateTo,
       });

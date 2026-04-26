@@ -543,21 +543,21 @@ export class UpdateUserDto extends PartialType(GetUserDto) {
 export class UserListResponseDto extends PaginatedResponseDto {
   @ApiProperty({
     description: 'Array of user objects matching the query criteria',
-    type: UserResponseDto,
+    type: GetUserDto,
     isArray: true,
   })
-  @Type(() => UserResponseDto)
+  @Type(() => GetUserDto)
   @ValidateNested({ each: true })
-  users: UserResponseDto[];
+  data: GetUserDto[];
 
   constructor(
     total: number,
     page: number,
     limit: number,
     totalPages: number,
-    users: UserResponseDto[],
+    data: GetUserDto[],
   ) {
     super(total, page, limit, totalPages);
-    this.users = users;
+    this.data = data;
   }
 }

@@ -27,13 +27,14 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Version,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
 @ApiTags('Permissions')
-@Controller('permission')
+@Controller({ path: 'permission', version: ['1'] })
 @TraceController()
 export class PermissionController {
   constructor(protected readonly pipelineService: PermissionPipelineService) {}
@@ -52,6 +53,7 @@ export class PermissionController {
    * @throws UnprocessableEntityException if any of the provided role IDs do not exist
    */
   @Post()
+  @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @ApiOkList({
     permissions: [READ_ROLE, READ_PERMISSION, CREATE_PERMISSION],
@@ -103,6 +105,7 @@ export class PermissionController {
    * @throws EntityNotFoundError if the permission is not found
    */
   @Get('id/:id')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions(READ_PERMISSION)
   @HttpCode(HttpStatus.OK)
@@ -141,6 +144,7 @@ export class PermissionController {
   }
 
   @Get('code/:code')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_PERMISSION],

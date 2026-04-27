@@ -19,18 +19,23 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Version,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
 @ApiTags('Roles Permissions')
-@Controller('role/permissions')
+@Controller({
+  path: 'role/permissions',
+  version: ['1'],
+})
 @TraceController()
 export class RolePermissionsController {
   constructor(protected readonly pipelineService: RolePipelineService) {}
 
   @Post('assign')
+  @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @ApiOkList({
     permissions: [READ_ROLE, READ_PERMISSION, UPDATE_ROLE],
@@ -71,6 +76,7 @@ export class RolePermissionsController {
   }
 
   @Post('unAssign')
+  @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @ApiOkList({
     permissions: [READ_ROLE, READ_PERMISSION, UPDATE_ROLE],
@@ -112,6 +118,7 @@ export class RolePermissionsController {
   }
 
   @Get(':roleId')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_ROLE],

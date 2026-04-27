@@ -27,6 +27,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Version,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
@@ -41,7 +42,10 @@ import { UUID } from 'crypto';
  * for flexible client integration.
  */
 @ApiTags('Users Roles')
-@Controller('user/roles')
+@Controller({
+  path: 'user/roles',
+  version: ['1'],
+})
 @TraceController()
 export class UserRolesController {
   constructor(
@@ -49,6 +53,7 @@ export class UserRolesController {
   ) {}
 
   @Post()
+  @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @ApiOkList({
     permissions: [READ_USER, READ_ROLE, CREATE_USER_ROLE, READ_USER_ROLE],
@@ -80,6 +85,7 @@ export class UserRolesController {
   }
 
   @Delete()
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER, READ_ROLE, DELETE_USER_ROLE, READ_USER_ROLE],
@@ -108,6 +114,7 @@ export class UserRolesController {
   }
 
   @Get()
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER_ROLE, READ_ROLE, READ_USER],
@@ -134,6 +141,7 @@ export class UserRolesController {
   }
 
   @Get('permissions/:userId')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER_ROLE, READ_ROLE, READ_PERMISSION, READ_USER],

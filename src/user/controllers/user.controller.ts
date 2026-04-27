@@ -31,6 +31,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Version,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
@@ -45,7 +46,10 @@ import { UUID } from 'crypto';
  * for flexible client integration.
  */
 @ApiTags('Users')
-@Controller('user')
+@Controller({
+  path: 'user',
+  version: ['1'],
+})
 @TraceController()
 export class UserController {
   constructor(protected readonly pipelineService: UserPipelineService) {}
@@ -65,6 +69,7 @@ export class UserController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Version('1')
   @ApiOkList({
     permissions: [
       CREATE_USER,
@@ -109,6 +114,7 @@ export class UserController {
   }
 
   @Get('id/:id')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER],
@@ -142,6 +148,7 @@ export class UserController {
   }
 
   @Get('email/:email')
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER],
@@ -175,6 +182,7 @@ export class UserController {
   }
 
   @Get()
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER],

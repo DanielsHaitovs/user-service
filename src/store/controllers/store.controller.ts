@@ -1,5 +1,4 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
-import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import {
   CONFLICT_STORE_NAME_MSG,
@@ -30,18 +29,20 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Version,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
 @ApiTags('Stores')
-@Controller('store')
+@Controller({ path: 'store', version: ['1'] })
 @TraceController()
 export class StoreController {
   constructor(protected readonly pipelineService: StorePipelineService) {}
 
   @Post()
+  @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @ApiOkList({
     permissions: [CREATE_STORE],
@@ -83,8 +84,7 @@ export class StoreController {
   }
 
   @Get('id/:id')
-  @HttpCode(HttpStatus.OK)
-  @Permissions(READ_STORE)
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_STORE],
@@ -121,8 +121,7 @@ export class StoreController {
   }
 
   @Get('code/:code')
-  @HttpCode(HttpStatus.OK)
-  @Permissions(READ_STORE)
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_STORE],
@@ -159,8 +158,7 @@ export class StoreController {
   }
 
   @Get('viewCode/:viewCode')
-  @HttpCode(HttpStatus.OK)
-  @Permissions(READ_STORE)
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_STORE],
@@ -197,6 +195,7 @@ export class StoreController {
   }
 
   @Get()
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_STORE],

@@ -22,6 +22,7 @@ import {
   HttpStatus,
   Post,
   Query,
+  Version,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -36,7 +37,10 @@ import { UUID } from 'crypto';
  * for flexible client integration.
  */
 @ApiTags('Users Stores')
-@Controller('user/stores')
+@Controller({
+  path: 'user/stores',
+  version: ['1'],
+})
 @TraceController()
 export class UserStoresController {
   constructor(
@@ -44,6 +48,7 @@ export class UserStoresController {
   ) {}
 
   @Post()
+  @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @ApiOkList({
     permissions: [READ_USER, READ_STORE, CREATE_USER_STORE, READ_USER_STORE],
@@ -75,6 +80,7 @@ export class UserStoresController {
   }
 
   @Delete()
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER, READ_STORE, CREATE_USER_STORE, READ_USER_STORE],
@@ -103,6 +109,7 @@ export class UserStoresController {
   }
 
   @Get()
+  @Version('1')
   @HttpCode(HttpStatus.OK)
   @ApiOkList({
     permissions: [READ_USER_STORE, READ_STORE, READ_USER],

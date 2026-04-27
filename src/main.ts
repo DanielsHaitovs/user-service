@@ -3,12 +3,16 @@ import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
 import { ResponseTimeInterceptor } from '@/interceptors/response-time.interceptor';
 import { AppModule } from '@/src/app.module';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
 
   app.useGlobalInterceptors(
     new LoggingInterceptor(),

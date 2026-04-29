@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+import { AuthModule } from '@/auth/auth.module';
 import { BaseModule } from '@/base/base.module';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
@@ -72,6 +73,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     RolesModule,
     StoreModule,
     BaseModule,
+    AuthModule,
     // ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
 })

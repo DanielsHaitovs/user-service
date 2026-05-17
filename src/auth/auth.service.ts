@@ -1,4 +1,5 @@
-import { AuthenticateDto } from '@/auth/auth.dto';
+import { AuthenticateDto, ResetPasswordDto } from '@/auth/auth.dto';
+import { JwtPayload } from '@/auth/auth.interface';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { User } from '@/userEntities/user.entity';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
@@ -31,9 +32,27 @@ export class AuthService {
     // Generate a JWT and return it here
     // instead of the user object
 
-    const payload = { email, password };
+    const payload: JwtPayload = { id: user.id, email, password };
 
     return await this.jwtService.signAsync(payload);
+  }
+
+  async resetPassword(data: ResetPasswordDto): Promise<void> {
+    const { email, password, newPassword } = data;
+
+    const user = await this.getByEmailOrThrow(email);
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      throw new UnauthorizedException();
+    }
+
+    user.password = await bcrypt.hash(
+      newPassword,
+      this.envConfigService.passwordSaltRounds,
+    );
+    await this.entityManager.save(user);
   }
 
   private async getByEmailOrThrow(email: string): Promise<User> {

@@ -39,6 +39,12 @@ export class EnvConfigService {
     }) as boolean;
   }
 
+  get passwordSaltRounds(): number {
+    return this.configService.get<number>('USER_PASSWEORD_SALT_ROUNDS', {
+      infer: true,
+    }) as number;
+  }
+
   get databaseName(): string {
     return this.configService.get<string>('USER_DATABASE_NAME', {
       infer: true,

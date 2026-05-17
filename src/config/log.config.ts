@@ -16,6 +16,7 @@ export const classesToSkip = [
   'DataSource',
   'Logger',
   'QueryRunner',
+  'EnvConfigService',
   'ConfigService',
   'JwtService',
   'TraceController',

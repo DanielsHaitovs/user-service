@@ -2,7 +2,7 @@ import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { COUNTRIES } from '@/libConst/countries.const';
-import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+import { EXAMPLE_USER_ID, SYSTEM_USER_PASSWORD } from '@/libConst/user.const';
 import { GetUserRoleDto } from '@/userDto/roles.dto';
 import { GetUserStoreDto } from '@/userDto/stores.dto';
 import {
@@ -86,7 +86,7 @@ export class UserBaseDto {
 
   @ApiProperty({
     description: 'User password - will be hashed before storage',
-    example: 'SecurePassword123!',
+    example: SYSTEM_USER_PASSWORD,
     minLength: 8,
     maxLength: 255,
     type: String,

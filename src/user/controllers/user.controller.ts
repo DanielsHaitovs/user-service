@@ -51,6 +51,8 @@ import { UUID } from 'crypto';
   version: ['1'],
 })
 @TraceController()
+// @ApiBearerAuth('JWT-auth')
+// @UseGuards(AuthGuard)
 export class UserController {
   constructor(protected readonly pipelineService: UserPipelineService) {}
 

@@ -105,6 +105,17 @@ export class EnvironmentVariables {
     return Number(value);
   })
   @IsDefined()
+  USER_PASSWEORD_SALT_ROUNDS: number;
+
+  @IsNumber()
+  @Transform(({ value }) => {
+    if (value === '' || value === null || value === undefined) {
+      return undefined;
+    }
+
+    return Number(value);
+  })
+  @IsDefined()
   USER_THROTTLE_TTL: number;
 
   @IsNumber()
@@ -124,6 +135,7 @@ export class EnvironmentVariables {
     jwtSecret: string,
     jwtExpiration: number,
     requireAuth: boolean,
+    passwordSaltRounds: number,
     databaseName: string,
     databaseHost: string,
     databasePort: number,
@@ -139,6 +151,7 @@ export class EnvironmentVariables {
     this.USER_JWT_SECRET = jwtSecret;
     this.USER_JWT_EXPIRATION = jwtExpiration;
     this.USER_REQUIRE_AUTH = requireAuth;
+    this.USER_PASSWEORD_SALT_ROUNDS = passwordSaltRounds;
     this.USER_DATABASE_NAME = databaseName;
     this.USER_DATABASE_HOST = databaseHost;
     this.USER_DATABASE_PORT = databasePort;

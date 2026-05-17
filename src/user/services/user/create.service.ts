@@ -17,6 +17,8 @@ import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { DataSource } from 'typeorm';
 
+import { EnvConfigService } from '../../../config/env/env.config.service';
+
 @Injectable()
 export class CreateService {
   constructor(
@@ -24,6 +26,7 @@ export class CreateService {
     private readonly userHelper: UserHelperService,
     private readonly roleHelper: RoleHelperService,
     private readonly storeHelper: StoreHelperService,
+    private readonly envConfigService: EnvConfigService,
   ) {}
 
   /**
@@ -47,7 +50,10 @@ export class CreateService {
       this.userHelper.validateIfExists({ id: createdById }),
     ]);
 
-    createDto.password = await bcrypt.hash(createDto.password, 10);
+    createDto.password = await bcrypt.hash(
+      createDto.password,
+      this.envConfigService.passwordSaltRounds,
+    );
 
     return this.dataSource.transaction(async (manager) => {
       const payload = manager.create(User, createDto);

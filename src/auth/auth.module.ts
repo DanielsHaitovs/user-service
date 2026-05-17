@@ -1,21 +1,19 @@
 import { AuthController } from '@/auth/auth.controller';
 import { AuthService } from '@/auth/auth.service';
-import { Roles } from '@/roleEntities/role.entity';
-import { User } from '@/userEntities/user.entity';
-import { UserRoles } from '@/userEntities/userRoles.entity';
+import { AuthGuard } from '@/commonGuards/auth.guard';
+import { EnvConfigService } from '@/config/env/env.config.service';
+import { UserModule } from '@/user/user.module';
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { EnvConfigService } from '../config/env/env.config.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Roles, UserRoles]),
+    UserModule,
     JwtModule.registerAsync({
+      global: true,
       useFactory: (configService: EnvConfigService) => ({
         secret: configService.jwtSecret,
-        secretOrPrivateKey: configService.jwtSecret,
         signOptions: {
           expiresIn: configService.jwtExpiration,
         },
@@ -24,7 +22,14 @@ import { EnvConfigService } from '../config/env/env.config.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [
+    AuthService,
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+  ],
+  exports: [AuthService],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class AuthModule {}

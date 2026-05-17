@@ -7,8 +7,11 @@ import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+import { EnvConfigService } from './config/env/env.config.service';
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const envConfig = app.get(EnvConfigService);
 
   app.enableVersioning({
     type: VersioningType.URI,
@@ -58,7 +61,7 @@ async function bootstrap(): Promise<void> {
       'JWT-auth',
     );
 
-  // if (process.env.NODE_ENV === 'development') {
+  // if (envConfig.nodeEnv === 'development') {
   //   config.addTag('Seed', 'Seed operations');
   // }
 
@@ -68,13 +71,14 @@ async function bootstrap(): Promise<void> {
 
   SwaggerModule.setup('api', app, document, swaggerSetupOptions);
 
-  const port = Number(process.env.USER_API_PORT) || 3000;
+  const port = Number(envConfig.apiPort) || 3000;
+
   await app.listen(port);
 
-  if (process.env.NODE_ENV === 'development') {
+  if (envConfig.nodeEnv === 'development') {
     logger.warn('You are in development mode');
 
-    if (process.env.REQUIRE_AUTH === 'false') {
+    if (!envConfig.requireAuth) {
       logger.warn('Authentication is disabled');
     }
   }

@@ -42,8 +42,10 @@ export class CreateService {
     createDto: CreateUserDto;
     createdById: UUID;
   }): Promise<UserResponseDto> {
-    await this.userHelper.throwIfExists([createDto.email]);
-    await this.userHelper.validateIfExists({ id: createdById });
+    await Promise.all([
+      this.userHelper.throwIfExists([createDto.email]),
+      this.userHelper.validateIfExists({ id: createdById }),
+    ]);
 
     createDto.password = await bcrypt.hash(createDto.password, 10);
 
@@ -57,13 +59,10 @@ export class CreateService {
 
       const newUser: UserResponseDto = await manager.save(User, payload);
 
-      if (roleIds.length > 0) {
-        await this.roleHelper.validateIfExist(roleIds);
-      }
-
-      if (storeIds.length > 0) {
-        await this.storeHelper.validateStoresExists(storeIds);
-      }
+      await Promise.all([
+        this.roleHelper.validateIfExist(roleIds),
+        this.storeHelper.validateStoresExists(storeIds),
+      ]);
 
       newUser.createdBy = { id: createdById } as GetCreatedByDto;
 

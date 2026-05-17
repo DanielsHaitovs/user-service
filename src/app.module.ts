@@ -2,72 +2,56 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { AuthModule } from '@/auth/auth.module';
 import { BaseModule } from '@/base/base.module';
+import { EnvConfigService } from '@/config/env/env.config.service';
+import { EnvConfigModule } from '@/config/env/env.module';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
 import { UserModule } from '@/user/user.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   controllers: [],
   providers: [],
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '../.env',
-    }),
+    EnvConfigModule,
     ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      // eslint-disable-next-line sonarjs/function-return-type
-      useFactory: (configService: ConfigService): ThrottlerModuleOptions => {
-        const ttl = parseInt(
-          configService.get<string>('THROTTLE_TTL') ?? '60',
-          10,
-        );
-        const limit = parseInt(
-          configService.get<string>('THROTTLE_LIMIT') ?? '5',
-          10,
-        );
-
+      useFactory: (configService: EnvConfigService) => {
         return {
           throttlers: [
             {
-              ttl,
-              limit,
+              ttl: configService.throttleTtl,
+              limit: configService.throttleLimit,
             },
           ],
         };
       },
+      inject: [EnvConfigService],
     }),
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: (configService: EnvConfigService) => ({
         type: 'postgres',
         cache: {
           type: 'database',
           duration: 600000,
         },
-        host: configService.get('USER_DATABASE_HOST') ?? 'localhost',
-        port: parseInt(configService.get('USER_DATABASE_PORT') ?? '5432', 10),
-        username: configService.get('USER_DATABASE_USERNAME') ?? 'postgres',
-        password: configService.get('USER_DATABASE_PASSWORD') ?? 'postgres',
-        database: configService.get('USER_DATABASE_NAME') ?? 'postgres',
-        synchronize: configService.get('USER_DATABASE_SYNC') === 'true',
         // poolSize: 50,
         // extra: { max: 50, idleTimeoutMillis: 30000, statement_timeout: 0 },
-        logging:
-          configService.get('USER_DATABASE_LOGGING') === 'true'
-            ? ['error']
-            : false,
+        host: configService.databaseHost,
+        port: configService.databasePort,
+        username: configService.databaseUsername,
+        password: configService.databasePassword,
+        database: configService.databaseName,
+        synchronize: configService.databaseSync,
+        logging: configService.databaseLogging ? 'all' : ['error'],
         entities: [`${__dirname}/**/*.entity{.ts,.js}`],
         migrations: [`${__dirname}/migrations/*{.ts,.js}`],
         autoLoadEntities: true,
       }),
-      inject: [ConfigService],
+      // 4. This injects your custom service and passes it to the useFactory above
+      inject: [EnvConfigService],
     }),
     UserModule,
     RolesModule,

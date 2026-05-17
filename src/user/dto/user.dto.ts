@@ -212,8 +212,8 @@ export class CreateUserDto extends UserBaseDto {
     phone: string,
     dateOfBirth: Date,
     isActive: boolean,
-    roleIds: UUID[],
-    storeIds: UUID[],
+    roleIds?: UUID[],
+    storeIds?: UUID[],
   ) {
     super(
       country,
@@ -226,8 +226,8 @@ export class CreateUserDto extends UserBaseDto {
       dateOfBirth,
     );
     this.isActive = isActive;
-    this.roleIds = roleIds;
-    this.storeIds = storeIds;
+    this.roleIds = roleIds ?? [];
+    this.storeIds = storeIds ?? [];
   }
 }
 

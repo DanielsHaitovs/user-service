@@ -1,7 +1,7 @@
 import { AuthenticateDto } from '@/auth/auth.dto';
+import { EnvConfigService } from '@/config/env/env.config.service';
 import { User } from '@/userEntities/user.entity';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
@@ -13,7 +13,7 @@ export class AuthService {
   constructor(
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
-    private readonly configService: ConfigService,
+    private readonly envConfigService: EnvConfigService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -45,10 +45,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const REQUIRE_AUTH =
-      this.configService.get<string>('REQUIRE_AUTH') === 'true';
-
-    if (!REQUIRE_AUTH) {
+    if (!this.envConfigService.requireAuth) {
       return user;
     }
 

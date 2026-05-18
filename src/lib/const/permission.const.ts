@@ -1,4 +1,5 @@
 import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
+import { READ_USER } from '@/libConst/user.const';
 
 /**
  * Sample UUID v4 for permission identification in tests and API documentation.
@@ -29,7 +30,7 @@ export const ROOT_ADMIN_PERMISSION = 'root_admin' as string;
  * Standard example code used in API documentation and test fixtures.
  * Represents a permission code that is commonly used for testing scenarios.
  */
-export const EXAMPLE_PERMISSION_CODE = 'users-view' as string;
+export const EXAMPLE_PERMISSION_CODE = READ_USER;
 
 /**
  * Standard example description used in API documentation and test fixtures.

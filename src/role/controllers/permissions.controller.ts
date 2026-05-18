@@ -21,7 +21,7 @@ import {
   Post,
   Version,
 } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -31,6 +31,7 @@ import { UUID } from 'crypto';
   version: ['1'],
 })
 @TraceController()
+@ApiBearerAuth('JWT-auth')
 export class RolePermissionsController {
   constructor(protected readonly pipelineService: RolePipelineService) {}
 

@@ -24,7 +24,7 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -42,6 +42,7 @@ import { UUID } from 'crypto';
   version: ['1'],
 })
 @TraceController()
+@ApiBearerAuth('JWT-auth')
 export class UserStoresController {
   constructor(
     protected readonly userStorePipelineService: UserStorePipelineService,

@@ -1,14 +1,13 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { READ_PERMISSION } from '@/lib/const/permission.const';
-import { READ_ROLE } from '@/lib/const/role.const';
 import {
   CREATE_USER_ROLE,
   DELETE_USER_ROLE,
-  EXAMPLE_USER_ID,
-  READ_USER,
+  READ_ROLE,
   READ_USER_ROLE,
-} from '@/lib/const/user.const';
+} from '@/lib/const/role.const';
+import { EXAMPLE_USER_ID, READ_USER } from '@/lib/const/user.const';
 import { UserRolePipelineService } from '@/user/role.pipeline';
 import {
   AssignRolesToUserDto,
@@ -29,7 +28,7 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -47,6 +46,7 @@ import { UUID } from 'crypto';
   version: ['1'],
 })
 @TraceController()
+@ApiBearerAuth('JWT-auth')
 export class UserRolesController {
   constructor(
     protected readonly userRolePipelineService: UserRolePipelineService,

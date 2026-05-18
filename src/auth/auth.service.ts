@@ -2,6 +2,7 @@ import { AuthenticateDto, ResetPasswordDto } from '@/auth/auth.dto';
 import { JwtPayload } from '@/auth/auth.interface';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { User } from '@/userEntities/user.entity';
+import { UserRolesService } from '@/userRoleServices/role.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectEntityManager } from '@nestjs/typeorm';
@@ -16,6 +17,7 @@ export class AuthService {
     private readonly entityManager: EntityManager,
     private readonly envConfigService: EnvConfigService,
     private readonly jwtService: JwtService,
+    private readonly userRoleService: UserRolesService,
   ) {}
 
   async signIn(data: AuthenticateDto): Promise<string> {
@@ -23,6 +25,7 @@ export class AuthService {
 
     const user = await this.getByEmailOrThrow(email);
 
+    console.log('User found for authentication:', user);
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -32,7 +35,11 @@ export class AuthService {
     // Generate a JWT and return it here
     // instead of the user object
 
-    const payload: JwtPayload = { id: user.id, email, password };
+    const permissions = await this.userRoleService.getPermissionsOrThrow(
+      user.id,
+    );
+
+    const payload: JwtPayload = { id: user.id, email, password, permissions };
 
     return await this.jwtService.signAsync(payload);
   }

@@ -1,15 +1,17 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { READ_DEPARTMENT } from '@/libConst/department.const';
-import { READ_ROLE } from '@/libConst/role.const';
+import {
+  CREATE_USER_ROLE,
+  READ_ROLE,
+  READ_USER_ROLE,
+} from '@/libConst/role.const';
 import {
   CREATE_USER,
-  CREATE_USER_ROLE,
   EMAIL_EXISTS_MSG,
   EXAMPLE_USER_EMAIL,
   EXAMPLE_USER_ID,
   READ_USER,
-  READ_USER_ROLE,
   USER_API_OK_RESPONSE_MSG,
   USER_MIN_OPERATION_BAD_REQUEST_MSG,
 } from '@/libConst/user.const';
@@ -33,7 +35,7 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -51,8 +53,7 @@ import { UUID } from 'crypto';
   version: ['1'],
 })
 @TraceController()
-// @ApiBearerAuth('JWT-auth')
-// @UseGuards(AuthGuard)
+@ApiBearerAuth('JWT-auth')
 export class UserController {
   constructor(protected readonly pipelineService: UserPipelineService) {}
 

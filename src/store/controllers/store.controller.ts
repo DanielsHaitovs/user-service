@@ -31,13 +31,14 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
 @ApiTags('Stores')
 @Controller({ path: 'store', version: ['1'] })
 @TraceController()
+@ApiBearerAuth('JWT-auth')
 export class StoreController {
   constructor(protected readonly pipelineService: StorePipelineService) {}
 

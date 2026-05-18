@@ -2,9 +2,14 @@ import { AuthenticateDto } from '@/auth/auth.dto';
 import { AuthService } from '@/auth/auth.service';
 import { Public } from '@/commonDecorators/public.decorator';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ApiBody } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 
-@Controller('auth')
+@Controller({
+  path: 'auth',
+  version: ['1'],
+})
+@ApiTags('Auth')
+@ApiBearerAuth('JWT-auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

@@ -42,6 +42,7 @@ async function bootstrap(): Promise<void> {
     .setDescription('E-commerce platform User API documentation')
     .setVersion('1.0')
     .addTag('App', 'Health check and basic operations')
+    .addTag('Auth', 'Authentication operations')
     .addTag('Users', 'User management operations')
     .addTag('Users Roles', 'User roles management operations')
     .addTag('Users Stores', 'User stores management operations')

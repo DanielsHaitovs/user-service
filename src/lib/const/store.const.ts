@@ -56,25 +56,25 @@ export const STORE_NAME_EXISTS_MSG =
  * Standard example description used in API documentation and test fixtures.
  * Represents a STORE description that is commonly used for testing scenarios.
  */
-export const READ_STORE = 'STORE:read' as string;
+export const READ_STORE = 'store:read' as string;
 
 /**
  * Standard example description used in API documentation and test fixtures.
  * Represents a STORE description that is commonly used for testing scenarios.
  */
-export const CREATE_STORE = 'STORE:create' as string;
+export const CREATE_STORE = 'store:create' as string;
 
 /**
  * Standard example description used in API documentation and test fixtures.
  * Represents a STORE description that is commonly used for testing scenarios.
  */
-export const UPDATE_STORE = 'STORE:update' as string;
+export const UPDATE_STORE = 'store:update' as string;
 
 /**
  * Standard example description used in API documentation and test fixtures.
  * Represents a STORE description that is commonly used for testing scenarios.
  */
-export const DELETE_STORE = 'STORE:delete' as string;
+export const DELETE_STORE = 'store:delete' as string;
 
 export const READ_USER_STORE = 'user-store:read' as string;
 

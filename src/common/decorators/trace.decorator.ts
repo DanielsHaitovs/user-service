@@ -13,10 +13,12 @@ function wrapMethods(proto: GenericObject, logger: Logger): void {
   for (const key of Object.getOwnPropertyNames(proto)) {
     if (key === 'constructor') continue;
 
-    const original = proto[key];
-    if (typeof original !== 'function') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(proto, key);
 
-    const fn = original as (...args: unknown[]) => unknown;
+    if (!descriptor || typeof descriptor.value !== 'function') continue;
+
+    const fn = descriptor.value as (...args: unknown[]) => unknown;
+
     if ((fn as { __isTraced?: boolean }).__isTraced === true) continue;
 
     const wrapped = function (this: object, ...args: unknown[]): unknown {
@@ -45,8 +47,8 @@ function wrapMethods(proto: GenericObject, logger: Logger): void {
       return result;
     };
 
-    for (const metaKey of Reflect.getMetadataKeys(original as object)) {
-      const meta: unknown = Reflect.getMetadata(metaKey, original as object);
+    for (const metaKey of Reflect.getMetadataKeys(fn as object)) {
+      const meta: unknown = Reflect.getMetadata(metaKey, fn as object);
       Reflect.defineMetadata(metaKey, meta, wrapped);
     }
 
@@ -68,8 +70,11 @@ function isSkippable(obj: unknown): boolean {
 
   if (obj instanceof Repository || obj instanceof EntityManager) return true;
 
-  const name = ctor.name ?? '';
-  return classesToSkip.includes(name);
+  if (ctor.name == undefined) {
+    return true;
+  }
+
+  return classesToSkip.includes(ctor.name);
 }
 
 const activeDepth = new WeakMap<object, Map<string, number>>();

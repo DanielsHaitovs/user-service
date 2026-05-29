@@ -44,13 +44,9 @@ export const DELETE_DEPARTMENT = 'department:delete' as string;
 
 export const READ_USER_DEPARTMENT = 'user-department:read' as string;
 
-export const CREATE_USER_DEPARTMENT = 'user-department:create' as string;
-
-export const UPDATE_USER_DEPARTMENT = 'user-department:update' as string;
-
-export const DELETE_USER_DEPARTMENT = 'user-department:delete' as string;
-
 export const ASSIGN_USER_DEPARTMENT = 'user-department:assign' as string;
+
+export const UNASSIGN_USER_DEPARTMENT = 'user-department:unassign' as string;
 
 export const DEPARTMENT_API_OK_RESPONSE_MSG =
   'Department retrieved successfully';

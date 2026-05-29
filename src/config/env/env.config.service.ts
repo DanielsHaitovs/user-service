@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/non-nullable-type-assertion-style */
-import { EnvironmentVariables } from '@/config/env/env.validation';
+import { Environment, EnvironmentVariables } from '@/config/env/env.validation';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -9,10 +9,10 @@ export class EnvConfigService {
     private readonly configService: ConfigService<EnvironmentVariables>,
   ) {}
 
-  get nodeEnv(): string {
-    return this.configService.get<string>('USER_NODE_ENV', {
+  get nodeEnv(): Environment {
+    return this.configService.get<Environment>('USER_NODE_ENV', {
       infer: true,
-    }) as string;
+    }) as Environment;
   }
 
   get apiPort(): number {

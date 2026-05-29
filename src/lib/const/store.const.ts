@@ -52,39 +52,19 @@ export const STORE_NOT_FOUND_MSG = 'STORE not found' as string;
 export const STORE_NAME_EXISTS_MSG =
   'STORE with this name already exists' as string;
 
-/**
- * Standard example description used in API documentation and test fixtures.
- * Represents a STORE description that is commonly used for testing scenarios.
- */
 export const READ_STORE = 'store:read' as string;
 
-/**
- * Standard example description used in API documentation and test fixtures.
- * Represents a STORE description that is commonly used for testing scenarios.
- */
 export const CREATE_STORE = 'store:create' as string;
 
-/**
- * Standard example description used in API documentation and test fixtures.
- * Represents a STORE description that is commonly used for testing scenarios.
- */
 export const UPDATE_STORE = 'store:update' as string;
 
-/**
- * Standard example description used in API documentation and test fixtures.
- * Represents a STORE description that is commonly used for testing scenarios.
- */
 export const DELETE_STORE = 'store:delete' as string;
 
 export const READ_USER_STORE = 'user-store:read' as string;
 
-export const CREATE_USER_STORE = 'user-store:create' as string;
-
-export const UPDATE_USER_STORE = 'user-store:update' as string;
-
-export const DELETE_USER_STORE = 'user-store:delete' as string;
-
 export const ASSIGN_USER_STORE = 'user-store:assign' as string;
+
+export const UNASSIGN_USER_STORE = 'user-store:unassign' as string;
 
 export const CONFLICT_STORE_NAME_MSG = 'A STORE already exists' as string;
 

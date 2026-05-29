@@ -1,4 +1,5 @@
 import { EntityQueryService } from '@/base/service/query.service';
+import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import {
   AssignRolesToUserDto,
@@ -7,7 +8,6 @@ import {
   UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
 import { UserRoles } from '@/userEntities/userRoles.entity';
-import { UserRoleHelperService } from '@/userRoleServices/helper.service';
 import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,7 +22,6 @@ export class UserRolesService {
     private readonly roleRepository: Repository<UserRoles>,
     private readonly userHelperService: UserHelperService,
     private readonly roleHelperService: RoleHelperService,
-    private readonly userRoleHelperService: UserRoleHelperService,
     private readonly queryService: EntityQueryService,
   ) {}
 
@@ -45,8 +44,6 @@ export class UserRolesService {
       dateFrom,
       dateTo,
     } = data;
-    await this.userHelperService.validateIfExists({ id: userId });
-
     const query = this.queryService.initQuery<UserRoles>({
       entity: UserRoles,
       alias: 'userRole',
@@ -122,7 +119,7 @@ export class UserRolesService {
    * @throws An EntityNotFoundError if the user does not exist or if no roles are found for the user.
    */
   async getPermissionsOrThrow(userId: UUID): Promise<string[]> {
-    const userRoles = await this.userRoleHelperService.getAssignedRoles(userId);
+    const userRoles = await this.getAssignedRoles(userId);
 
     if (userRoles.length === 0) {
       return [];
@@ -150,11 +147,21 @@ export class UserRolesService {
     assignedById: UUID;
   }): Promise<void> {
     const { userId, roleIds } = data;
-    await this.userHelperService.validateIfExists({ id: userId });
-    await this.userHelperService.validateIfExists({ id: assignedById });
-    await this.roleHelperService.validateIfExist(roleIds);
 
-    const userRoles = roleIds.map((roleId) => ({
+    await this.validatePayload({ userId, roleIds });
+
+    const assignedRoles = await this.getAssignedRoles(userId);
+
+    const missingRoleIds = roleIds.filter(
+      (roleId) =>
+        !assignedRoles.some((assignedRole) => assignedRole.id === roleId),
+    );
+
+    if (missingRoleIds.length === 0) {
+      return;
+    }
+
+    const userRoles = missingRoleIds.map((roleId) => ({
       user: { id: userId },
       role: { id: roleId },
       assignedBy: { id: assignedById },
@@ -175,12 +182,79 @@ export class UserRolesService {
     userId,
     roleIds,
   }: UnassignRolesFromUserDto): Promise<void> {
-    await this.userHelperService.validateIfExists({ id: userId });
-    await this.roleHelperService.validateIfExist(roleIds);
+    await this.validatePayload({ userId, roleIds });
+
+    const assignedRoles = await this.getAssignedRoles(userId);
+
+    if (assignedRoles.length === 0) {
+      return;
+    }
+
+    const rolesToUnassign = assignedRoles.filter((assignedRole) =>
+      roleIds.includes(assignedRole.id),
+    );
+
+    if (rolesToUnassign.length === 0) {
+      return;
+    }
 
     await this.roleRepository.delete({
       user: { id: userId },
-      role: { id: In(roleIds) },
+      role: { id: In(rolesToUnassign.flatMap((role) => role.id)) },
     });
+  }
+
+  /**
+   * Validates the existence of a user and the specified roles.
+   *
+   * @param userId - The unique identifier of the user (UUID).
+   * @param roleIds - An array of unique identifiers (UUIDs) representing the roles to be validated.
+   * @returns A promise that resolves when the validation is successful.
+   * @throws An UnprocessableEntityException if the user does not exist or if any of the specified roles do not exist.
+   */
+  private async validatePayload({
+    userId,
+    roleIds,
+  }: {
+    userId: UUID;
+    roleIds: UUID[];
+  }): Promise<void> {
+    await Promise.all([
+      this.userHelperService.validateIfExists({ id: userId }),
+      this.roleHelperService.validateIfExist(roleIds),
+    ]);
+  }
+
+  /**
+   * Retrieves the roles assigned to a user by their unique identifier.
+   *
+   * @param userId - The unique identifier of the user (UUID).
+   * @returns A promise that resolves to an array of GetRelatedRoleDto objects representing the user's roles.
+   */
+  private async getAssignedRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
+    const query = this.roleRepository
+      .createQueryBuilder('userRole')
+      .leftJoinAndSelect('userRole.role', 'role')
+      .leftJoinAndSelect('userRole.user', 'user')
+      .where('user.id = :userId', { userId })
+      .select([
+        'userRole.id',
+        'role.id',
+        'role.name',
+        'role.createdAt',
+        'role.updatedAt',
+      ]);
+
+    const userRoles = await this.queryService.getAll<UserRoles>({
+      query,
+      cache: true,
+    });
+
+    return userRoles.map((userRole) => ({
+      id: userRole.role.id,
+      name: userRole.role.name,
+      createdAt: userRole.role.createdAt,
+      updatedAt: userRole.role.updatedAt,
+    }));
   }
 }

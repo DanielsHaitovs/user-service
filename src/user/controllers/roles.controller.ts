@@ -1,13 +1,14 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { READ_PERMISSION } from '@/lib/const/permission.const';
+import { CurrentUserId } from '@/commonDecorators/user.decorator';
+import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import {
-  CREATE_USER_ROLE,
-  DELETE_USER_ROLE,
-  READ_ROLE,
-  READ_USER_ROLE,
-} from '@/lib/const/role.const';
-import { EXAMPLE_USER_ID, READ_USER } from '@/lib/const/user.const';
+  ASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
+  READ_USER_PERMISSIONS_ENDPOINT_PERMISSION,
+  READ_USER_ROLE_ENDPOINT_PERMISSION,
+  UNASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
+} from '@/system/const/user.const';
 import { UserRolePipelineService } from '@/user/role.pipeline';
 import {
   AssignRolesToUserDto,
@@ -55,8 +56,10 @@ export class UserRolesController {
   @Post()
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
+  @Permissions({
+    required: ASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER, READ_ROLE, CREATE_USER_ROLE, READ_USER_ROLE],
     operation: {
       summary: 'Assign roles to a user',
       description:
@@ -74,21 +77,23 @@ export class UserRolesController {
       ],
     },
   })
-  async create(
+  async assignRole(
     @Body() assignDto: AssignRolesToUserDto,
-    // @CurrentUser() createdByUser: JWTPayload,
+    @CurrentUserId() assignedById: UUID,
   ): Promise<void> {
     await this.userRolePipelineService.assignRolesToUser({
       data: assignDto,
-      assignedById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+      assignedById,
     });
   }
 
   @Delete()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: UNASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER, READ_ROLE, DELETE_USER_ROLE, READ_USER_ROLE],
     operation: {
       summary: 'Remove roles from a user',
       description:
@@ -106,18 +111,17 @@ export class UserRolesController {
       ],
     },
   })
-  async remove(
-    @Body() unassignDto: UnassignRolesFromUserDto,
-    // @CurrentUser() createdByUser: JWTPayload,
-  ): Promise<void> {
+  async remove(@Body() unassignDto: UnassignRolesFromUserDto): Promise<void> {
     await this.userRolePipelineService.unassignRolesFromUser(unassignDto);
   }
 
   @Get()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_USER_ROLE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER_ROLE, READ_ROLE, READ_USER],
     operation: {
       summary: 'Searches for user roles by user ID',
       description: 'Searches for user roles by their user unique identifiers',
@@ -133,18 +137,17 @@ export class UserRolesController {
   })
   async findRolesByUserId(
     @Query() query: UserRolesQueryRequest,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserRolesListResponseDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
     return await this.userRolePipelineService.getRoles(query);
   }
 
   @Get('permissions/:userId')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_USER_PERMISSIONS_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER_ROLE, READ_ROLE, READ_PERMISSION, READ_USER],
     operation: {
       summary: 'Searches for user permissions by user ID',
       description: 'Searches for user permissions by user unique identifiers',
@@ -167,10 +170,7 @@ export class UserRolesController {
   })
   async findPermissionsByUserId(
     @Param('userId', ParseUUIDPipe) userId: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<string[]> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
     return await this.userRolePipelineService.getPermissionsOrThrow(userId);
   }
 }

@@ -1,10 +1,9 @@
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
-import { CreateRoleDto, RoleResponseDto } from '@/role/dto/role.dto';
+import { CreateRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { User } from '@/userEntities/user.entity';
-import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -16,7 +15,6 @@ export class CreateService {
   constructor(
     @InjectRepository(Roles)
     private readonly roleRepository: Repository<Roles>,
-    private readonly userHelper: UserHelperService,
     private readonly permissionHelper: PermissionHelperService,
     private readonly roleHelper: RoleHelperService,
   ) {}
@@ -40,10 +38,10 @@ export class CreateService {
   }): Promise<RoleResponseDto> {
     const { permissions, ...roleDto } = createDto;
 
-    await this.roleHelper.throwIfExists([roleDto.name]);
-    await this.userHelper.validateIfExists({ id: createdById });
-    const permissionIds =
-      await this.permissionHelper.validatePermissionsExist(permissions);
+    const permissionIds = await this.validatePayload({
+      name: roleDto.name,
+      permissions,
+    });
 
     const newRole = this.roleRepository.create(roleDto);
 
@@ -58,5 +56,21 @@ export class CreateService {
     });
 
     return await this.roleRepository.save(newRole);
+  }
+
+  private async validatePayload({
+    name,
+    permissions,
+  }: {
+    name: string;
+    permissions?: string[] | undefined;
+  }): Promise<UUID[]> {
+    // eslint-disable-next-line sonarjs/no-unused-vars
+    const [_unique, permissionIds] = await Promise.all([
+      this.roleHelper.isUniqueNameOrThrow({ name }),
+      this.permissionHelper.manyExistByCodeOrThrow(permissions),
+    ]);
+
+    return permissionIds;
   }
 }

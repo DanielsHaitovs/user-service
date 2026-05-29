@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { In, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class RoleHelperService {
@@ -19,22 +19,32 @@ export class RoleHelperService {
   ) {}
 
   /**
-   * Validates that a role with the given name does not already exist.
-   * @param name - The name of the role to validate.
-   * @throws ConflictException if a role with the given name already exists.
+   * Validates that a role with the given name does not already exist, excluding an optional ID.
+   * @param name - The name of the role to validate for uniqueness.
+   * @param id - An optional ID to exclude from the uniqueness check (useful for updates).
+   * @throws ConflictException if a role with the given name already exists (excluding the specified ID).
    */
-  async throwIfExists(name: string[]): Promise<void> {
-    const existingRoles = await this.roleRepository.find({
+  async isUniqueNameOrThrow({
+    name,
+    id,
+  }: {
+    name: string;
+    id?: UUID | undefined;
+  }): Promise<boolean> {
+    const existingRole = await this.roleRepository.findOne({
       where: {
-        name: In(name),
+        name,
+        ...(id != undefined ? { id: Not(id) } : {}),
       },
     });
 
-    if (existingRoles.length) {
+    if (existingRole) {
       throw new ConflictException(
-        `A role with the name(s) "${name.join(', ')}" already exists.`,
+        `A role with the name "${name}" already exists.`,
       );
     }
+
+    return true;
   }
 
   /**
@@ -43,9 +53,11 @@ export class RoleHelperService {
    * @returns The IDs of the existing roles with the given names.
    * @throws UnprocessableEntityException if any of the provided role names do not exist.
    */
-  async validateIfExist(ids?: string[]): Promise<UUID[]> {
+  async validateIfExist(ids?: string[]): Promise<void> {
     if (ids == undefined || ids.length === 0) {
-      return [];
+      throw new UnprocessableEntityException(
+        'Failed to validate if role exists: At least one role id must be provided for validation',
+      );
     }
 
     const existingRoles = await this.roleRepository.find({
@@ -61,8 +73,6 @@ export class RoleHelperService {
           .join(', ')}`,
       );
     }
-
-    return existingRoles.map((r) => r.id);
   }
 
   /**

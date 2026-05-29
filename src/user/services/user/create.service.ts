@@ -1,3 +1,4 @@
+import { EnvConfigService } from '@/config/env/env.config.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { Store } from '@/storeEntities/store.entity';
@@ -16,8 +17,6 @@ import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UUID } from 'crypto';
 import { DataSource } from 'typeorm';
-
-import { EnvConfigService } from '../../../config/env/env.config.service';
 
 @Injectable()
 export class CreateService {
@@ -45,10 +44,7 @@ export class CreateService {
     createDto: CreateUserDto;
     createdById: UUID;
   }): Promise<UserResponseDto> {
-    await Promise.all([
-      this.userHelper.throwIfExists([createDto.email]),
-      this.userHelper.validateIfExists({ id: createdById }),
-    ]);
+    await this.userHelper.isEmailUniqueOrThrow({ email: createDto.email });
 
     createDto.password = await bcrypt.hash(
       createDto.password,
@@ -65,10 +61,7 @@ export class CreateService {
 
       const newUser: UserResponseDto = await manager.save(User, payload);
 
-      await Promise.all([
-        this.roleHelper.validateIfExist(roleIds),
-        this.storeHelper.validateStoresExists(storeIds),
-      ]);
+      await this.validatePayload({ roleIds, storeIds });
 
       newUser.createdBy = { id: createdById } as GetCreatedByDto;
 
@@ -101,5 +94,18 @@ export class CreateService {
 
       return newUser;
     });
+  }
+
+  private async validatePayload({
+    roleIds,
+    storeIds,
+  }: {
+    roleIds?: UUID[] | undefined;
+    storeIds?: UUID[] | undefined;
+  }): Promise<void> {
+    await Promise.all([
+      this.roleHelper.validateIfExist(roleIds),
+      this.storeHelper.manyExistsByIdOrThrow(storeIds),
+    ]);
   }
 }

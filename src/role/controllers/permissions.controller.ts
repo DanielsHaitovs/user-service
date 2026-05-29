@@ -1,18 +1,22 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { READ_PERMISSION } from '@/lib/const/permission.const';
 import {
   EXAMPLE_ROLE_ID,
-  READ_ROLE,
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
   ROLE_NOT_FOUND_MSG,
-  UPDATE_ROLE,
 } from '@/libConst/role.const';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { PermissionsToRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
 import {
+  ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
+  READ_ROLE_WITH_PERMISSIONS_ENDPOINT_PERMISSION,
+  UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
+} from '@/system/const/role.const';
+import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -38,8 +42,10 @@ export class RolePermissionsController {
   @Post('assign')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
+  @Permissions({
+    required: ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_ROLE, READ_PERMISSION, UPDATE_ROLE],
     operation: {
       summary: 'Assign permissions to a role',
       description: 'Assigns a set of permissions to a specified role.',
@@ -69,18 +75,17 @@ export class RolePermissionsController {
   async assign(
     @Body()
     assignDto: PermissionsToRoleDto,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<RoleResponseDto> {
-    // const { hasAccessToUsers, id } = this.extractAccess(requestedByUser);
-
     return await this.pipelineService.assignPermissionsToRole(assignDto);
   }
 
-  @Post('unAssign')
+  @Delete('unAssign')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
+  @Permissions({
+    required: UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_ROLE, READ_PERMISSION, UPDATE_ROLE],
     operation: {
       summary: 'Unassign permissions to a role',
       description: 'Unassigns a set of permissions from a specified role.',
@@ -111,18 +116,17 @@ export class RolePermissionsController {
   async unAssign(
     @Body()
     unAssignDto: PermissionsToRoleDto,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<RoleResponseDto> {
-    // const { hasAccessToUsers, id } = this.extractAccess(requestedByUser);
-
     return await this.pipelineService.unassignPermissionsFromRole(unAssignDto);
   }
 
   @Get(':roleId')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_ROLE_WITH_PERMISSIONS_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_ROLE],
     operation: {
       summary: 'Get role by ID with permissions',
       description:
@@ -148,11 +152,7 @@ export class RolePermissionsController {
   })
   async findByIdWithPermissions(
     @Param('roleId', ParseUUIDPipe) roleId: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<RoleResponseDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
     return await this.pipelineService.getPermissionsOrThrow(roleId);
   }
 }

@@ -7,6 +7,7 @@ import { EnvConfigModule } from '@/config/env/env.module';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
+import { SystemModule } from '@/system/system.module';
 import { UserModule } from '@/user/user.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -58,6 +59,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     StoreModule,
     BaseModule,
     AuthModule,
+    SystemModule,
     // ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
 })

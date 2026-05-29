@@ -4,10 +4,7 @@ import {
 } from '@/permissionDto/permission.dto';
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
-import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
-import { User } from '@/userEntities/user.entity';
-import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -19,7 +16,6 @@ export class CreateService {
   constructor(
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
-    private readonly userHelper: UserHelperService,
     private readonly permissionHelper: PermissionHelperService,
     private readonly roleHelper: RoleHelperService,
   ) {}
@@ -42,22 +38,30 @@ export class CreateService {
   }): Promise<PermissionResponseDto> {
     const { roleIds, ...permissionDto } = createDto;
 
-    await this.permissionHelper.throwIfExists([permissionDto.code]);
-    await this.userHelper.validateIfExists({ id: createdById });
-    await this.roleHelper.validateIfExist(roleIds);
+    await this.validatePayload({
+      code: permissionDto.code,
+      roleIds,
+    });
 
-    const newPermission = this.permissionRepository.create(permissionDto);
-
-    newPermission.createdBy = {
-      id: createdById,
-    } as User;
-
-    newPermission.roles = roleIds.map((id) => {
-      return {
-        id,
-      } as Roles;
+    const newPermission = this.permissionHelper.prepareObject({
+      data: permissionDto,
+      createdById,
+      roleIds,
     });
 
     return await this.permissionRepository.save(newPermission);
+  }
+
+  private async validatePayload({
+    code,
+    roleIds,
+  }: {
+    code: string;
+    roleIds: UUID[];
+  }): Promise<void> {
+    await Promise.all([
+      this.permissionHelper.manyExistByCodeOrThrow([code]),
+      this.roleHelper.validateIfExist(roleIds),
+    ]);
   }
 }

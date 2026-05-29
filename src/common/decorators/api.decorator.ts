@@ -1,4 +1,3 @@
-import { Permissions } from '@/commonDecorators/permission.decorator';
 import { BAD_REQUEST_DESCRIPTION } from '@/libConst/system.const';
 import {
   applyDecorators,
@@ -26,7 +25,6 @@ import {
 import { EntityNotFoundError } from 'typeorm';
 
 export interface ApiOkListOptions {
-  permissions: string[];
   operation: {
     summary: string;
     description: string;
@@ -64,8 +62,6 @@ export interface ApiOkListOptions {
 
 export const ApiOkList = (options: ApiOkListOptions): MethodDecorator => {
   const decorators: MethodDecorator[] = [];
-
-  decorators.push(Permissions(...options.permissions));
 
   decorators.push(
     ApiOperation({

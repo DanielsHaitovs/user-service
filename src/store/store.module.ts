@@ -5,6 +5,7 @@ import { Store } from '@/storeEntities/store.entity';
 import { CreateService } from '@/storeServices/create.service';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import { StoreService } from '@/storeServices/store.service';
+import { UpdateService } from '@/storeServices/update.service';
 import { User } from '@/userEntities/user.entity';
 import { UserHelperService } from '@/userServices/helper.service';
 import { Module } from '@nestjs/common';
@@ -16,6 +17,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   providers: [
     StoreHelperService,
     CreateService,
+    UpdateService,
     StoreService,
     StorePipelineService,
     UserHelperService,

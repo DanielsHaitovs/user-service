@@ -9,7 +9,7 @@ import {
   ApiProperty,
   ApiPropertyOptional,
   OmitType,
-  PartialType,
+  PickType,
 } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
@@ -492,47 +492,32 @@ export class UserResponseDto extends GetUserDto {
  * Inherits all fields from CreateUserDto as optional, plus additional system fields
  * that may be updated by administrators or system processes.
  */
-export class UpdateUserDto extends PartialType(GetUserDto) {
+export class UpdateUserDto extends PickType(GetUserDto, [
+  'country',
+  'firstName',
+  'lastName',
+  'email',
+  'phone',
+  'dateOfBirth',
+  'isActive',
+] as const) {
   constructor(
+    country: COUNTRIES,
     firstName: string,
     lastName: string,
     email: string,
-    password: string,
     phone: string,
     dateOfBirth: Date,
     isActive: boolean,
-    isEmailVerified: boolean,
-    emailVerificationToken: string,
-    isTwoFactorEnabled: boolean,
-    passwordResetToken: string,
-    passwordResetExpires: Date,
   ) {
-    super(
-      firstName,
-      lastName,
-      email,
-      password,
-      phone,
-      dateOfBirth,
-      isActive,
-      isEmailVerified,
-      emailVerificationToken,
-      isTwoFactorEnabled,
-      passwordResetToken,
-      passwordResetExpires,
-    );
+    super(country, firstName, lastName, email, phone, dateOfBirth, isActive);
+    this.country = country;
     this.firstName = firstName;
     this.lastName = lastName;
     this.email = email;
-    this.password = password;
     this.phone = phone;
     this.dateOfBirth = dateOfBirth;
     this.isActive = isActive;
-    this.isTwoFactorEnabled = isTwoFactorEnabled;
-    this.isEmailVerified = isEmailVerified;
-    this.emailVerificationToken = emailVerificationToken;
-    this.passwordResetToken = passwordResetToken;
-    this.passwordResetExpires = passwordResetExpires;
   }
 }
 

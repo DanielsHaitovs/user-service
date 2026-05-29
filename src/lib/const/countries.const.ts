@@ -249,12 +249,6 @@ export enum COUNTRIES {
   ZW = 'ZW',
 }
 
-// export const RandomCountry: COUNTRIES =
-//   Object.values(COUNTRIES)[
-//     // eslint-disable-next-line sonarjs/pseudo-random
-//     Math.floor(Math.random() * Object.keys(COUNTRIES).length)
-//   ]!;
-
 export function RandomCountry(): COUNTRIES {
   const countries = Object.values(COUNTRIES);
 

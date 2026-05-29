@@ -2,10 +2,12 @@ import { UserQueryRequest } from '@/userDto/query.dto';
 import {
   CreateUserDto,
   GetUserDto,
+  UpdateUserDto,
   UserListResponseDto,
   UserResponseDto,
 } from '@/userDto/user.dto';
 import { CreateService } from '@/userServices/create.service';
+import { UpdateService } from '@/userServices/update.service';
 import { UserService } from '@/userServices/user.service';
 import { Injectable } from '@nestjs/common';
 
@@ -16,6 +18,7 @@ export class UserPipelineService {
   constructor(
     private readonly userService: UserService,
     private readonly createService: CreateService,
+    private readonly updateService: UpdateService,
   ) {}
 
   async getMany(data: UserQueryRequest): Promise<UserListResponseDto> {
@@ -38,5 +41,15 @@ export class UserPipelineService {
     createdById: UUID;
   }): Promise<UserResponseDto> {
     return await this.createService.create({ createDto, createdById });
+  }
+
+  async update({
+    userId,
+    data,
+  }: {
+    userId: UUID;
+    data: UpdateUserDto;
+  }): Promise<boolean> {
+    return await this.updateService.update({ userId, data });
   }
 }

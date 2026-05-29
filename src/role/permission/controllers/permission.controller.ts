@@ -1,16 +1,15 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
-  CREATE_PERMISSION,
   EXAMPLE_PERMISSION_CODE,
   PERMISSION_CODE_EXISTS_MSG,
   PERMISSION_GENERIC_BAD_REQUEST_MSG,
   PERMISSION_MIN_OPERATION_BAD_REQUEST_MSG,
   PERMISSION_NOT_FOUND_MSG,
-  READ_PERMISSION,
 } from '@/lib/const/permission.const';
-import { READ_ROLE, ROLE_NOT_FOUND_MSG } from '@/libConst/role.const';
+import { ROLE_NOT_FOUND_MSG } from '@/libConst/role.const';
 import { EXAMPLE_USER_ID } from '@/libConst/user.const';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import {
@@ -19,6 +18,11 @@ import {
   PermissionResponseDto,
 } from '@/permissionDto/permission.dto';
 import {
+  CREATE_PERMISSION_ENDPOINT_PERMISSION,
+  READ_PERMISSION_ENDPOINT_PERMISSION,
+  UPDATE_PERMISSION_ENDPOINT_PERMISSION,
+} from '@/system/const/permission.const';
+import {
   Body,
   Controller,
   Get,
@@ -26,6 +30,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Version,
 } from '@nestjs/common';
@@ -56,8 +61,10 @@ export class PermissionController {
   @Post()
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
+  @Permissions({
+    required: CREATE_PERMISSION_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_ROLE, READ_PERMISSION, CREATE_PERMISSION],
     operation: {
       summary: 'Create a new permission',
       description: 'Creates a new permission with the provided information.',
@@ -85,13 +92,11 @@ export class PermissionController {
   async create(
     @Body()
     createDto: CreatePermissionDto,
-    // @CurrentUser() requestedByUser: JWTPayload,
+    @CurrentUserId() createdById: UUID,
   ): Promise<PermissionResponseDto> {
-    // const { hasAccessToUsers, id } = this.extractAccess(requestedByUser);
-
     return await this.pipelineService.create({
       createDto,
-      createdById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+      createdById,
     });
   }
 
@@ -108,10 +113,10 @@ export class PermissionController {
   @Get('id/:id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
-  @Permissions(READ_PERMISSION)
-  @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_PERMISSION_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_PERMISSION],
     operation: {
       summary: 'Get permission by ID',
       description: 'Retrieves a permission by its unique identifier.',
@@ -136,19 +141,17 @@ export class PermissionController {
   })
   async findById(
     @Param('id', ParseUUIDPipe) id: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<GetPermissionDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
     return await this.pipelineService.getByIdOrThrow(id);
   }
 
   @Get('code/:code')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_PERMISSION_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_PERMISSION],
     operation: {
       summary: 'Get permission by code',
       description: 'Retrieves a permission by its unique code.',
@@ -171,13 +174,44 @@ export class PermissionController {
     description: 'Unique code of the permission to search for',
     example: EXAMPLE_PERMISSION_CODE,
   })
-  async findByCode(
-    @Param('code') code: string,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetPermissionDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
+  async findByCode(@Param('code') code: string): Promise<GetPermissionDto> {
     return await this.pipelineService.getByCodeOrThrow(code);
+  }
+
+  @Patch('id/:id/name')
+  @Version('1')
+  @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: UPDATE_PERMISSION_ENDPOINT_PERMISSION,
+  })
+  @ApiOkList({
+    operation: {
+      summary: 'Update permission name',
+      description: 'Updates the name of an existing permission.',
+    },
+    okOperation: {
+      description: 'Permission name updated successfully',
+      type: Boolean,
+      isArray: false,
+    },
+    badRequestMessages: {
+      examples: PERMISSION_MIN_OPERATION_BAD_REQUEST_MSG,
+    },
+    notFound: {
+      description: PERMISSION_NOT_FOUND_MSG,
+    },
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    format: 'uuid',
+    description: 'Permission id to update',
+    example: EXAMPLE_USER_ID,
+  })
+  async updateName(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    @Body('name') name: string,
+  ): Promise<boolean> {
+    return await this.pipelineService.updateName({ name, id });
   }
 }

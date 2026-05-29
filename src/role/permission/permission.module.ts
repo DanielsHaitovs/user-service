@@ -5,6 +5,7 @@ import { Permission } from '@/permissionEntities/permissions.entity';
 import { CreateService } from '@/permissionServices/create.service';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { PermissionService } from '@/permissionServices/permission.service';
+import { UpdateService } from '@/permissionServices/update.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { User } from '@/userEntities/user.entity';
@@ -18,6 +19,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   providers: [
     PermissionService,
     CreateService,
+    UpdateService,
     PermissionPipelineService,
     UserHelperService,
     PermissionHelperService,

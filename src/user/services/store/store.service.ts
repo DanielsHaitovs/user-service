@@ -1,4 +1,5 @@
 import { EntityQueryService } from '@/base/service/query.service';
+import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import {
   AssignStoresToUserDto,
@@ -45,8 +46,6 @@ export class UserStoresService {
       dateFrom,
       dateTo,
     } = data;
-    await this.userHelperService.validateIfExists({ id: userId });
-
     const query = this.queryService.initQuery<UserStores>({
       entity: UserStores,
       alias: 'userStore',
@@ -147,9 +146,19 @@ export class UserStoresService {
     assignedById: UUID;
   }): Promise<void> {
     const { userId, storeIds } = data;
-    await this.userHelperService.validateIfExists({ id: userId });
-    await this.userHelperService.validateIfExists({ id: assignedById });
-    await this.storeHelperService.validateStoresExists(storeIds);
+
+    await this.validatePayload({ userId, storeIds });
+
+    const assignedStores = await this.getAssignedStores(userId);
+
+    const missingStoreIds = storeIds.filter(
+      (storeId) =>
+        !assignedStores.some((assignedStore) => assignedStore.id === storeId),
+    );
+
+    if (missingStoreIds.length === 0) {
+      return;
+    }
 
     const userStores = storeIds.map((storeId) => ({
       user: { id: userId },
@@ -172,12 +181,83 @@ export class UserStoresService {
     userId,
     storeIds,
   }: UnassignStoresFromUserDto): Promise<void> {
-    await this.userHelperService.validateIfExists({ id: userId });
-    await this.storeHelperService.validateStoresExists(storeIds);
+    await this.validatePayload({ userId, storeIds });
+
+    const assignedStores = await this.getAssignedStores(userId);
+
+    if (assignedStores.length === 0) {
+      return;
+    }
+
+    const storesToUnassign = assignedStores.filter((assignedStore) =>
+      storeIds.some((storeId) => assignedStore.id === storeId),
+    );
+
+    if (storesToUnassign.length === 0) {
+      return;
+    }
 
     await this.storeRepository.delete({
       user: { id: userId },
-      store: { id: In(storeIds) },
+      store: { id: In(storesToUnassign.flatMap((store) => store.id)) },
     });
+  }
+
+  /**
+   * Validates the payload for assigning or unassigning stores to/from a user.
+   *
+   * @param userId - The unique identifier of the user (UUID).
+   * @param storeIds - An array of unique identifiers (UUIDs) representing the stores.
+   * @returns A promise that resolves when the payload is valid.
+   * @throws An EntityNotFoundError if the user does not exist or if any of the stores do not exist.
+   */
+  private async validatePayload({
+    userId,
+    storeIds,
+  }: {
+    userId: UUID;
+    storeIds: UUID[];
+  }): Promise<void> {
+    await Promise.all([
+      this.userHelperService.validateIfExists({ id: userId }),
+      await this.storeHelperService.manyExistsByIdOrThrow(storeIds),
+    ]);
+  }
+
+  /**
+   * Retrieves the stores assigned to a user by their unique identifier.
+   *
+   * @param userId - The unique identifier of the user (UUID).
+   * @returns A promise that resolves to an array of GetRelatedStoreDto objects representing the user's stores.
+   */
+  async getAssignedStores(userId: UUID): Promise<GetRelatedStoreDto[]> {
+    const query = this.storeRepository
+      .createQueryBuilder('userStore')
+      .leftJoinAndSelect('userStore.store', 'store')
+      .leftJoinAndSelect('userStore.user', 'user')
+      .where('user.id = :userId', { userId })
+      .select([
+        'userStore.id',
+        'store.id',
+        'store.name',
+        'store.code',
+        'store.viewCode',
+        'store.createdAt',
+        'store.updatedAt',
+      ]);
+
+    const userStores = await this.queryService.getAll<UserStores>({
+      query,
+      cache: true,
+    });
+
+    return userStores.map((userStore) => ({
+      id: userStore.store.id,
+      name: userStore.store.name,
+      code: userStore.store.code,
+      viewCode: userStore.store.viewCode,
+      createdAt: userStore.store.createdAt,
+      updatedAt: userStore.store.updatedAt,
+    }));
   }
 }

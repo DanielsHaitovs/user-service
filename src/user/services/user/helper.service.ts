@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/todo-tag */
+import { GetUserDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import {
   ConflictException,
@@ -7,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { In, Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 
 @Injectable()
 export class UserHelperService {
@@ -15,25 +17,6 @@ export class UserHelperService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
-
-  /**
-   * Validates that a user with the given email does not already exist.
-   * @param emails - The email of the user to validate.
-   * @throws ConflictException if a user with the given email already exists.
-   */
-  async throwIfExists(emails: string[]): Promise<void> {
-    const existingUsers = await this.userRepository.find({
-      where: {
-        email: In(emails),
-      },
-    });
-
-    if (existingUsers.length) {
-      throw new ConflictException(
-        `A user with the email(s) "${emails.join(', ')}" already exists.`,
-      );
-    }
-  }
 
   /**
    * Validates if a user exists based on the provided ID or email.
@@ -50,18 +33,71 @@ export class UserHelperService {
   }: {
     id?: UUID;
     email?: string;
-  }): Promise<void> {
+  }): Promise<GetUserDto> {
     if (id == undefined && email == undefined) {
       throw new UnprocessableEntityException(
         'Failed to validate if user exists: At least one of id or email must be provided for validation',
       );
     }
 
-    await this.userRepository.findOneOrFail({
+    const user = await this.userRepository.findOne({
       where: {
         ...(id != undefined && { id }),
         ...(email != undefined && { email }),
       },
     });
+
+    if (!user) {
+      throw new UnprocessableEntityException(`User does not exist.`);
+    }
+
+    return user;
+  }
+
+  // TODO: it may be useful in other places. Consider reusing this other services instead of duplicating the logic or remove it if it's not needed
+
+  /**
+   * Retrieves a user by their email address. If no user is found, an exception is thrown. Be careful when using this method, as it will return private user information such as the password. Make sure to only use this method in contexts where it's necessary and secure to access such information.
+   *
+   * @param email - The email address of the user to retrieve.
+   * @returns A promise that resolves to the GetUserDto of the found user.
+   * @throws EntityNotFoundException if no user is found with the given email.
+   */
+  async getByEmail(email: string): Promise<User | null> {
+    return await this.userRepository.findOne({
+      where: {
+        email,
+      },
+    });
+  }
+
+  /**
+   * Checks if an email is unique among users, excluding a specific user ID.
+   *
+   * @param email - The email address to check for uniqueness.
+   * @param userId - The ID of the user to exclude from the uniqueness check.
+   * @returns A promise that resolves to true if the email is unique, or false if it already exists for another user.
+   */
+  async isEmailUniqueOrThrow({
+    email,
+    userId,
+  }: {
+    email: string;
+    userId?: UUID | undefined;
+  }): Promise<boolean> {
+    const user = await this.userRepository.findOne({
+      where: {
+        email,
+        ...(userId != undefined && { id: Not(userId) }),
+      },
+    });
+
+    if (user) {
+      throw new ConflictException(
+        `Email "${email}" is already in use by another user.`,
+      );
+    }
+
+    return false;
   }
 }

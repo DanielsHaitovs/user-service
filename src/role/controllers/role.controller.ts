@@ -1,14 +1,13 @@
+import { JwtPayload } from '@/auth/auth.interface';
+import { extractAccess } from '@/base/permissions';
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUser } from '@/commonDecorators/user.decorator';
 import {
-  CREATE_PERMISSION,
-  READ_PERMISSION,
-} from '@/lib/const/permission.const';
-import {
+  ASSIGN_PERMISSION_TO_ROLE,
   CONFLICT_ROLE_NAME_MSG,
   EXAMPLE_ROLE_NAME,
-  READ_ROLE,
   ROLE_GENERIC_BAD_REQUEST_MSG,
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
   ROLE_NOT_FOUND_MSG,
@@ -23,6 +22,11 @@ import {
   RoleResponseDto,
 } from '@/roleDto/role.dto';
 import {
+  CREATE_ROLE_ENDPOINT_PERMISSION,
+  READ_ROLE_ENDPOINT_PERMISSION,
+  UPDATE_ROLE_ENDPOINT_PERMISSION,
+} from '@/system/const/role.const';
+import {
   Body,
   Controller,
   Get,
@@ -30,6 +34,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Version,
@@ -48,8 +53,11 @@ export class RoleController {
   @Post()
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
+  @Permissions({
+    required: CREATE_ROLE_ENDPOINT_PERMISSION,
+    loose: [ASSIGN_PERMISSION_TO_ROLE],
+  })
   @ApiOkList({
-    permissions: [READ_ROLE, READ_PERMISSION, CREATE_PERMISSION],
     operation: {
       summary: 'Create a new role',
       description: 'Creates a new role with the provided information.',
@@ -77,23 +85,27 @@ export class RoleController {
   async create(
     @Body()
     createDto: CreateRoleDto,
-    // @CurrentUser() requestedByUser: JWTPayload,
+    @CurrentUser() requestedByUser: JwtPayload,
   ): Promise<RoleResponseDto> {
-    // const { hasAccessToUsers, id } = this.extractAccess(requestedByUser);
+    const { canAssignPermissionsToRoles, id } = extractAccess(requestedByUser);
+
+    if (!canAssignPermissionsToRoles) {
+      createDto.permissions = [];
+    }
 
     return await this.pipelineService.create({
       createDto,
-      createdById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+      createdById: id,
     });
   }
 
   @Get('id/:id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
-  @Permissions(READ_ROLE)
-  @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_ROLE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_ROLE],
     operation: {
       summary: 'Get role by ID',
       description: 'Retrieves a role by its unique identifier.',
@@ -116,21 +128,17 @@ export class RoleController {
     description: 'Role id to search for',
     example: EXAMPLE_USER_ID,
   })
-  async findById(
-    @Param('id', ParseUUIDPipe) id: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetRoleDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
+  async findById(@Param('id', ParseUUIDPipe) id: UUID): Promise<GetRoleDto> {
     return await this.pipelineService.getByIdOrThrow(id);
   }
 
   @Get('name/:name')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_ROLE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_ROLE],
     operation: {
       summary: 'Get role by name',
       description: 'Retrieves a role by its unique name.',
@@ -153,21 +161,17 @@ export class RoleController {
     description: 'Unique name of the role to search for',
     example: EXAMPLE_ROLE_NAME,
   })
-  async findByName(
-    @Param('name') name: string,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetRoleDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
+  async findByName(@Param('name') name: string): Promise<GetRoleDto> {
     return await this.pipelineService.getByNameOrThrow(name);
   }
 
   @Get()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_ROLE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_ROLE],
     operation: {
       summary: 'Searches for roles',
       description:
@@ -184,10 +188,54 @@ export class RoleController {
   })
   async findRoles(
     @Query() query: RolesQueryRequest,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<RoleListResponseDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
     return await this.pipelineService.getMany(query);
+  }
+
+  @Patch(':id/name')
+  @Version('1')
+  @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: UPDATE_ROLE_ENDPOINT_PERMISSION,
+  })
+  @ApiOkList({
+    operation: {
+      summary: 'Update role name',
+      description: 'Updates the name of an existing role.',
+    },
+    body: {
+      description: 'Role name update data',
+      type: CreateRoleDto,
+      isArray: false,
+    },
+    badRequestMessages: {
+      examples: ROLE_GENERIC_BAD_REQUEST_MSG,
+    },
+    okOperation: {
+      description: 'Role name successfully updated',
+      type: RoleResponseDto,
+      isArray: false,
+    },
+    conflictMessage: {
+      description: CONFLICT_ROLE_NAME_MSG,
+    },
+    notFound: {
+      description: ROLE_NOT_FOUND_MSG,
+    },
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Role id to update',
+    example: EXAMPLE_USER_ID,
+  })
+  async updateName(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    @Body() updateDto: CreateRoleDto,
+  ): Promise<boolean> {
+    return await this.pipelineService.update({
+      updateDto,
+      id,
+    });
   }
 }

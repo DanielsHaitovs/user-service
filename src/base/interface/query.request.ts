@@ -26,24 +26,44 @@ export interface QueryJoinOptions {
 
 export interface UserAccessPermissions {
   id: UUID;
-  hasAccessToRoles: boolean;
-  canEditRoles: boolean;
-  canDeleteRoles: boolean;
+  // roles
   canCreateRoles: boolean;
-  hasAccessToPermissions: boolean;
-  canEditPermissions: boolean;
-  canDeletePermissions: boolean;
+  canReadRoles: boolean;
+  canUpdateRoles: boolean;
+  canDeleteRoles: boolean;
+  // permissions
   canCreatePermissions: boolean;
-  hasAccessToDepartments: boolean;
-  canEditDepartments: boolean;
-  canDeleteDepartments: boolean;
+  canReadPermissions: boolean;
+  canUpdatePermissions: boolean;
+  canDeletePermissions: boolean;
+  // role permissions
+  canAssignPermissionsToRoles: boolean;
+  canUnassignPermissionsFromRoles: boolean;
+  // departments
   canCreateDepartments: boolean;
-  hasAccessToUsers: boolean;
-  canEditUsers: boolean;
-  canDeleteUsers: boolean;
+  canReadDepartments: boolean;
+  canUpdateDepartments: boolean;
+  canDeleteDepartments: boolean;
+  // store
+  canCreateStore: boolean;
+  canReadStore: boolean;
+  canUpdateStore: boolean;
+  canDeleteStore: boolean;
+  // users
   canCreateUsers: boolean;
-  hasAccessToUserRoles: boolean;
-  canEditUserRoles: boolean;
-  canDeleteUserRoles: boolean;
-  canCreateUserRoles: boolean;
+  canReadUsers: boolean;
+  canUpdateUsers: boolean;
+  canDeleteUsers: boolean;
+  // user roles
+  canReadUserRoles: boolean;
+  canAssignUserToRoles: boolean;
+  canUnassignUserFromRoles: boolean;
+  // user store
+  canReadUserStore: boolean;
+  canAssignUserToStore: boolean;
+  canUnassignUserFromStore: boolean;
+  // user departments
+  canReadUserDepartments: boolean;
+  canAssignUserToDepartments: boolean;
+  canUnassignUserFromDepartments: boolean;
 }

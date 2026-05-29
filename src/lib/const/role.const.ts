@@ -52,34 +52,16 @@ export const UPDATE_ROLE = 'role:update' as string;
 export const DELETE_ROLE = 'role:delete' as string;
 
 /**
- * Standard example permission used in API documentation and test fixtures.
- * Represents a permission description that is commonly used for testing scenarios.
+ * Alias used in TypeORM queries to refer to the user role entity.
+ * Ensures consistent naming across query service implementations.
  */
+export const USER_ROLE_QUERY_ALIAS = 'userRoles' as string;
+
 export const READ_USER_ROLE = 'user-role:read' as string;
 
-/**
- * Standard example permission used in API documentation and test fixtures.
- * Represents a permission description that is commonly used for testing scenarios.
- */
-export const CREATE_USER_ROLE = 'user-role:create' as string;
-
-/**
- * Standard example permission used in API documentation and test fixtures.
- * Represents a permission description that is commonly used for testing scenarios.
- */
-export const UPDATE_USER_ROLE = 'user-role:update' as string;
-
-/**
- * Standard example permission used in API documentation and test fixtures.
- * Represents a permission description that is commonly used for testing scenarios.
- */
-export const DELETE_USER_ROLE = 'user-role:delete' as string;
-
-/**
- * Standard example permission used in API documentation and test fixtures.
- * Represents a permission for assigning roles to users.
- */
 export const ASSIGN_USER_ROLE = 'user-role:assign' as string;
+
+export const UNASSIGN_USER_ROLE = 'user-role:unassign' as string;
 
 export const ASSIGN_PERMISSION_TO_ROLE = 'role-permission:assign' as string;
 

@@ -3,7 +3,6 @@ import { Permission } from '@/permissionEntities/permissions.entity';
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 
-// import { UserRole } from '@/userEntities/userRoles.entity';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { UUID } from 'crypto';
 import {

@@ -2,7 +2,6 @@ import { CreateStoreDto, StoreResponseDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import { User } from '@/userEntities/user.entity';
-import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -14,7 +13,6 @@ export class CreateService {
   constructor(
     @InjectRepository(Store)
     private readonly storeRepository: Repository<Store>,
-    private readonly userHelper: UserHelperService,
     private readonly storeHelper: StoreHelperService,
   ) {}
 
@@ -34,7 +32,7 @@ export class CreateService {
     createdById: UUID;
   }): Promise<StoreResponseDto> {
     const { name, code, viewCode } = createDto;
-    await this.userHelper.validateIfExists({ id: createdById });
+
     await this.storeHelper.throwIfExists({ name, code, viewCode });
 
     const newStore = this.storeRepository.create(createDto);

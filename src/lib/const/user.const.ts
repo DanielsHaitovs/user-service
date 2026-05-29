@@ -3,7 +3,6 @@
  * These values should be used consistently across tests and documentation
  * to maintain uniformity in examples and mock data.
  */
-
 import { COUNTRIES } from '@/libConst/countries.const';
 import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
 
@@ -17,7 +16,6 @@ export const SYSTEM_USER_EMAIL = 'system@mecService.com' as string;
  * This password is used in tests and API documentation to represent the system user.
  * It should be a strong password and not used in production environments.
  */
-
 export const SYSTEM_USER_PASSWORD = 'VerySecurePassword!' as string;
 
 /**
@@ -35,6 +33,8 @@ export const ASSIGNED_BY_USER_QUERY_ALIAS = 'assignedBy' as string;
  * Format follows RFC 4122 standard for universally unique identifiers.
  */
 export const EXAMPLE_USER_ID = '123e4567-e89b-12d3-a456-426614174000' as string;
+
+export const EXAMPLE_TWO_FACTOR_SECRET = 'example-two-factor-secret' as string;
 
 /**
  * Standard example country used in API documentation and test fixtures.
@@ -92,12 +92,6 @@ export const EXAMPLE_USER_PASSWORD_RESET_TOKEN =
  * Ensures consistent naming across query service implementations.
  */
 export const USER_QUERY_ALIAS = 'users' as string;
-
-/**
- * Alias used in TypeORM queries to refer to the user role entity.
- * Ensures consistent naming across query service implementations.
- */
-export const USER_ROLE_QUERY_ALIAS = 'userRoles' as string;
 
 /**
  * Sample UUID v4 for user identification in tests and API documentation.

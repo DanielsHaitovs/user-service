@@ -46,7 +46,7 @@ export const PERMISSION_CODE_EXISTS_MSG =
   'Permissinon with this code already exists' as string;
 
 /**
- * Standard example message used in API documentation and test fixtures.
+ * Permission to read role permissions
  */
 export const READ_PERMISSION = 'permission:read' as string;
 

@@ -1,12 +1,12 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
   CONFLICT_STORE_NAME_MSG,
-  CREATE_STORE,
   EXAMPLE_STORE_CODE,
   EXAMPLE_STORE_ID,
   EXAMPLE_STORE_VIEW_CODE,
-  READ_STORE,
   STORE_GENERIC_BAD_REQUEST_MSG,
   STORE_MIN_OPERATION_BAD_REQUEST_MSG,
   STORE_NOT_FOUND_MSG,
@@ -18,7 +18,13 @@ import {
   GetStoreDto,
   StoreListResponseDto,
   StoreResponseDto,
+  UpdateStoreDto,
 } from '@/storeDto/store.dto';
+import {
+  CREATE_STORE_ENDPOINT_PERMISSION,
+  READ_STORE_ENDPOINT_PERMISSION,
+  UPDATE_STORE_ENDPOINT_PERMISSION,
+} from '@/system/const/store.const';
 import {
   Body,
   Controller,
@@ -27,6 +33,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Version,
@@ -45,8 +52,10 @@ export class StoreController {
   @Post()
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
+  @Permissions({
+    required: CREATE_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [CREATE_STORE],
     operation: {
       summary: 'Create a new store',
       description: 'Creates a new store with the provided information.',
@@ -74,21 +83,21 @@ export class StoreController {
   async create(
     @Body()
     createDto: CreateStoreDto,
-    // @CurrentUser() requestedByUser: JWTPayload,
+    @CurrentUserId() createdById: UUID,
   ): Promise<StoreResponseDto> {
-    // const { hasAccessToUsers, id } = this.extractAccess(requestedByUser);
-
     return await this.pipelineService.create({
       createDto,
-      createdById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+      createdById,
     });
   }
 
   @Get('id/:id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_STORE],
     operation: {
       summary: 'Get store by ID',
       description: 'Retrieves a store by its unique identifier.',
@@ -111,21 +120,17 @@ export class StoreController {
     description: 'Store id to search for',
     example: EXAMPLE_STORE_ID,
   })
-  async findById(
-    @Param('id', ParseUUIDPipe) id: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetStoreDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
+  async findById(@Param('id', ParseUUIDPipe) id: UUID): Promise<GetStoreDto> {
     return await this.pipelineService.getByIdOrThrow(id);
   }
 
   @Get('code/:code')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_STORE],
     operation: {
       summary: 'Get store by code',
       description: 'Retrieves a store by its code.',
@@ -148,21 +153,17 @@ export class StoreController {
     description: 'Store code to search for',
     example: EXAMPLE_STORE_CODE,
   })
-  async findByCode(
-    @Param('code') code: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetStoreDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
+  async findByCode(@Param('code') code: UUID): Promise<GetStoreDto> {
     return await this.pipelineService.getByCodeOrThrow(code);
   }
 
   @Get('viewCode/:viewCode')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_STORE],
     operation: {
       summary: 'Get store by view code',
       description: 'Retrieves a store by its view code.',
@@ -187,19 +188,17 @@ export class StoreController {
   })
   async findByViewCode(
     @Param('viewCode') viewCode: string,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<GetStoreDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
     return await this.pipelineService.getByViewCodeOrThrow(viewCode);
   }
 
   @Get()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_STORE],
     operation: {
       summary: 'Searches for stores by various parameters',
       description:
@@ -217,10 +216,37 @@ export class StoreController {
   })
   async findStores(
     @Query() query: StoreQueryRequest,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<StoreListResponseDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
     return await this.pipelineService.getMany(query);
+  }
+
+  @Patch(':id/name')
+  @Version('1')
+  @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: UPDATE_STORE_ENDPOINT_PERMISSION,
+  })
+  @ApiOkList({
+    operation: {
+      summary: 'Update store',
+      description: 'Update of an existing store.',
+    },
+    body: {
+      description: 'Store update data',
+      type: UpdateStoreDto,
+      isArray: false,
+    },
+    badRequestMessages: {
+      examples: STORE_GENERIC_BAD_REQUEST_MSG,
+    },
+    notFound: {
+      description: STORE_NOT_FOUND_MSG,
+    },
+  })
+  async update(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    @Body() updateDto: UpdateStoreDto,
+  ): Promise<boolean> {
+    return await this.pipelineService.update({ updateDto, id });
   }
 }

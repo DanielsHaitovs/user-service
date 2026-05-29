@@ -1,5 +1,6 @@
 import { AuthenticatedRequest, JwtPayload } from '@/auth/auth.interface';
 import { PERMISSIONS_KEY } from '@/commonDecorators/permission.decorator';
+import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
 import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
 import { extractBearerFromHeader } from '@/utils/headers.utils';
 import {
@@ -19,11 +20,21 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermissions = this.reflector.getAllAndOverride<
-      string[] | undefined
-    >(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-    if (requiredPermissions == undefined || requiredPermissions.length === 0) {
+    if (isPublic) {
+      return true;
+    }
+
+    const { required, loose } = this.reflector.getAllAndOverride<{
+      required: string[] | undefined;
+      loose: string[] | undefined;
+    }>(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
+
+    if (required == undefined || required.length === 0) {
       return true;
     }
 
@@ -38,20 +49,26 @@ export class PermissionsGuard implements CanActivate {
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
 
-      request.user = payload;
-      const { permissions } = request.user;
+      const { permissions } = payload;
 
       if (permissions.includes(ROOT_ADMIN_PERMISSION)) return true;
 
-      const hasAllPermissions = requiredPermissions.every((perm) =>
+      const minRequiredPermissions =
+        loose != undefined && loose.length > 0
+          ? required.filter((permission) => !loose.includes(permission))
+          : required;
+
+      const hasAllPermissions = minRequiredPermissions.every((perm) =>
         permissions.includes(perm),
       );
 
       if (!hasAllPermissions) {
         throw new ForbiddenException(
-          `You do not have the required permissions: ${requiredPermissions.join(', ')}`,
+          `You do not have the required permissions: ${minRequiredPermissions.join(', ')}`,
         );
       }
+
+      request.user = payload;
 
       return true;
     } catch {

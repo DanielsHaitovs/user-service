@@ -1,11 +1,12 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
-  CREATE_USER_STORE,
-  READ_STORE,
-  READ_USER_STORE,
-} from '@/lib/const/store.const';
-import { READ_USER } from '@/lib/const/user.const';
+  ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
+  READ_USER_STORE_ENDPOINT_PERMISSION,
+  UNASSIGN_USER_STORE_ENDPOINT_PERMISSION,
+} from '@/system/const/user.const';
 import { UserStorePipelineService } from '@/user/store.pipeline';
 import {
   AssignStoresToUserDto,
@@ -51,8 +52,10 @@ export class UserStoresController {
   @Post()
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
+  @Permissions({
+    required: ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER, READ_STORE, CREATE_USER_STORE, READ_USER_STORE],
     operation: {
       summary: 'Assign stores to a user',
       description:
@@ -70,29 +73,31 @@ export class UserStoresController {
       ],
     },
   })
-  async create(
+  async assign(
     @Body() assignDto: AssignStoresToUserDto,
-    // @CurrentUser() createdByUser: JWTPayload,
+    @CurrentUserId() assignedById: UUID,
   ): Promise<void> {
     await this.userStorePipelineService.assignStoresToUser({
       data: assignDto,
-      assignedById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+      assignedById,
     });
   }
 
   @Delete()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: UNASSIGN_USER_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER, READ_STORE, CREATE_USER_STORE, READ_USER_STORE],
     operation: {
-      summary: 'Remove stores from a user',
+      summary: 'Unassign stores from a user',
       description:
-        'Removes stores from a user with the provided store IDs. The user and stores must exist.',
+        'Unassigns stores from a user with the provided store IDs. The user and stores must exist.',
     },
     body: {
       type: UnassignStoresFromUserDto,
-      description: 'Data required to remove stores from a user',
+      description: 'Data required to unassigns stores from a user',
     },
     badRequestMessages: {
       examples: [
@@ -102,9 +107,8 @@ export class UserStoresController {
       ],
     },
   })
-  async remove(
+  async unassign(
     @Body() unassignDto: UnassignStoresFromUserDto,
-    // @CurrentUser() createdByUser: JWTPayload,
   ): Promise<void> {
     await this.userStorePipelineService.unassignStoresFromUser(unassignDto);
   }
@@ -112,8 +116,10 @@ export class UserStoresController {
   @Get()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_USER_STORE_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER_STORE, READ_STORE, READ_USER],
     operation: {
       summary: 'Searches for user stores by user ID',
       description: 'Searches for user stores by their user unique identifiers',
@@ -130,10 +136,7 @@ export class UserStoresController {
   })
   async findStoresByUserId(
     @Query() query: UserStoresQueryRequest,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserStoresListResponseDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
     return await this.userStorePipelineService.getStores(query);
   }
 }

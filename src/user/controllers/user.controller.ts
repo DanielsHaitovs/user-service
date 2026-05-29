@@ -1,25 +1,25 @@
 import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { Public } from '@/commonDecorators/public.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { READ_DEPARTMENT } from '@/libConst/department.const';
+import { CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
-  CREATE_USER_ROLE,
-  READ_ROLE,
-  READ_USER_ROLE,
-} from '@/libConst/role.const';
-import {
-  CREATE_USER,
   EMAIL_EXISTS_MSG,
   EXAMPLE_USER_EMAIL,
   EXAMPLE_USER_ID,
-  READ_USER,
   USER_API_OK_RESPONSE_MSG,
   USER_MIN_OPERATION_BAD_REQUEST_MSG,
 } from '@/libConst/user.const';
+import {
+  CREATE_USER_ENDPOINT_PERMISSION,
+  READ_USER_ENDPOINT_PERMISSION,
+} from '@/system/const/user.const';
 import { UserPipelineService } from '@/user/user.pipeline';
 import { UserQueryRequest } from '@/userDto/query.dto';
 import {
   CreateUserDto,
   GetUserDto,
+  UpdateUserDto,
   UserListResponseDto,
   UserResponseDto,
 } from '@/userDto/user.dto';
@@ -31,6 +31,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Version,
@@ -73,15 +74,10 @@ export class UserController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Version('1')
+  @Permissions({
+    required: CREATE_USER_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [
-      CREATE_USER,
-      READ_USER,
-      READ_DEPARTMENT,
-      READ_ROLE,
-      CREATE_USER_ROLE,
-      READ_USER_ROLE,
-    ],
     operation: {
       summary: 'Create a new user',
       description:
@@ -106,21 +102,24 @@ export class UserController {
       ],
     },
   })
+  @Public()
   async create(
     @Body() createDto: CreateUserDto,
-    // @CurrentUser() createdByUser: JWTPayload,
+    @CurrentUserId() createdById: UUID,
   ): Promise<UserResponseDto> {
     return await this.pipelineService.create({
       createDto,
-      createdById: '61a317c3-78ca-4b59-8d14-168343e2b1e6' as UUID,
+      createdById,
     });
   }
 
   @Get('id/:id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_USER_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER],
     operation: {
       summary: 'Searches for users by ID',
       description: 'Searches for users by their unique identifiers',
@@ -140,21 +139,17 @@ export class UserController {
     description: 'User unique identifier - must be a valid UUID',
     example: EXAMPLE_USER_ID,
   })
-  async findById(
-    @Param('id', ParseUUIDPipe) id: UUID,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetUserDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
+  async findById(@Param('id', ParseUUIDPipe) id: UUID): Promise<GetUserDto> {
     return await this.pipelineService.getByIdOrThrow(id);
   }
 
   @Get('email/:email')
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_USER_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER],
     operation: {
       summary: 'Searches for users by email',
       description: 'Searches for users by their email addresses',
@@ -174,21 +169,17 @@ export class UserController {
     description: 'Email address of the user to search for',
     example: EXAMPLE_USER_EMAIL,
   })
-  async findByEmail(
-    @Param('email') email: string,
-    // @CurrentUser() requestedByUser: JWTPayload,
-  ): Promise<GetUserDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
-
+  async findByEmail(@Param('email') email: string): Promise<GetUserDto> {
     return await this.pipelineService.getByEmailOrThrow(email);
   }
 
   @Get()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_USER_ENDPOINT_PERMISSION,
+  })
   @ApiOkList({
-    permissions: [READ_USER],
     operation: {
       summary: 'Searches for users by various parameters',
       description:
@@ -206,10 +197,37 @@ export class UserController {
   })
   async findUsers(
     @Query() query: UserQueryRequest,
-    // @CurrentUser() requestedByUser: JWTPayload,
   ): Promise<UserListResponseDto> {
-    // const { hasAccessToDepartments, hasAccessToRoles, hasAccessToPermissions } =
-    //   this.extractAccess(requestedByUser);
     return await this.pipelineService.getMany(query);
+  }
+
+  @Patch(':id')
+  @Version('1')
+  @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: CREATE_USER_ENDPOINT_PERMISSION,
+  })
+  @ApiOkList({
+    operation: {
+      summary: 'Updates a user',
+      description:
+        'Updates the details of an existing user. User is identified by their unique ID.',
+    },
+    badRequestMessages: {
+      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
+    },
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+    format: 'uuid',
+  })
+  async update(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    @Body() data: UpdateUserDto,
+  ): Promise<boolean> {
+    return await this.pipelineService.update({ userId: id, data });
   }
 }

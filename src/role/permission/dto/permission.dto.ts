@@ -5,9 +5,9 @@ import {
   EXAMPLE_PERMISSION_NAME,
 } from '@/libConst/permission.const';
 import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
-import { GetRelatedRoleDto } from '@/role/dto/role.dto';
+import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { GetCreatedByDto } from '@/userDto/user.dto';
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { ApiProperty, PickType } from '@nestjs/swagger';
 
 import { Trim } from 'class-sanitizer';
 import { Type } from 'class-transformer';
@@ -78,7 +78,9 @@ export class CreatePermissionDto extends PermissionBaseDto {
   }
 }
 
-export class UpdatePermissionDto extends PartialType(PermissionBaseDto) {}
+export class UpdatePermissionDto extends PickType(PermissionBaseDto, [
+  'name',
+]) {}
 
 export class GetPermissionDto extends PermissionBaseDto {
   @ApiProperty({

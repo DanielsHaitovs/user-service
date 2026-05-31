@@ -3,14 +3,13 @@ import { pgErrorStatusCodes } from '@/libConst/database.const';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { SystemIdentityService } from '@/system/identity.service';
+import { UserRoles } from '@/userEntities/userRoles.entity';
+import { UserRolesService } from '@/userRoleServices/role.service';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { QueryFailedError, Repository } from 'typeorm';
-
-import { UserRoles } from '../../user/entities/userRoles.entity';
-import { UserRolesService } from '../../user/services/role/role.service';
 
 @Injectable()
 export class DeleteService {

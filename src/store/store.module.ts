@@ -3,18 +3,16 @@ import { StoreController } from '@/store/controllers/store.controller';
 import { StorePipelineService } from '@/store/store.pipeline';
 import { Store } from '@/storeEntities/store.entity';
 import { CreateService } from '@/storeServices/create.service';
+import { DeleteService } from '@/storeServices/delete.service';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import { StoreService } from '@/storeServices/store.service';
 import { UpdateService } from '@/storeServices/update.service';
 import { User } from '@/userEntities/user.entity';
+import { UserStores } from '@/userEntities/userStores.entity';
 import { UserHelperService } from '@/userServices/helper.service';
+import { UserStoresService } from '@/userStoreServices/store.service';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { UserStores } from '../user/entities/userStores.entity';
-import { UserStoresService } from '../user/services/store/store.service';
-
-import { DeleteService } from './services/delete.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Store, User, UserStores])],

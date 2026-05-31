@@ -2,14 +2,13 @@ import { deletedResults } from '@/base/delete';
 import { pgErrorStatusCodes } from '@/libConst/database.const';
 import { Store } from '@/storeEntities/store.entity';
 import { StoreHelperService } from '@/storeServices/helper.service';
+import { UserStores } from '@/userEntities/userStores.entity';
+import { UserStoresService } from '@/userStoreServices/store.service';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { QueryFailedError, Repository } from 'typeorm';
-
-import { UserStores } from '../../user/entities/userStores.entity';
-import { UserStoresService } from '../../user/services/store/store.service';
 
 @Injectable()
 export class DeleteService {

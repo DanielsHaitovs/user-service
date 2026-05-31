@@ -4,6 +4,7 @@ import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser } from '@/commonDecorators/user.decorator';
+import { READ_PERMISSION } from '@/libConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CONFLICT_ROLE_NAME_MSG,
@@ -47,8 +48,6 @@ import {
 import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { READ_PERMISSION } from '../../lib/const/permission.const';
 
 @ApiTags('Roles')
 @Controller({ path: 'role', version: ['1'] })

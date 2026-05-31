@@ -32,10 +32,7 @@ export interface UserAccessPermissions {
   canUpdateRoles: boolean;
   canDeleteRoles: boolean;
   // permissions
-  canCreatePermissions: boolean;
   canReadPermissions: boolean;
-  canUpdatePermissions: boolean;
-  canDeletePermissions: boolean;
   // role permissions
   canAssignPermissionsToRoles: boolean;
   canUnassignPermissionsFromRoles: boolean;

@@ -19,6 +19,8 @@ export const classesToSkip = [
   'ConfigService',
   'EnvironmentVariables',
   'EnvConfigService',
+  'SystemSeedService',
+  'SystemIdentityService',
   'JwtService',
   'TraceController',
   'PlainObjectToNewEntityTransformer',

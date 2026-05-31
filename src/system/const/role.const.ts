@@ -4,7 +4,9 @@ import {
   CREATE_ROLE,
   DELETE_ROLE,
   READ_ROLE,
+  READ_USER_ROLE,
   UNASSIGN_PERMISSION_FROM_ROLE,
+  UNASSIGN_USER_ROLE,
   UPDATE_ROLE,
 } from '@/libConst/role.const';
 import type { SystemRole } from '@/system/system-role.interface';
@@ -37,6 +39,8 @@ export const UPDATE_ROLE_ENDPOINT_PERMISSION = [
 export const DELETE_ROLE_ENDPOINT_PERMISSION = [
   DELETE_ROLE,
   READ_ROLE,
+  READ_USER_ROLE,
+  UNASSIGN_USER_ROLE,
 ] as string[];
 
 /**
@@ -54,6 +58,7 @@ export const CREATE_ROLE_ENDPOINT_PERMISSION = [
   CREATE_ROLE,
   READ_ROLE,
   READ_PERMISSION,
+  ASSIGN_PERMISSION_TO_ROLE,
 ] as string[];
 
 /**

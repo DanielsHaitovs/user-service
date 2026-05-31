@@ -207,7 +207,7 @@ export class StoreHelperService {
    * @returns A promise that resolves to the GetStoreDto of the found store.
    * @throws EntityNotFoundException if no store with the given ID is found.
    */
-  private async validateIfExists(id: UUID): Promise<GetStoreDto> {
+  async validateIfExists(id: UUID): Promise<GetStoreDto> {
     return await this.storeRepository.findOneOrFail({
       where: { id },
     });

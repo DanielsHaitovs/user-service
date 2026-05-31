@@ -15,6 +15,8 @@ import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
 
+import { DeleteService } from './services/delete.service';
+
 @Injectable()
 export class RolePipelineService {
   constructor(
@@ -22,6 +24,7 @@ export class RolePipelineService {
     private readonly permissionService: RolePermissionService,
     private readonly createService: CreateService,
     private readonly updateService: UpdateService,
+    private readonly deleteService: DeleteService,
   ) {}
 
   async getMany(data: RolesQueryRequest): Promise<RoleListResponseDto> {
@@ -78,5 +81,15 @@ export class RolePipelineService {
     id: UUID;
   }): Promise<boolean> {
     return await this.updateService.update({ updateDto, id });
+  }
+
+  async delete({
+    id,
+    canDeleteAssignedRole,
+  }: {
+    id: UUID;
+    canDeleteAssignedRole: boolean;
+  }): Promise<boolean> {
+    return await this.deleteService.delete({ id, canDeleteAssignedRole });
   }
 }

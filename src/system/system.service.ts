@@ -1,9 +1,5 @@
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { COUNTRIES } from '@/libConst/countries.const';
-import {
-  PERMISSION_QUERY_ALIAS,
-  ROOT_ADMIN_PERMISSION,
-} from '@/libConst/permission.const';
 import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
 import {
   EXAMPLE_USER_DATE_OF_BIRTH,
@@ -13,54 +9,12 @@ import {
   SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,
 } from '@/libConst/user.const';
-import { Roles } from '@/role/entities/role.entity';
-import { Permission } from '@/role/permission/entities/permissions.entity';
-import {
-  ROLE_TO_CREATE_DEPARTMENT,
-  ROLE_TO_DELETE_DEPARTMENT,
-  ROLE_TO_READ_DEPARTMENT,
-  ROLE_TO_UPDATE_DEPARTMENT,
-} from '@/system/const/department.const';
-import {
-  ROLE_TO_CREATE_PERMISSION,
-  ROLE_TO_DELETE_PERMISSION,
-  ROLE_TO_READ_PERMISSION,
-  ROLE_TO_UPDATE_PERMISSION,
-} from '@/system/const/permission.const';
-import {
-  ROLE_TO_ASSIGN_PERMISSION_TO_ROLE,
-  ROLE_TO_CREATE_ROLE,
-  ROLE_TO_DELETE_ROLE,
-  ROLE_TO_READ_ROLE,
-  ROLE_TO_READ_ROLE_WITH_PERMISSIONS,
-  ROLE_TO_UNASSIGN_PERMISSION_FROM_ROLE,
-  ROLE_TO_UPDATE_ROLE,
-} from '@/system/const/role.const';
-import {
-  ROLE_TO_CREATE_STORE,
-  ROLE_TO_DELETE_STORE,
-  ROLE_TO_READ_STORE,
-  ROLE_TO_UPDATE_STORE,
-} from '@/system/const/store.const';
-import {
-  ROLE_TO_ASSIGN_DEPARTMENT_TO_USER,
-  ROLE_TO_ASSIGN_ROLE_TO_USER,
-  ROLE_TO_ASSIGN_USER_STORE,
-  ROLE_TO_CREATE_USER,
-  ROLE_TO_DELETE_USER,
-  ROLE_TO_READ_USER,
-  ROLE_TO_READ_USER_DEPARTMENT,
-  ROLE_TO_READ_USER_PERMISSIONS,
-  ROLE_TO_READ_USER_ROLE,
-  ROLE_TO_UNASSIGN_DEPARTMENT_TO_USER,
-  ROLE_TO_UNASSIGN_ROLE_FROM_USER,
-  ROLE_TO_UNASSIGN_USER_STORE,
-  ROLE_TO_UPDATE_USER,
-} from '@/system/const/user.const';
+import { Permission } from '@/permissionEntities/permissions.entity';
+import { Roles } from '@/roleEntities/role.entity';
 import { SystemIdentityService } from '@/system/identity.service';
 import { SystemRole } from '@/system/system-role.interface';
-import { User } from '@/user/entities/user.entity';
-import { UserRoles } from '@/user/entities/userRoles.entity';
+import { User } from '@/userEntities/user.entity';
+import { UserRoles } from '@/userEntities/userRoles.entity';
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
@@ -71,110 +25,63 @@ import { EntityManager } from 'typeorm';
 @Injectable()
 export class SystemSeedService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SystemSeedService.name);
-  private readonly systemRoles: SystemRole[] = [
-    { name: 'ADMIN', permissions: [ROOT_ADMIN_PERMISSION] },
-    ROLE_TO_CREATE_STORE,
-    ROLE_TO_READ_STORE,
-    ROLE_TO_UPDATE_STORE,
-    ROLE_TO_DELETE_STORE,
-    ROLE_TO_ASSIGN_USER_STORE,
-    ROLE_TO_UNASSIGN_USER_STORE,
-    ROLE_TO_CREATE_ROLE,
-    ROLE_TO_READ_ROLE,
-    ROLE_TO_UPDATE_ROLE,
-    ROLE_TO_DELETE_ROLE,
-    ROLE_TO_ASSIGN_ROLE_TO_USER,
-    ROLE_TO_UNASSIGN_ROLE_FROM_USER,
-    ROLE_TO_READ_USER_ROLE,
-    ROLE_TO_READ_USER_PERMISSIONS,
-    ROLE_TO_ASSIGN_PERMISSION_TO_ROLE,
-    ROLE_TO_UNASSIGN_PERMISSION_FROM_ROLE,
-    ROLE_TO_READ_ROLE_WITH_PERMISSIONS,
-    ROLE_TO_CREATE_USER,
-    ROLE_TO_READ_USER,
-    ROLE_TO_UPDATE_USER,
-    ROLE_TO_DELETE_USER,
-    ROLE_TO_CREATE_PERMISSION,
-    ROLE_TO_READ_PERMISSION,
-    ROLE_TO_UPDATE_PERMISSION,
-    ROLE_TO_DELETE_PERMISSION,
-    ROLE_TO_CREATE_DEPARTMENT,
-    ROLE_TO_READ_DEPARTMENT,
-    ROLE_TO_UPDATE_DEPARTMENT,
-    ROLE_TO_DELETE_DEPARTMENT,
-    ROLE_TO_READ_USER_DEPARTMENT,
-    ROLE_TO_ASSIGN_DEPARTMENT_TO_USER,
-    ROLE_TO_UNASSIGN_DEPARTMENT_TO_USER,
-  ];
+  private readonly systemRoles: SystemRole[] = [];
 
   constructor(
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
     private readonly systemIdentityService: SystemIdentityService,
     private readonly envConfigService: EnvConfigService,
-  ) {}
+  ) {
+    this.systemRoles = this.systemIdentityService.getSystemRoles();
+  }
 
   async onApplicationBootstrap(): Promise<void> {
     try {
       const systemUserExists = await this.entityManager.findOne(User, {
         where: { email: SYSTEM_USER_EMAIL },
       });
-
       let systemUserId = systemUserExists?.id;
-
       if (!systemUserExists) {
         systemUserId = (await this.createSystemUser()).id;
         this.logger.debug('System user created successfully!');
       } else {
         this.logger.debug('System user already exists!');
       }
-
       if (systemUserId != undefined) {
         this.systemIdentityService.setSystemUserId(systemUserId);
         this.logger.debug('Creating system roles and permissions!');
-
         const rolesMap = await this.createSystemRoles(systemUserId);
-
         const adminRoleId = rolesMap.get('ADMIN');
-
         if (adminRoleId == undefined) {
           this.logger.error(
             'ADMIN role not found, cannot assign to system user!',
           );
-
           return;
         }
-
         const permissionsMap = await this.createSystemPermissions(systemUserId);
-
         await this.assignPermissionsToRoles(rolesMap, permissionsMap);
-
         this.logger.debug(
           'System roles and permissions are created and successfully assigned!',
         );
-
         const existingUserRole = await this.entityManager.findOne(UserRoles, {
           where: {
             user: { id: systemUserId },
             role: { id: adminRoleId },
           },
         });
-
         if (existingUserRole) {
           this.logger.debug(
             'System user already has ADMIN role assigned, skipping assignment!',
           );
           return;
         }
-
         const systemUserRole = this.entityManager.create(UserRoles, {
           user: { id: systemUserId },
           role: { id: adminRoleId },
           assignedBy: { id: systemUserId },
         });
-
         await this.entityManager.save(systemUserRole);
-
         this.logger.debug('Assigned ADMIN role to system user successfully!');
       }
     } catch (error) {
@@ -265,20 +172,15 @@ export class SystemSeedService implements OnApplicationBootstrap {
   ): Promise<Map<string, UUID>> {
     const permissionsMap = new Map<string, UUID>();
 
-    const uniqueCodes = Array.from(
-      new Set(this.systemRoles.flatMap((role) => role.permissions)),
-    );
+    const uniqueCodes =
+      this.systemIdentityService.getPermissionsForSystemRoles();
 
     if (uniqueCodes.length === 0) {
       return permissionsMap;
     }
 
-    const existingPermissions = await this.entityManager
-      .createQueryBuilder(Permission, PERMISSION_QUERY_ALIAS)
-      .where(`${PERMISSION_QUERY_ALIAS}.code IN (:...codes)`, {
-        codes: uniqueCodes,
-      })
-      .getMany();
+    const existingPermissions =
+      await this.systemIdentityService.getSystemPermissionsIds();
 
     const existingNames = new Set<string>();
 

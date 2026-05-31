@@ -1,4 +1,4 @@
-import { EntityQueryService } from '@/base/service/query.service';
+import { EntityQueryService } from '@/baseServices/query.service';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import {
@@ -259,5 +259,26 @@ export class UserStoresService {
       createdAt: userStore.store.createdAt,
       updatedAt: userStore.store.updatedAt,
     }));
+  }
+
+  /** Retrieves the unique identifiers of users assigned to a specific store.
+   *
+   * @param roleId - The unique identifier of the store (UUID).
+   * @returns A promise that resolves to an array of UUIDs representing the users assigned to the store.
+   */
+  async getAssignedUserIds(roleId: UUID): Promise<UUID[]> {
+    const query = this.storeRepository
+      .createQueryBuilder('userStore')
+      .leftJoinAndSelect('userStore.store', 'store')
+      .leftJoinAndSelect('userStore.user', 'user')
+      .where('store.id = :storeId', { storeId: roleId })
+      .select(['user.id']);
+
+    const userStores = await this.queryService.getAll<UserStores>({
+      query,
+      cache: true,
+    });
+
+    return userStores.map((userStore) => userStore.user.id);
   }
 }

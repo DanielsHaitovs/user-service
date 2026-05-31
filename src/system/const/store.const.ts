@@ -2,6 +2,8 @@ import {
   CREATE_STORE,
   DELETE_STORE,
   READ_STORE,
+  READ_USER_STORE,
+  UNASSIGN_USER_STORE,
   UPDATE_STORE,
 } from '@/libConst/store.const';
 import type { SystemRole } from '@/system/system-role.interface';
@@ -34,6 +36,8 @@ export const UPDATE_STORE_ENDPOINT_PERMISSION = [
 export const DELETE_STORE_ENDPOINT_PERMISSION = [
   DELETE_STORE,
   READ_STORE,
+  READ_USER_STORE,
+  UNASSIGN_USER_STORE,
 ] as string[];
 
 /**

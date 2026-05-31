@@ -1,4 +1,4 @@
-import { EntityQueryService } from '@/base/service/query.service';
+import { EntityQueryService } from '@/baseServices/query.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { Store } from '@/storeEntities/store.entity';
@@ -16,6 +16,7 @@ import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserStores } from '@/userEntities/userStores.entity';
 import { UserRolesService } from '@/userRoleServices/role.service';
 import { CreateService } from '@/userServices/create.service';
+import { DeleteService } from '@/userServices/delete.service';
 import { UserHelperService } from '@/userServices/helper.service';
 import { UpdateService } from '@/userServices/update.service';
 import { UserService } from '@/userServices/user.service';
@@ -37,6 +38,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     CreateService,
     UserService,
     UpdateService,
+    DeleteService,
     UserStoresService,
     UserHelperService,
     UserRolesService,

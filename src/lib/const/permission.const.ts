@@ -50,21 +50,6 @@ export const PERMISSION_CODE_EXISTS_MSG =
  */
 export const READ_PERMISSION = 'permission:read' as string;
 
-/**
- * Standard example permission used in API documentation and test fixtures.
- */
-export const CREATE_PERMISSION = 'permission:create' as string;
-
-/**
- * Standard example permission used in API documentation and test fixtures.
- */
-export const UPDATE_PERMISSION = 'permission:update' as string;
-
-/**
- * Standard example permission used in API documentation and test fixtures.
- */
-export const DELETE_PERMISSION = 'permission:delete' as string;
-
 export const PERMISSION_GENERIC_BAD_REQUEST_MSG = [
   'country must be a valid ISO country code',
   'name should not be empty and must be a string',

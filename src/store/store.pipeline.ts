@@ -13,12 +13,15 @@ import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
 
+import { DeleteService } from './services/delete.service';
+
 @Injectable()
 export class StorePipelineService {
   constructor(
     private readonly storeService: StoreService,
     private readonly createService: CreateService,
     private readonly updateService: UpdateService,
+    private readonly deleteService: DeleteService,
   ) {}
 
   async getMany(data: StoreQueryRequest): Promise<StoreListResponseDto> {
@@ -55,5 +58,15 @@ export class StorePipelineService {
     id: UUID;
   }): Promise<boolean> {
     return await this.updateService.update({ updateDto, id });
+  }
+
+  async delete({
+    id,
+    canDeleteAssignedStore,
+  }: {
+    id: UUID;
+    canDeleteAssignedStore: boolean;
+  }): Promise<boolean> {
+    return await this.deleteService.delete({ id, canDeleteAssignedStore });
   }
 }

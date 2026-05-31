@@ -7,10 +7,13 @@ import { CurrentUser } from '@/commonDecorators/user.decorator';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CONFLICT_ROLE_NAME_MSG,
+  EXAMPLE_ROLE_ID,
   EXAMPLE_ROLE_NAME,
+  READ_USER_ROLE,
   ROLE_GENERIC_BAD_REQUEST_MSG,
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
   ROLE_NOT_FOUND_MSG,
+  UNASSIGN_USER_ROLE,
 } from '@/libConst/role.const';
 import { EXAMPLE_USER_ID } from '@/libConst/user.const';
 import { RolePipelineService } from '@/role/role.pipeline';
@@ -23,12 +26,14 @@ import {
 } from '@/roleDto/role.dto';
 import {
   CREATE_ROLE_ENDPOINT_PERMISSION,
+  DELETE_ROLE_ENDPOINT_PERMISSION,
   READ_ROLE_ENDPOINT_PERMISSION,
   UPDATE_ROLE_ENDPOINT_PERMISSION,
 } from '@/system/const/role.const';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -43,6 +48,8 @@ import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
+import { READ_PERMISSION } from '../../lib/const/permission.const';
+
 @ApiTags('Roles')
 @Controller({ path: 'role', version: ['1'] })
 @TraceController()
@@ -55,7 +62,7 @@ export class RoleController {
   @HttpCode(HttpStatus.CREATED)
   @Permissions({
     required: CREATE_ROLE_ENDPOINT_PERMISSION,
-    loose: [ASSIGN_PERMISSION_TO_ROLE],
+    loose: [ASSIGN_PERMISSION_TO_ROLE, READ_PERMISSION],
   })
   @ApiOkList({
     operation: {
@@ -87,9 +94,10 @@ export class RoleController {
     createDto: CreateRoleDto,
     @CurrentUser() requestedByUser: JwtPayload,
   ): Promise<RoleResponseDto> {
-    const { canAssignPermissionsToRoles, id } = extractAccess(requestedByUser);
+    const { canAssignPermissionsToRoles, canReadPermissions, id } =
+      extractAccess(requestedByUser);
 
-    if (!canAssignPermissionsToRoles) {
+    if (!canAssignPermissionsToRoles || !canReadPermissions) {
       createDto.permissions = [];
     }
 
@@ -237,5 +245,44 @@ export class RoleController {
       updateDto,
       id,
     });
+  }
+
+  @Delete(':id')
+  @Version('1')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Permissions({
+    required: DELETE_ROLE_ENDPOINT_PERMISSION,
+    loose: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
+  })
+  @ApiOkList({
+    operation: {
+      summary: 'Deletes a role',
+      description:
+        'Deletes an existing role from the system. Role is identified by their unique ID.',
+    },
+    badRequestMessages: {
+      examples: ['role id must be a valid UUID', 'role id is required'],
+    },
+    notFound: {
+      description: ROLE_NOT_FOUND_MSG,
+    },
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Role unique identifier - must be a valid UUID',
+    example: EXAMPLE_ROLE_ID,
+    format: 'uuid',
+  })
+  async delete(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    @CurrentUser() requestedByUser: JwtPayload,
+  ): Promise<void> {
+    const { canReadUserRoles, canUnassignUserFromRoles } =
+      extractAccess(requestedByUser);
+
+    const canDeleteAssignedRole = canReadUserRoles && canUnassignUserFromRoles;
+
+    await this.pipelineService.delete({ id, canDeleteAssignedRole });
   }
 }

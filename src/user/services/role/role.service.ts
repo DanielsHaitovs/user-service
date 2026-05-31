@@ -1,4 +1,4 @@
-import { EntityQueryService } from '@/base/service/query.service';
+import { EntityQueryService } from '@/baseServices/query.service';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import {
@@ -231,7 +231,7 @@ export class UserRolesService {
    * @param userId - The unique identifier of the user (UUID).
    * @returns A promise that resolves to an array of GetRelatedRoleDto objects representing the user's roles.
    */
-  private async getAssignedRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
+  async getAssignedRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
     const query = this.roleRepository
       .createQueryBuilder('userRole')
       .leftJoinAndSelect('userRole.role', 'role')
@@ -256,5 +256,29 @@ export class UserRolesService {
       createdAt: userRole.role.createdAt,
       updatedAt: userRole.role.updatedAt,
     }));
+  }
+
+  async getAssignedUserIds(roleId: UUID): Promise<UUID[]> {
+    const query = this.roleRepository
+      .createQueryBuilder('userRole')
+      .leftJoinAndSelect('userRole.role', 'role')
+      .leftJoinAndSelect('userRole.user', 'user')
+      .where('role.id = :roleId', { roleId })
+      .select([
+        'userRole.id',
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.email',
+        'user.createdAt',
+        'user.updatedAt',
+      ]);
+
+    const userRoles = await this.queryService.getAll<UserRoles>({
+      query,
+      cache: true,
+    });
+
+    return userRoles.map((userRole) => userRole.user.id);
   }
 }

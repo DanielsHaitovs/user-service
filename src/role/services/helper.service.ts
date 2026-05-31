@@ -1,4 +1,4 @@
-import { EntityQueryService } from '@/base/service/query.service';
+import { EntityQueryService } from '@/baseServices/query.service';
 import { Roles } from '@/roleEntities/role.entity';
 import {
   ConflictException,

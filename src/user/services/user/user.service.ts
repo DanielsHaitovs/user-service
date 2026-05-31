@@ -1,4 +1,4 @@
-import { EntityQueryService } from '@/base/service/query.service';
+import { EntityQueryService } from '@/baseServices/query.service';
 import { USER_QUERY_ALIAS } from '@/lib/const/user.const';
 import { UserQueryRequest } from '@/userDto/query.dto';
 import { GetUserDto, UserListResponseDto } from '@/userDto/user.dto';

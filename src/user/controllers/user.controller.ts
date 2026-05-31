@@ -1,8 +1,21 @@
+import { JwtPayload } from '@/auth/auth.interface';
+import { extractAccess } from '@/base/permissions';
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
-import { Public } from '@/commonDecorators/public.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { CurrentUserId } from '@/commonDecorators/user.decorator';
+import { CurrentUser } from '@/commonDecorators/user.decorator';
+import {
+  ASSIGN_USER_ROLE,
+  READ_ROLE,
+  READ_USER_ROLE,
+  UNASSIGN_USER_ROLE,
+} from '@/lib/const/role.const';
+import {
+  ASSIGN_USER_STORE,
+  READ_STORE,
+  READ_USER_STORE,
+  UNASSIGN_USER_STORE,
+} from '@/lib/const/store.const';
 import {
   EMAIL_EXISTS_MSG,
   EXAMPLE_USER_EMAIL,
@@ -12,7 +25,9 @@ import {
 } from '@/libConst/user.const';
 import {
   CREATE_USER_ENDPOINT_PERMISSION,
+  DELETE_USER_ENDPOINT_PERMISSION,
   READ_USER_ENDPOINT_PERMISSION,
+  UPDATE_USER_ENDPOINT_PERMISSION,
 } from '@/system/const/user.const';
 import { UserPipelineService } from '@/user/user.pipeline';
 import { UserQueryRequest } from '@/userDto/query.dto';
@@ -26,6 +41,7 @@ import {
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -76,6 +92,14 @@ export class UserController {
   @Version('1')
   @Permissions({
     required: CREATE_USER_ENDPOINT_PERMISSION,
+    loose: [
+      ASSIGN_USER_ROLE,
+      READ_ROLE,
+      READ_USER_ROLE,
+      ASSIGN_USER_STORE,
+      READ_STORE,
+      READ_USER_STORE,
+    ],
   })
   @ApiOkList({
     operation: {
@@ -102,11 +126,28 @@ export class UserController {
       ],
     },
   })
-  @Public()
   async create(
     @Body() createDto: CreateUserDto,
-    @CurrentUserId() createdById: UUID,
+    @CurrentUser() requestedByUser: JwtPayload,
   ): Promise<UserResponseDto> {
+    const {
+      canAssignUserToRoles,
+      canReadRoles,
+      canReadUserRoles,
+      canAssignUserToStore,
+      canReadStore,
+      canReadUserStore,
+      id: createdById,
+    } = extractAccess(requestedByUser);
+
+    if (!canAssignUserToRoles || !canReadRoles || !canReadUserRoles) {
+      createDto.roleIds = [];
+    }
+
+    if (!canAssignUserToStore || !canReadStore || !canReadUserStore) {
+      createDto.storeIds = [];
+    }
+
     return await this.pipelineService.create({
       createDto,
       createdById,
@@ -205,7 +246,7 @@ export class UserController {
   @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions({
-    required: CREATE_USER_ENDPOINT_PERMISSION,
+    required: UPDATE_USER_ENDPOINT_PERMISSION,
   })
   @ApiOkList({
     operation: {
@@ -229,5 +270,60 @@ export class UserController {
     @Body() data: UpdateUserDto,
   ): Promise<boolean> {
     return await this.pipelineService.update({ userId: id, data });
+  }
+
+  @Delete(':id')
+  @Version('1')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Permissions({
+    required: DELETE_USER_ENDPOINT_PERMISSION,
+    loose: [
+      READ_ROLE,
+      READ_USER_ROLE,
+      UNASSIGN_USER_ROLE,
+      READ_STORE,
+      READ_USER_STORE,
+      UNASSIGN_USER_STORE,
+    ],
+  })
+  @ApiOkList({
+    operation: {
+      summary: 'Deletes a user',
+      description:
+        'Deletes an existing user from the system. User is identified by their unique ID.',
+    },
+    badRequestMessages: {
+      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
+    },
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+    format: 'uuid',
+  })
+  async delete(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    @CurrentUser() requestedByUser: JwtPayload,
+  ): Promise<void> {
+    const {
+      canReadRoles,
+      canReadUserRoles,
+      canUnassignUserFromRoles,
+      canReadStore,
+      canReadUserStore,
+      canUnassignUserFromStore,
+    } = extractAccess(requestedByUser);
+
+    const canRemoveFromRelatedRoles =
+      canReadRoles && canReadUserRoles && canUnassignUserFromRoles;
+    const canRemoveFromRelatedStores =
+      canReadStore && canReadUserStore && canUnassignUserFromStore;
+    await this.pipelineService.delete({
+      id,
+      canRemoveFromRelatedRoles,
+      canRemoveFromRelatedStores,
+    });
   }
 }

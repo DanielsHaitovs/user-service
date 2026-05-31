@@ -1,15 +1,19 @@
+import { JwtPayload } from '@/auth/auth.interface';
+import { extractAccess } from '@/base/permissions';
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { CurrentUserId } from '@/commonDecorators/user.decorator';
+import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
   CONFLICT_STORE_NAME_MSG,
   EXAMPLE_STORE_CODE,
   EXAMPLE_STORE_ID,
   EXAMPLE_STORE_VIEW_CODE,
+  READ_USER_STORE,
   STORE_GENERIC_BAD_REQUEST_MSG,
   STORE_MIN_OPERATION_BAD_REQUEST_MSG,
   STORE_NOT_FOUND_MSG,
+  UNASSIGN_USER_STORE,
 } from '@/lib/const/store.const';
 import { StorePipelineService } from '@/store/store.pipeline';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
@@ -22,12 +26,14 @@ import {
 } from '@/storeDto/store.dto';
 import {
   CREATE_STORE_ENDPOINT_PERMISSION,
+  DELETE_STORE_ENDPOINT_PERMISSION,
   READ_STORE_ENDPOINT_PERMISSION,
   UPDATE_STORE_ENDPOINT_PERMISSION,
 } from '@/system/const/store.const';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -248,5 +254,43 @@ export class StoreController {
     @Body() updateDto: UpdateStoreDto,
   ): Promise<boolean> {
     return await this.pipelineService.update({ updateDto, id });
+  }
+
+  @Delete(':id')
+  @Version('1')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Permissions({
+    required: DELETE_STORE_ENDPOINT_PERMISSION,
+    loose: [READ_USER_STORE, UNASSIGN_USER_STORE],
+  })
+  @ApiOkList({
+    operation: {
+      summary: 'Delete store',
+      description:
+        'Deletes a store by its unique identifier. If the store is assigned to users, it will either unassign the store from those users or throw an error based on the `canDeleteAssignedStore` flag.',
+    },
+    badRequestMessages: {
+      examples: STORE_MIN_OPERATION_BAD_REQUEST_MSG,
+    },
+    notFound: {
+      description: STORE_NOT_FOUND_MSG,
+    },
+    conflictMessage: {
+      description: 'Store cannot be deleted due to existing user assignments.',
+    },
+  })
+  async delete(
+    @Param('id', ParseUUIDPipe) id: UUID,
+    @CurrentUser() requestedByUser: JwtPayload,
+  ): Promise<void> {
+    const { canReadUserStore, canUnassignUserFromStore } =
+      extractAccess(requestedByUser);
+
+    const canDeleteAssignedStore = canReadUserStore && canUnassignUserFromStore;
+
+    await this.pipelineService.delete({
+      id,
+      canDeleteAssignedStore,
+    });
   }
 }

@@ -1,5 +1,5 @@
 import type { JwtPayload } from '@/auth/auth.interface';
-import type { UserAccessPermissions } from '@/base/interface/query.request';
+import type { UserAccessPermissions } from '@/baseInterface/query.request';
 import {
   ASSIGN_USER_DEPARTMENT,
   CREATE_DEPARTMENT,
@@ -9,12 +9,7 @@ import {
   UNASSIGN_USER_DEPARTMENT,
   UPDATE_DEPARTMENT,
 } from '@/libConst/department.const';
-import {
-  CREATE_PERMISSION,
-  DELETE_PERMISSION,
-  READ_PERMISSION,
-  UPDATE_PERMISSION,
-} from '@/libConst/permission.const';
+import { READ_PERMISSION } from '@/libConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CREATE_ROLE,
@@ -57,10 +52,7 @@ export function extractAccess(
     canUpdateRoles: has(UPDATE_ROLE),
     canDeleteRoles: has(DELETE_ROLE),
     // permissions
-    canCreatePermissions: has(CREATE_PERMISSION),
     canReadPermissions: has(READ_PERMISSION),
-    canUpdatePermissions: has(UPDATE_PERMISSION),
-    canDeletePermissions: has(DELETE_PERMISSION),
     // role permissions
     canAssignPermissionsToRoles: has(ASSIGN_PERMISSION_TO_ROLE),
     canUnassignPermissionsFromRoles: has(UNASSIGN_PERMISSION_FROM_ROLE),

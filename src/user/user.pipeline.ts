@@ -13,12 +13,15 @@ import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
 
+import { DeleteService } from './services/user/delete.service';
+
 @Injectable()
 export class UserPipelineService {
   constructor(
     private readonly userService: UserService,
     private readonly createService: CreateService,
     private readonly updateService: UpdateService,
+    private readonly deleteService: DeleteService,
   ) {}
 
   async getMany(data: UserQueryRequest): Promise<UserListResponseDto> {
@@ -51,5 +54,21 @@ export class UserPipelineService {
     data: UpdateUserDto;
   }): Promise<boolean> {
     return await this.updateService.update({ userId, data });
+  }
+
+  async delete({
+    id,
+    canRemoveFromRelatedRoles,
+    canRemoveFromRelatedStores,
+  }: {
+    id: UUID;
+    canRemoveFromRelatedRoles: boolean;
+    canRemoveFromRelatedStores: boolean;
+  }): Promise<boolean> {
+    return await this.deleteService.delete({
+      id,
+      canRemoveFromRelatedRoles,
+      canRemoveFromRelatedStores,
+    });
   }
 }

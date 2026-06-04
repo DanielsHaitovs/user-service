@@ -103,6 +103,7 @@ export class UserService {
 
     return await this.queryService.paginatedResult({
       query,
+      cache: true,
     });
   }
 
@@ -113,7 +114,9 @@ export class UserService {
    * @returns User data transfer object
    */
   async getByIdOrThrow(id: UUID): Promise<GetUserDto> {
-    return await this.userRepository.findOneByOrFail({ id });
+    return await this.userRepository.findOneOrFail({
+      where: { id },
+    });
   }
 
   /**
@@ -123,6 +126,8 @@ export class UserService {
    * @returns User data transfer object
    */
   async getByEmailOrThrow(email: string): Promise<GetUserDto> {
-    return await this.userRepository.findOneByOrFail({ email });
+    return await this.userRepository.findOneOrFail({
+      where: { email },
+    });
   }
 }

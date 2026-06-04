@@ -10,7 +10,7 @@ export const EXAMPLE_ROLE_ID = '123e4567-e89b-12d3-a456-426614174000' as string;
  * Standard example name used in API documentation and test fixtures.
  * Represents a role name that is commonly used for testing scenarios.
  */
-export const ROLE_QUERY_ALIAS = 'roles' as string;
+export const ROLE_QUERY_ALIAS = 'roles';
 
 /**
  * Standard example name used in API documentation and test fixtures.

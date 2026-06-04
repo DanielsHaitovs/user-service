@@ -7,15 +7,15 @@ import {
   RoleResponseDto,
   UpdateRoleDto,
 } from '@/roleDto/role.dto';
+import { CacheService } from '@/roleServices/cache.service';
 import { CreateService } from '@/roleServices/create.service';
+import { DeleteService } from '@/roleServices/delete.service';
 import { RolePermissionService } from '@/roleServices/permission.service';
 import { RoleService } from '@/roleServices/role.service';
 import { UpdateService } from '@/roleServices/update.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
-
-import { DeleteService } from './services/delete.service';
 
 @Injectable()
 export class RolePipelineService {
@@ -25,6 +25,7 @@ export class RolePipelineService {
     private readonly createService: CreateService,
     private readonly updateService: UpdateService,
     private readonly deleteService: DeleteService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async getMany(data: RolesQueryRequest): Promise<RoleListResponseDto> {
@@ -32,15 +33,32 @@ export class RolePipelineService {
   }
 
   async getByIdOrThrow(id: UUID): Promise<GetRoleDto> {
-    return await this.roleService.getByIdOrThrow(id);
-  }
+    const cachedRole = await this.cacheService.getById(id);
 
-  async getByNameOrThrow(name: string): Promise<GetRoleDto> {
-    return await this.roleService.getByNameOrThrow(name);
+    if (cachedRole) {
+      return cachedRole;
+    }
+
+    const cached = await this.roleService.getByIdOrThrow(id);
+
+    await this.cacheService.set(cached);
+
+    return cached;
   }
 
   async getPermissionsOrThrow(roleId: UUID): Promise<RoleResponseDto> {
-    return await this.permissionService.getPermissionsOrThrow(roleId);
+    const cached =
+      await this.cacheService.getWithRelatedPermissionsById(roleId);
+
+    if (cached) {
+      return cached;
+    }
+
+    const role = await this.permissionService.getPermissionsOrThrow(roleId);
+
+    await this.cacheService.setRolePermissions(role);
+
+    return role;
   }
 
   async create({
@@ -50,27 +68,40 @@ export class RolePipelineService {
     createDto: CreateRoleDto;
     createdById: UUID;
   }): Promise<RoleResponseDto> {
-    return await this.createService.create({ createDto, createdById });
+    const role = await this.createService.create({ createDto, createdById });
+
+    await this.cacheService.set(role);
+
+    return role;
   }
 
   async assignPermissionsToRole({
     roleId,
     permissionCodes,
   }: PermissionsToRoleDto): Promise<RoleResponseDto> {
-    return await this.permissionService.assignPermissionsToRole({
+    const assignedRoles = await this.permissionService.assignPermissionsToRole({
       roleId,
       permissionCodes,
     });
+
+    await this.cacheService.revalidateRolePermissions(roleId);
+
+    return assignedRoles;
   }
 
   async unassignPermissionsFromRole({
     roleId,
     permissionCodes,
   }: PermissionsToRoleDto): Promise<RoleResponseDto> {
-    return await this.permissionService.unassignPermissionsFromRole({
-      roleId,
-      permissionCodes,
-    });
+    const unAssignRoles =
+      await this.permissionService.unassignPermissionsFromRole({
+        roleId,
+        permissionCodes,
+      });
+
+    await this.cacheService.revalidateRolePermissions(roleId);
+
+    return unAssignRoles;
   }
 
   async update({
@@ -80,7 +111,13 @@ export class RolePipelineService {
     updateDto: UpdateRoleDto;
     id: UUID;
   }): Promise<boolean> {
-    return await this.updateService.update({ updateDto, id });
+    const updated = await this.updateService.update({ updateDto, id });
+
+    if (updated) {
+      await this.cacheService.revalidate(id);
+    }
+
+    return updated;
   }
 
   async delete({
@@ -90,6 +127,15 @@ export class RolePipelineService {
     id: UUID;
     canDeleteAssignedRole: boolean;
   }): Promise<boolean> {
-    return await this.deleteService.delete({ id, canDeleteAssignedRole });
+    const deleted = await this.deleteService.delete({
+      id,
+      canDeleteAssignedRole,
+    });
+
+    if (deleted) {
+      await this.cacheService.invalidate(id);
+    }
+
+    return deleted;
   }
 }

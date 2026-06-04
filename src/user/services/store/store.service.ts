@@ -1,4 +1,5 @@
 import { EntityQueryService } from '@/baseServices/query.service';
+import { USER_STORES_QUERY_ALIAS } from '@/libConst/store.const';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import {
@@ -126,6 +127,7 @@ export class UserStoresService {
 
     return await this.queryService.paginatedResult({
       query,
+      cache: true,
     });
   }
 
@@ -204,27 +206,6 @@ export class UserStoresService {
   }
 
   /**
-   * Validates the payload for assigning or unassigning stores to/from a user.
-   *
-   * @param userId - The unique identifier of the user (UUID).
-   * @param storeIds - An array of unique identifiers (UUIDs) representing the stores.
-   * @returns A promise that resolves when the payload is valid.
-   * @throws An EntityNotFoundError if the user does not exist or if any of the stores do not exist.
-   */
-  private async validatePayload({
-    userId,
-    storeIds,
-  }: {
-    userId: UUID;
-    storeIds: UUID[];
-  }): Promise<void> {
-    await Promise.all([
-      this.userHelperService.validateIfExists({ id: userId }),
-      await this.storeHelperService.manyExistsByIdOrThrow(storeIds),
-    ]);
-  }
-
-  /**
    * Retrieves the stores assigned to a user by their unique identifier.
    *
    * @param userId - The unique identifier of the user (UUID).
@@ -232,12 +213,12 @@ export class UserStoresService {
    */
   async getAssignedStores(userId: UUID): Promise<GetRelatedStoreDto[]> {
     const query = this.storeRepository
-      .createQueryBuilder('userStore')
-      .leftJoinAndSelect('userStore.store', 'store')
-      .leftJoinAndSelect('userStore.user', 'user')
+      .createQueryBuilder(USER_STORES_QUERY_ALIAS)
+      .leftJoinAndSelect(`${USER_STORES_QUERY_ALIAS}.store`, 'store')
+      .leftJoinAndSelect(`${USER_STORES_QUERY_ALIAS}.user`, 'user')
       .where('user.id = :userId', { userId })
       .select([
-        'userStore.id',
+        `${USER_STORES_QUERY_ALIAS}.id`,
         'store.id',
         'store.name',
         'store.code',
@@ -251,34 +232,23 @@ export class UserStoresService {
       cache: true,
     });
 
-    return userStores.map((userStore) => ({
-      id: userStore.store.id,
-      name: userStore.store.name,
-      code: userStore.store.code,
-      viewCode: userStore.store.viewCode,
-      createdAt: userStore.store.createdAt,
-      updatedAt: userStore.store.updatedAt,
-    }));
+    const stores: GetRelatedStoreDto[] = userStores.map(
+      (userStore) => userStore.store,
+    );
+
+    return stores;
   }
 
-  /** Retrieves the unique identifiers of users assigned to a specific store.
-   *
-   * @param roleId - The unique identifier of the store (UUID).
-   * @returns A promise that resolves to an array of UUIDs representing the users assigned to the store.
-   */
-  async getAssignedUserIds(roleId: UUID): Promise<UUID[]> {
-    const query = this.storeRepository
-      .createQueryBuilder('userStore')
-      .leftJoinAndSelect('userStore.store', 'store')
-      .leftJoinAndSelect('userStore.user', 'user')
-      .where('store.id = :storeId', { storeId: roleId })
-      .select(['user.id']);
-
-    const userStores = await this.queryService.getAll<UserStores>({
-      query,
-      cache: true,
-    });
-
-    return userStores.map((userStore) => userStore.user.id);
+  private async validatePayload({
+    userId,
+    storeIds,
+  }: {
+    userId: UUID;
+    storeIds?: UUID[] | undefined;
+  }): Promise<void> {
+    await Promise.all([
+      this.storeHelperService.checkIfManyExistOrThrow(storeIds),
+      this.userHelperService.checkIfExists({ id: userId }),
+    ]);
   }
 }

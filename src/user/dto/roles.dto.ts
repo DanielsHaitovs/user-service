@@ -10,7 +10,12 @@ import { GetAssignedByDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
-import { IsOptional, IsUUID, ValidateNested } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsOptional,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { UUID } from 'crypto';
 
 export class CreateUserRolesDto {
@@ -88,6 +93,7 @@ export class AssignRolesToUserDto {
   @ToArray()
   @IsUUID('all', { each: true })
   @IsOptional()
+  @ArrayNotEmpty({ message: 'roleIds cannot be an empty array if provided' })
   roleIds: UUID[];
 
   constructor(userId: UUID, roleIds: UUID[]) {

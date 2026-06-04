@@ -87,6 +87,7 @@ export class RoleService {
 
     return await this.queryService.paginatedResult({
       query,
+      cache: true,
     });
   }
 
@@ -97,16 +98,8 @@ export class RoleService {
    * @throws EntityNotFoundException if no role with the given ID is found.
    */
   async getByIdOrThrow(id: UUID): Promise<GetRoleDto> {
-    return await this.roleRepository.findOneByOrFail({ id });
-  }
-
-  /**
-   * Retrieves a role by its name or throws an exception if not found.
-   * @param name - The name of the role to retrieve.
-   * @returns A promise that resolves to the GetRoleDto of the found role.
-   * @throws EntityNotFoundException if no role with the given name is found.
-   */
-  async getByNameOrThrow(name: string): Promise<GetRoleDto> {
-    return await this.roleRepository.findOneByOrFail({ name });
+    return await this.roleRepository.findOneOrFail({
+      where: { id },
+    });
   }
 }

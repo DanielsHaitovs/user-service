@@ -9,7 +9,10 @@ import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
 import { SystemModule } from '@/system/system.module';
 import { UserModule } from '@/user/user.module';
+import { createKeyv } from '@keyv/redis';
+import { CacheModule } from '@nestjs/cache-manager';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -18,6 +21,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   providers: [],
   imports: [
     EnvConfigModule,
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRootAsync({
       useFactory: (configService: EnvConfigService) => {
         return {
@@ -35,8 +39,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       useFactory: (configService: EnvConfigService) => ({
         type: 'postgres',
         cache: {
-          type: 'database',
-          duration: 600000,
+          type: 'ioredis',
+          options: {
+            host: configService.redisHost,
+            port: configService.redisPort,
+            password: configService.redisPassword,
+          },
+          alwaysEnabled: false,
         },
         // poolSize: 50,
         // extra: { max: 50, idleTimeoutMillis: 30000, statement_timeout: 0 },
@@ -53,6 +62,34 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       }),
       // 4. This injects your custom service and passes it to the useFactory above
       inject: [EnvConfigService],
+    }),
+    // CacheModule.registerAsync({
+    //   isGlobal: true,
+    //   inject: [EnvConfigService],
+    //   useFactory: async (configService: EnvConfigService) => ({
+    //     store: await redisStore({
+    //       socket: {
+    //         host: configService.redisHost,
+    //         port: configService.redisPort,
+    //       },
+    //       password: configService.redisPassword,
+    //       ttl: configService.userCacheTtl,
+    //     }),
+    //   }),
+    // }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [EnvConfigService],
+      useFactory: (configService: EnvConfigService) => {
+        // Construct the Redis connection string
+        const redisUrl = `redis://:${configService.redisPassword}@${configService.redisHost}:${configService.redisPort.toString()}`;
+
+        return {
+          // Notice it is 'stores' (plural) and uses createKeyv!
+          stores: [createKeyv(redisUrl)],
+          ttl: configService.userCacheTtl * 1000,
+        };
+      },
     }),
     UserModule,
     RolesModule,

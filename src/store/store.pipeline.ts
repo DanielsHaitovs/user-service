@@ -6,14 +6,14 @@ import {
   StoreResponseDto,
   UpdateStoreDto,
 } from '@/storeDto/store.dto';
+import { CacheService } from '@/storeServices/cache.service';
 import { CreateService } from '@/storeServices/create.service';
+import { DeleteService } from '@/storeServices/delete.service';
 import { StoreService } from '@/storeServices/store.service';
 import { UpdateService } from '@/storeServices/update.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
-
-import { DeleteService } from './services/delete.service';
 
 @Injectable()
 export class StorePipelineService {
@@ -22,6 +22,7 @@ export class StorePipelineService {
     private readonly createService: CreateService,
     private readonly updateService: UpdateService,
     private readonly deleteService: DeleteService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async getMany(data: StoreQueryRequest): Promise<StoreListResponseDto> {
@@ -29,7 +30,17 @@ export class StorePipelineService {
   }
 
   async getByIdOrThrow(id: UUID): Promise<GetStoreDto> {
-    return await this.storeService.getByIdOrThrow(id);
+    const cached = await this.cacheService.getById(id);
+
+    if (cached) {
+      return cached;
+    }
+
+    const store = await this.storeService.getByIdOrThrow(id);
+
+    await this.cacheService.set(store);
+
+    return store;
   }
 
   async getByCodeOrThrow(code: string): Promise<GetStoreDto> {
@@ -47,7 +58,11 @@ export class StorePipelineService {
     createDto: CreateStoreDto;
     createdById: UUID;
   }): Promise<StoreResponseDto> {
-    return await this.createService.create({ createDto, createdById });
+    const store = await this.createService.create({ createDto, createdById });
+
+    await this.cacheService.set(store);
+
+    return store;
   }
 
   async update({
@@ -57,7 +72,13 @@ export class StorePipelineService {
     updateDto: UpdateStoreDto;
     id: UUID;
   }): Promise<boolean> {
-    return await this.updateService.update({ updateDto, id });
+    const updated = await this.updateService.update({ updateDto, id });
+
+    if (updated) {
+      await this.cacheService.revalidate(id);
+    }
+
+    return updated;
   }
 
   async delete({
@@ -67,6 +88,15 @@ export class StorePipelineService {
     id: UUID;
     canDeleteAssignedStore: boolean;
   }): Promise<boolean> {
-    return await this.deleteService.delete({ id, canDeleteAssignedStore });
+    const deleted = await this.deleteService.delete({
+      id,
+      canDeleteAssignedStore,
+    });
+
+    if (deleted) {
+      await this.cacheService.invalidate(id);
+    }
+
+    return deleted;
   }
 }

@@ -1,10 +1,9 @@
-import { deletedResults } from '@/base/delete';
+import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/libConst/database.const';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { SystemIdentityService } from '@/system/identity.service';
 import { UserRoles } from '@/userEntities/userRoles.entity';
-import { UserRolesService } from '@/userRoleServices/role.service';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -19,7 +18,6 @@ export class DeleteService {
     @InjectRepository(UserRoles)
     private readonly userRolesRepository: Repository<UserRoles>,
     private readonly helperService: RoleHelperService,
-    private readonly userRoleService: UserRolesService,
     private readonly systemIdentityService: SystemIdentityService,
   ) {}
 
@@ -30,7 +28,7 @@ export class DeleteService {
     id: UUID;
     canDeleteAssignedRole: boolean;
   }): Promise<boolean> {
-    await this.helperService.validateIfExist([id]);
+    await this.helperService.checkIfManyExistOrThrow([id]);
 
     await this.getSystemRoleIds([id]);
 
@@ -72,7 +70,11 @@ export class DeleteService {
     roleId: UUID;
     canDeleteAssignedRole: boolean;
   }): Promise<void> {
-    const userRoles = await this.userRoleService.getAssignedUserIds(roleId);
+    const userRoles = await this.userRolesRepository.find({
+      where: { role: { id: roleId } },
+      take: 1,
+      skip: 0,
+    });
 
     if (userRoles.length > 0) {
       if (!canDeleteAssignedRole) {

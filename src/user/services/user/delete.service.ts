@@ -1,8 +1,9 @@
-import { deletedResults } from '@/base/delete';
+import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/libConst/database.const';
 import { SystemIdentityService } from '@/system/identity.service';
 import { User } from '@/userEntities/user.entity';
 import { UserRolesService } from '@/userRoleServices/role.service';
+import { UserHelperService } from '@/userServices/helper.service';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +16,7 @@ export class DeleteService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly helperService: UserHelperService,
     private readonly roleService: UserRolesService,
     private readonly storeService: UserStoresService,
     private readonly systemIdentityService: SystemIdentityService,
@@ -31,6 +33,7 @@ export class DeleteService {
   }): Promise<boolean> {
     try {
       const systemUserId = this.systemIdentityService.getSystemUserId();
+      await this.helperService.checkIfExists({ id });
 
       if (id === systemUserId) {
         throw new UnprocessableEntityException(
@@ -68,18 +71,20 @@ export class DeleteService {
     id: UUID;
     canRemoveFromRelatedRoles: boolean;
   }): Promise<void> {
-    // const userRoles = await this.roleService.getAssignedRoles(id);
-    // if (userRoles.length > 0) {
-    //   if (!canRemoveFromRelatedRoles) {
-    //     throw new UnprocessableEntityException(
-    //       'User cannot be deleted because they are still assigned to roles. Please unassign the user from their roles before deletion.',
-    //     );
-    //   }
-    //   await this.roleService.unassignRolesFromUser({
-    //     userId: id,
-    //     roleIds: userRoles.map((role) => role.id),
-    //   });
-    // }
+    const userRoles = await this.roleService.getAssignedRoles(id);
+
+    if (userRoles.length > 0) {
+      if (!canRemoveFromRelatedRoles) {
+        throw new UnprocessableEntityException(
+          'User cannot be deleted because they are still assigned to roles. Please unassign the user from their roles before deletion.',
+        );
+      }
+
+      await this.roleService.unassignRolesFromUser({
+        userId: id,
+        roleIds: userRoles.map((role) => role.id),
+      });
+    }
   }
 
   private async removeUserFromRelatedStores({

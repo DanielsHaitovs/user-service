@@ -3,13 +3,14 @@ import {
   PaginationDto,
   SortDto,
 } from '@/baseDto/pagination.dto';
-import { OptimizeCriteria, QueryRequest } from '@/baseInterface/query.request';
+import { EnvConfigService } from '@/config/env/env.config.service';
 import { hashObject } from '@/utils/token-generator.util';
-import { ForbiddenException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
+import { Cache } from 'cache-manager';
 import { isEmpty } from 'class-validator';
-import { UUID } from 'crypto';
 import {
   EntityManager,
   EntityTarget,
@@ -28,10 +29,14 @@ type QueryField<T extends ObjectLiteral> =
  * and reduces code duplication. Implements a fluent interface for building complex
  * database queries with proper parameter binding to prevent SQL injection.
  */
+@Injectable()
 export class EntityQueryService {
   constructor(
     @InjectEntityManager()
     protected entityManager: EntityManager,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
+    private readonly envConfigService: EnvConfigService,
   ) {}
 
   /**
@@ -247,23 +252,30 @@ export class EntityQueryService {
     cache,
   }: {
     query: SelectQueryBuilder<T>;
-    cache?: boolean;
+    cache?: boolean | undefined;
   }): Promise<T[]> {
     const response = new Array<T>();
     const batchSize = 100;
+    const { alias } = query;
     let offset = 0;
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       const batchQuery = query.clone();
+      const cacheKey = `${alias}_all_${hashObject(batchQuery.getQueryAndParameters())}`;
 
       batchQuery.skip(offset).take(batchSize);
+      const cached = await this.cacheManager.get<T[]>(cacheKey);
 
-      if (cache === true) {
-        this.cacheQuery<T>({ query: batchQuery });
+      const result = cached ?? (await batchQuery.getMany());
+
+      if (!cached && cache === true) {
+        await this.cacheManager.set(
+          cacheKey,
+          result,
+          this.envConfigService.userCacheTtl * 1000,
+        );
       }
-
-      const result = await batchQuery.getMany();
 
       if (isEmpty(result)) {
         break; // No more results, exit loop
@@ -311,86 +323,6 @@ export class EntityQueryService {
     query.orderBy(`${query.alias}.${sortField}`, sortOrder);
   }
 
-  validateRelationSelect<T extends ObjectLiteral>({
-    query,
-    select,
-    hasAccess,
-    relationAlias,
-  }: {
-    query: SelectQueryBuilder<T>;
-    select: string[] | undefined;
-    hasAccess: boolean;
-    relationAlias: string | undefined;
-  }): void {
-    if (select == undefined || select.length === 0) return;
-
-    if (relationAlias == undefined) return;
-
-    const hasFieldFromRelation = select.some((field) =>
-      field.startsWith(`${relationAlias}.`),
-    );
-
-    if (!hasAccess && hasFieldFromRelation) {
-      const filtered = select.filter(
-        (field) => !field.startsWith(`${relationAlias}.`),
-      );
-
-      select.splice(0, select.length, ...filtered);
-      return;
-    }
-
-    if (hasAccess && hasFieldFromRelation) {
-      this.joinRelation<T>({ query, alias: relationAlias });
-
-      if (!select.includes(`${relationAlias}.id`)) {
-        select.push(`${relationAlias}.id`);
-      }
-    }
-  }
-
-  validateSelect<T extends ObjectLiteral>({
-    query,
-    select,
-  }: {
-    query: SelectQueryBuilder<T>;
-    select: string[] | undefined;
-  }): void {
-    if (select == undefined || select.length === 0) return;
-
-    if (!select.includes(`${query.alias}.id`)) {
-      select.push(`${query.alias}.id`);
-    }
-  }
-
-  validateOrder<T extends ObjectLiteral>({
-    query,
-    relations,
-    sort,
-  }: {
-    query: SelectQueryBuilder<T>;
-    relations: Record<string, boolean>;
-    sort: SortDto | undefined;
-  }): void {
-    if (sort?.sortField == undefined) return;
-
-    Object.keys(relations).forEach((relationAlias) => {
-      const hasAccess = relations[relationAlias];
-
-      if (sort.sortField != undefined) {
-        if (sort.sortField.includes(relationAlias) && hasAccess === false) {
-          throw new ForbiddenException(
-            `Cannot order by field ${sort.sortField} without access`,
-          );
-        } else if (
-          sort.sortField.includes(relationAlias) &&
-          hasAccess === true
-        ) {
-          this.joinRelation<T>({ query, alias: relationAlias });
-        }
-      }
-    });
-  }
-
   joinRelation<T extends ObjectLiteral>({
     query,
     nestedFrom,
@@ -421,50 +353,6 @@ export class EntityQueryService {
   }
 
   /**
-   *
-   * @param queryBuilder
-   * @param targetAlias
-   * @param options
-   */
-  joinEntityRelation<T extends ObjectLiteral>({
-    query,
-    relationAlias,
-    shouldJoin,
-    condition,
-    options,
-    nestedFrom,
-  }: {
-    query: SelectQueryBuilder<T>;
-    relationAlias: string;
-    shouldJoin: boolean;
-    condition?: 'OR' | 'AND';
-    options?: { filters: Record<string, unknown[] | undefined> };
-    nestedFrom?: string;
-  }): void {
-    const filters = options?.filters ?? {};
-
-    if (!shouldJoin) return;
-
-    this.joinRelation({ query, alias: nestedFrom ?? relationAlias });
-
-    if (options?.filters == undefined) return;
-
-    condition ??= 'AND';
-
-    Object.entries(filters).forEach(([field, values]) => {
-      if (Array.isArray(values) && values.length > 0) {
-        this.whereIn({
-          query,
-          field: field as QueryField<T>,
-          values,
-          condition,
-          relationAlias,
-        });
-      }
-    });
-  }
-
-  /**
    * Checks if a leftJoin is already present in the query builder.
    *
    * Useful for preventing duplicate joins or ensuring specific joins
@@ -486,83 +374,33 @@ export class EntityQueryService {
     );
   }
 
-  optimize<T extends ObjectLiteral>(queryCriteria: QueryRequest<T>): void {
-    const { query, pagination, sort, select, criteria } = queryCriteria;
-
-    if (
-      select != undefined &&
-      select.length > 0 &&
-      sort?.sortField !== undefined &&
-      !select.includes(sort.sortField)
-    ) {
-      select.push(sort.sortField);
-    }
-
-    const relations: Record<string, boolean> = {};
-
-    Object.entries(criteria).forEach(
-      ([relationAlias, { permissionAccess, includeRelation }]) => {
-        const hasAccess = permissionAccess && includeRelation;
-        if (query.alias !== relationAlias) {
-          relations[relationAlias] = hasAccess;
-        }
-      },
-    );
-
-    this.validateOrder<T>({
-      query,
-      relations,
-      sort,
-    });
-
-    this.validateResponseSelectPayload<T>({ query, select, criteria });
-
-    this.sort<T>({ query, sort });
-
-    this.paginate<T>({ query, pagination });
-  }
-
-  /*
-   * Caches the query results for the specified duration.
-   */
-  cacheQuery<T extends ObjectLiteral>({
-    query,
-    expireAtMs,
-    requestedByUserId,
-  }: {
-    query: SelectQueryBuilder<T>;
-    expireAtMs?: number;
-    requestedByUserId?: UUID | undefined;
-  }): void {
-    const cacheKey = hashObject({
-      requestedByUserId,
-      query: query.getQueryAndParameters(),
-    });
-
-    expireAtMs ??= 300000;
-
-    query.cache(cacheKey, expireAtMs);
-  }
-
   async paginatedResult<T extends ObjectLiteral>({
     query,
-    requestedByUserId,
+    cache,
   }: {
     query: SelectQueryBuilder<T>;
-    requestedByUserId?: UUID | undefined;
+    cache?: boolean | undefined;
   }): Promise<PaginatedResponseDto & { data: T[] }> {
     const page = query.expressionMap.skip ?? 0;
     const limit = query.expressionMap.take ?? 10;
 
     query.distinct(true);
 
-    this.cacheQuery<T>({
-      query,
-      expireAtMs: 300000,
-      requestedByUserId,
-    });
+    const { alias } = query;
 
-    const [items, totalCount] = await query.getManyAndCount();
+    const cacheKey = `${alias}_paginated_${hashObject(query.getQueryAndParameters())}`;
+
+    const cached = await this.cacheManager.get<[T[], number]>(cacheKey);
+
+    const [items, totalCount] = cached ?? (await query.getManyAndCount());
+
+    if (!cached && cache === true) {
+      await this.cacheManager.set(
+        cacheKey,
+        [items, totalCount],
+        this.envConfigService.userCacheTtl * 1000,
+      );
+    }
 
     return {
       page: page / limit + 1,
@@ -571,88 +409,5 @@ export class EntityQueryService {
       totalPages: Math.ceil(totalCount / limit),
       data: items,
     } as PaginatedResponseDto & { data: T[] };
-  }
-
-  private validateResponseSelectPayload<T extends ObjectLiteral>({
-    query,
-    select,
-    criteria,
-  }: {
-    query: SelectQueryBuilder<T>;
-    select: string[] | undefined;
-    criteria: Record<string, OptimizeCriteria>;
-  }): void {
-    if (select == undefined || select.length === 0) return;
-    this.validateSelect<T>({ query, select });
-
-    for (const key of Object.keys(query.getParameters())) {
-      const [alias] = key.split('_');
-      if (alias == undefined) continue;
-      this.ensureSelectChainIds(alias, criteria, select);
-    }
-
-    const propertiesToRemove = new Set<string>();
-
-    for (const [
-      relationAlias,
-      { permissionAccess, includeRelation },
-    ] of Object.entries(criteria)) {
-      if (!includeRelation || !permissionAccess) {
-        propertiesToRemove.add(relationAlias);
-      }
-    }
-
-    for (const [relationAlias, { nestedFrom }] of Object.entries(criteria)) {
-      if (nestedFrom != undefined && propertiesToRemove.has(nestedFrom)) {
-        propertiesToRemove.add(relationAlias);
-      }
-    }
-
-    for (const prop of propertiesToRemove) {
-      const filtered = select.filter((s) => !s.startsWith(`${prop}.`));
-      select.splice(0, select.length, ...filtered);
-    }
-
-    query.select(select);
-  }
-
-  private ensureSelectChainIds(
-    fromKey: string,
-    criteria: Record<string, OptimizeCriteria>,
-    select: string[],
-    mutate = true,
-  ): string[] {
-    const visited = new Set<string>();
-    const chainLeafToRoot: string[] = [];
-
-    let cur: string | undefined = fromKey;
-    while (cur) {
-      if (visited.has(cur)) {
-        break;
-      }
-      visited.add(cur);
-      chainLeafToRoot.push(cur);
-
-      const parent: string | undefined = criteria[cur]?.nestedFrom;
-      if (parent == undefined) break;
-      cur = parent;
-    }
-
-    const chainRootToLeaf = chainLeafToRoot.slice().reverse();
-
-    const chainIds = new Set(chainRootToLeaf.map((a) => `${a}.id`));
-
-    const existingOther = select.filter((s) => !chainIds.has(s));
-
-    const orderedChain = Array.from(chainIds);
-    const nextSelect = [...orderedChain, ...existingOther];
-
-    if (mutate) {
-      select.length = 0;
-      nextSelect.forEach((s) => select.push(s));
-      return select;
-    }
-
-    return nextSelect;
   }
 }

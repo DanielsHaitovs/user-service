@@ -1,4 +1,5 @@
 import { EntityQueryService } from '@/baseServices/query.service';
+import { USER_ROLE_QUERY_ALIAS } from '@/libConst/role.const';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import {
@@ -44,9 +45,10 @@ export class UserRolesService {
       dateFrom,
       dateTo,
     } = data;
+
     const query = this.queryService.initQuery<UserRoles>({
       entity: UserRoles,
-      alias: 'userRole',
+      alias: USER_ROLE_QUERY_ALIAS,
     });
 
     this.queryService.joinRelation<UserRoles>({
@@ -90,9 +92,9 @@ export class UserRolesService {
     });
 
     query.select([
-      'userRole.id',
-      'userRole.createdAt',
-      'userRole.updatedAt',
+      `${USER_ROLE_QUERY_ALIAS}.id`,
+      `${USER_ROLE_QUERY_ALIAS}.createdAt`,
+      `${USER_ROLE_QUERY_ALIAS}.updatedAt`,
       'role.id',
       'role.name',
       'role.createdAt',
@@ -108,6 +110,7 @@ export class UserRolesService {
 
     return await this.queryService.paginatedResult({
       query,
+      cache: true,
     });
   }
 
@@ -205,6 +208,34 @@ export class UserRolesService {
   }
 
   /**
+   * Retrieves the roles assigned to a user by their unique identifier.
+   *
+   * @param userId - The unique identifier of the user (UUID).
+   * @returns A promise that resolves to an array of GetRelatedRoleDto objects representing the user's roles.
+   */
+  async getAssignedRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
+    const query = this.roleRepository
+      .createQueryBuilder(USER_ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(`${USER_ROLE_QUERY_ALIAS}.role`, 'role')
+      .leftJoinAndSelect(`${USER_ROLE_QUERY_ALIAS}.user`, 'user')
+      .where('user.id = :userId', { userId })
+      .select([
+        `${USER_ROLE_QUERY_ALIAS}.id`,
+        'role.id',
+        'role.name',
+        'role.createdAt',
+        'role.updatedAt',
+      ]);
+
+    const userRoles = await this.queryService.getAll<UserRoles>({
+      query,
+      cache: true,
+    });
+
+    return userRoles.map((userRole) => userRole.role);
+  }
+
+  /**
    * Validates the existence of a user and the specified roles.
    *
    * @param userId - The unique identifier of the user (UUID).
@@ -217,68 +248,11 @@ export class UserRolesService {
     roleIds,
   }: {
     userId: UUID;
-    roleIds: UUID[];
+    roleIds?: UUID[] | undefined;
   }): Promise<void> {
     await Promise.all([
-      this.userHelperService.validateIfExists({ id: userId }),
-      this.roleHelperService.validateIfExist(roleIds),
+      this.userHelperService.checkIfExists({ id: userId }),
+      this.roleHelperService.checkIfManyExistOrThrow(roleIds),
     ]);
-  }
-
-  /**
-   * Retrieves the roles assigned to a user by their unique identifier.
-   *
-   * @param userId - The unique identifier of the user (UUID).
-   * @returns A promise that resolves to an array of GetRelatedRoleDto objects representing the user's roles.
-   */
-  async getAssignedRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
-    const query = this.roleRepository
-      .createQueryBuilder('userRole')
-      .leftJoinAndSelect('userRole.role', 'role')
-      .leftJoinAndSelect('userRole.user', 'user')
-      .where('user.id = :userId', { userId })
-      .select([
-        'userRole.id',
-        'role.id',
-        'role.name',
-        'role.createdAt',
-        'role.updatedAt',
-      ]);
-
-    const userRoles = await this.queryService.getAll<UserRoles>({
-      query,
-      cache: true,
-    });
-
-    return userRoles.map((userRole) => ({
-      id: userRole.role.id,
-      name: userRole.role.name,
-      createdAt: userRole.role.createdAt,
-      updatedAt: userRole.role.updatedAt,
-    }));
-  }
-
-  async getAssignedUserIds(roleId: UUID): Promise<UUID[]> {
-    const query = this.roleRepository
-      .createQueryBuilder('userRole')
-      .leftJoinAndSelect('userRole.role', 'role')
-      .leftJoinAndSelect('userRole.user', 'user')
-      .where('role.id = :roleId', { roleId })
-      .select([
-        'userRole.id',
-        'user.id',
-        'user.firstName',
-        'user.lastName',
-        'user.email',
-        'user.createdAt',
-        'user.updatedAt',
-      ]);
-
-    const userRoles = await this.queryService.getAll<UserRoles>({
-      query,
-      cache: true,
-    });
-
-    return userRoles.map((userRole) => userRole.user.id);
   }
 }

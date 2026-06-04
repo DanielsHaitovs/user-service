@@ -1,14 +1,10 @@
 import { EntityQueryService } from '@/baseServices/query.service';
 import { Roles } from '@/roleEntities/role.entity';
-import {
-  ConflictException,
-  Injectable,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
-import { In, Not, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class RoleHelperService {
@@ -19,51 +15,21 @@ export class RoleHelperService {
   ) {}
 
   /**
-   * Validates that a role with the given name does not already exist, excluding an optional ID.
-   * @param name - The name of the role to validate for uniqueness.
-   * @param id - An optional ID to exclude from the uniqueness check (useful for updates).
-   * @throws ConflictException if a role with the given name already exists (excluding the specified ID).
+   * Validates that all role IDs in the provided array exist in the database.
+   * @param ids - An array of role IDs (UUIDs) to validate.
+   * @returns A promise that resolves to an array of valid role IDs if all exist.
+   * @throws UnprocessableEntityException if any of the provided role IDs do not exist.
    */
-  async isUniqueNameOrThrow({
-    name,
-    id,
-  }: {
-    name: string;
-    id?: UUID | undefined;
-  }): Promise<boolean> {
-    const existingRole = await this.roleRepository.findOne({
-      where: {
-        name,
-        ...(id != undefined ? { id: Not(id) } : {}),
-      },
-    });
-
-    if (existingRole) {
-      throw new ConflictException(
-        `A role with the name "${name}" already exists.`,
-      );
-    }
-
-    return true;
-  }
-
-  /**
-   * Validates that a role with the given ids do not already exist.
-   * @param ids - The ids of the roles to validate.
-   * @returns The IDs of the existing roles with the given names.
-   * @throws UnprocessableEntityException if any of the provided role names do not exist.
-   */
-  async validateIfExist(ids?: string[]): Promise<void> {
+  async checkIfManyExistOrThrow(ids?: string[]): Promise<UUID[]> {
     if (ids == undefined || ids.length === 0) {
-      throw new UnprocessableEntityException(
-        'Failed to validate if role exists: At least one role id must be provided for validation',
-      );
+      throw new UnprocessableEntityException('No role ids provided.');
     }
 
     const existingRoles = await this.roleRepository.find({
       where: {
         id: In(ids),
       },
+      select: ['id'],
     });
 
     if (existingRoles.length != ids.length) {
@@ -73,12 +39,14 @@ export class RoleHelperService {
           .join(', ')}`,
       );
     }
+
+    return existingRoles.map((r) => r.id);
   }
 
   /**
    * Retrieves all unique permission codes associated with the given role IDs.
-   * @param roleIds - An array of role IDs for which to retrieve permissions.
-   * @returns A promise that resolves to an array of unique permission codes.
+   * @param roleIds - An array of UUIDs representing the role IDs to retrieve permissions for.
+   * @returns A promise that resolves to an array of unique permission codes associated with the specified roles.
    */
   async getAllPermissions(roleIds: UUID[]): Promise<string[]> {
     const query = this.roleRepository
@@ -89,7 +57,6 @@ export class RoleHelperService {
 
     const roles = await this.queryService.getAll<Roles>({
       query,
-      cache: true,
     });
 
     const permissionCodes = new Set<string>();

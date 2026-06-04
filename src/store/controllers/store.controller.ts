@@ -1,5 +1,5 @@
 import { JwtPayload } from '@/auth/auth.interface';
-import { extractAccess } from '@/base/permissions';
+import { extractAccess } from '@/base/helper/permissions';
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';

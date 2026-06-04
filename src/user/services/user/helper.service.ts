@@ -27,7 +27,7 @@ export class UserHelperService {
    * @returns void
    * @throws UnprocessableEntityException if neither id nor email is provided, or if no user is found with the given criteria.
    */
-  async validateIfExists({
+  async checkIfExists({
     id,
     email,
   }: {
@@ -72,23 +72,24 @@ export class UserHelperService {
   }
 
   /**
-   * Checks if an email is unique among users, excluding a specific user ID.
+   * Checks if the provided email is unique among all users, excluding a specific user ID if provided. If a user with the same email exists (other than the excluded ID), an exception is thrown.
    *
    * @param email - The email address to check for uniqueness.
-   * @param userId - The ID of the user to exclude from the uniqueness check.
-   * @returns A promise that resolves to true if the email is unique, or false if it already exists for another user.
+   * @param id - An optional user ID to exclude from the uniqueness check (useful when updating a user's email).
+   * @returns void
+   * @throws ConflictException if a user with the same email already exists (excluding the specified ID).
    */
   async isEmailUniqueOrThrow({
     email,
-    userId,
+    id,
   }: {
     email: string;
-    userId?: UUID | undefined;
-  }): Promise<boolean> {
+    id?: UUID | undefined;
+  }): Promise<void> {
     const user = await this.userRepository.findOne({
       where: {
         email,
-        ...(userId != undefined && { id: Not(userId) }),
+        ...(id != undefined && { id: Not(id) }),
       },
     });
 
@@ -97,7 +98,5 @@ export class UserHelperService {
         `Email "${email}" is already in use by another user.`,
       );
     }
-
-    return false;
   }
 }

@@ -1,7 +1,9 @@
+import { BaseCacheService } from '@/baseServices/cache.service';
 import { EntityQueryService } from '@/baseServices/query.service';
 import { StoreController } from '@/store/controllers/store.controller';
 import { StorePipelineService } from '@/store/store.pipeline';
 import { Store } from '@/storeEntities/store.entity';
+import { CacheService } from '@/storeServices/cache.service';
 import { CreateService } from '@/storeServices/create.service';
 import { DeleteService } from '@/storeServices/delete.service';
 import { StoreHelperService } from '@/storeServices/helper.service';
@@ -10,25 +12,26 @@ import { UpdateService } from '@/storeServices/update.service';
 import { User } from '@/userEntities/user.entity';
 import { UserStores } from '@/userEntities/userStores.entity';
 import { UserHelperService } from '@/userServices/helper.service';
-import { UserStoresService } from '@/userStoreServices/store.service';
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Store, User, UserStores])],
   controllers: [StoreController],
   providers: [
+    Logger,
     StoreHelperService,
+    CacheService,
     CreateService,
     UpdateService,
     DeleteService,
     StoreService,
     StorePipelineService,
     UserHelperService,
+    BaseCacheService,
     EntityQueryService,
-    UserStoresService,
   ],
-  exports: [StorePipelineService, StoreHelperService],
+  exports: [StorePipelineService, StoreHelperService, CacheService],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class StoreModule {}

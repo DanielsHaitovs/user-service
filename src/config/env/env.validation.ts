@@ -129,6 +129,36 @@ export class EnvironmentVariables {
   @IsDefined()
   USER_THROTTLE_LIMIT: number;
 
+  @IsString()
+  @IsNotEmpty()
+  REDIS_HOST: string;
+
+  @IsString()
+  @IsNotEmpty()
+  REDIS_PASSWORD: string;
+
+  @IsNumber()
+  @Transform(({ value }) => {
+    if (value === '' || value === null || value === undefined) {
+      return undefined;
+    }
+
+    return Number(value);
+  })
+  @IsDefined()
+  REDIS_PORT: number;
+
+  @IsNumber()
+  @Transform(({ value }) => {
+    if (value === '' || value === null || value === undefined) {
+      return undefined;
+    }
+
+    return Number(value);
+  })
+  @IsDefined()
+  USER_CACHE_TTL: number;
+
   constructor(
     nodeEnv: Environment,
     apiPort: number,
@@ -145,6 +175,10 @@ export class EnvironmentVariables {
     databaseLogging: boolean,
     throttleTtl: number,
     throttleLimit: number,
+    redisHost: string,
+    redisPassword: string,
+    redisPort: number,
+    userCacheTtl: number,
   ) {
     this.USER_NODE_ENV = nodeEnv;
     this.USER_API_PORT = apiPort;
@@ -161,6 +195,10 @@ export class EnvironmentVariables {
     this.USER_DATABASE_LOGGING = databaseLogging;
     this.USER_THROTTLE_TTL = throttleTtl;
     this.USER_THROTTLE_LIMIT = throttleLimit;
+    this.REDIS_HOST = redisHost;
+    this.REDIS_PASSWORD = redisPassword;
+    this.REDIS_PORT = redisPort;
+    this.USER_CACHE_TTL = userCacheTtl;
   }
 }
 

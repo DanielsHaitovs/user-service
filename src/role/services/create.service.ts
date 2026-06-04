@@ -2,9 +2,8 @@ import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { CreateRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
-import { RoleHelperService } from '@/roleServices/helper.service';
 import { User } from '@/userEntities/user.entity';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
@@ -16,7 +15,6 @@ export class CreateService {
     @InjectRepository(Roles)
     private readonly roleRepository: Repository<Roles>,
     private readonly permissionHelper: PermissionHelperService,
-    private readonly roleHelper: RoleHelperService,
   ) {}
 
   /**
@@ -65,12 +63,32 @@ export class CreateService {
     name: string;
     permissions?: string[] | undefined;
   }): Promise<UUID[]> {
-    // eslint-disable-next-line sonarjs/no-unused-vars
-    const [_unique, permissionIds] = await Promise.all([
-      this.roleHelper.isUniqueNameOrThrow({ name }),
-      this.permissionHelper.manyExistByCodeOrThrow(permissions),
+    const [permissionIds] = await Promise.all([
+      permissions != undefined && permissions.length > 0
+        ? this.permissionHelper.checkIfManyExistOrThrow(permissions)
+        : [],
+      this.isUniqueNameOrThrow(name),
     ]);
 
     return permissionIds;
+  }
+
+  /**
+   * Validates that a role with the given name does not already exist, excluding an optional ID.
+   * @param name - The name of the role to validate for uniqueness.
+   * @throws ConflictException if a role with the given name already exists (excluding the specified ID).
+   */
+  private async isUniqueNameOrThrow(name: string): Promise<void> {
+    const existingRole = await this.roleRepository.findOne({
+      where: {
+        name,
+      },
+    });
+
+    if (existingRole) {
+      throw new ConflictException(
+        `A role with the name "${name}" already exists.`,
+      );
+    }
   }
 }

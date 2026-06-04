@@ -98,4 +98,28 @@ export class EnvConfigService {
       infer: true,
     }) as number;
   }
+
+  get redisHost(): string {
+    return this.configService.get<string>('REDIS_HOST', {
+      infer: true,
+    }) as string;
+  }
+
+  get redisPassword(): string {
+    return this.configService.get<string>('REDIS_PASSWORD', {
+      infer: true,
+    }) as string;
+  }
+
+  get redisPort(): number {
+    return this.configService.get<number>('REDIS_PORT', {
+      infer: true,
+    }) as number;
+  }
+
+  get userCacheTtl(): number {
+    return this.configService.get<number>('USER_CACHE_TTL', {
+      infer: true,
+    }) as number;
+  }
 }

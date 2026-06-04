@@ -51,9 +51,8 @@ export class CreateService {
       this.envConfigService.passwordSaltRounds,
     );
 
-    return this.dataSource.transaction(async (manager) => {
+    return await this.dataSource.transaction(async (manager) => {
       const payload = manager.create(User, createDto);
-      const { roleIds, storeIds } = createDto;
 
       payload.createdBy = {
         id: createdById,
@@ -61,51 +60,68 @@ export class CreateService {
 
       const newUser: UserResponseDto = await manager.save(User, payload);
 
-      await this.validatePayload({ roleIds, storeIds });
+      const { roleIds, storeIds } = await this.validatePayload(createDto);
 
       newUser.createdBy = { id: createdById } as GetCreatedByDto;
 
-      const userRoles = await manager.save(
-        UserRoles,
-        roleIds.map((roleId) => ({
-          user: { id: newUser.id } as User,
-          role: { id: roleId } as Roles,
-          assignedBy: { id: createdById } as User,
-        })),
-      );
+      if (roleIds.length > 0) {
+        const userRoles = await manager.save(
+          UserRoles,
+          roleIds.map((roleId) => ({
+            user: { id: newUser.id } as User,
+            role: { id: roleId } as Roles,
+            assignedBy: { id: createdById } as User,
+          })),
+        );
 
-      newUser.userRoles = userRoles.map(({ role, assignedBy }) => ({
-        role,
-        assignedBy,
-      }));
+        newUser.userRoles = userRoles.map(({ role, assignedBy }) => ({
+          role,
+          assignedBy,
+        }));
+      }
 
-      const userStores = await manager.save(
-        UserStores,
-        storeIds.map((storeId) => ({
-          store: { id: storeId } as Store,
-          assignedBy: { id: createdById } as User,
-        })),
-      );
+      if (storeIds.length > 0) {
+        const userStores = await manager.save(
+          UserStores,
+          storeIds.map((storeId) => ({
+            store: { id: storeId } as Store,
+            assignedBy: { id: createdById } as User,
+          })),
+        );
 
-      newUser.userStores = userStores.map(({ store, assignedBy }) => ({
-        store,
-        assignedBy,
-      }));
+        newUser.userStores = userStores.map(({ store, assignedBy }) => ({
+          store,
+          assignedBy,
+        }));
+      }
 
       return newUser;
     });
   }
 
-  private async validatePayload({
-    roleIds,
-    storeIds,
-  }: {
-    roleIds?: UUID[] | undefined;
-    storeIds?: UUID[] | undefined;
-  }): Promise<void> {
-    await Promise.all([
-      this.roleHelper.validateIfExist(roleIds),
-      this.storeHelper.manyExistsByIdOrThrow(storeIds),
+  /** Validates the roleIds and storeIds in the CreateUserDto payload, ensuring that they exist in the database.
+   *
+   * @param data - The CreateUserDto containing the roleIds and storeIds to validate.
+   * @returns An object containing the validated roleIds and storeIds, or undefined if they were not provided.
+   * @throws UnprocessableEntityException if any of the provided roleIds or storeIds do not exist in the database.
+   */
+  private async validatePayload(
+    data: CreateUserDto,
+  ): Promise<{ roleIds: UUID[]; storeIds: UUID[] }> {
+    const { roleIds, storeIds } = data;
+
+    const [roles, stores] = await Promise.all([
+      roleIds.length > 0
+        ? this.roleHelper.checkIfManyExistOrThrow(roleIds)
+        : [],
+      storeIds.length > 0
+        ? this.storeHelper.checkIfManyExistOrThrow(storeIds)
+        : [],
     ]);
+
+    return {
+      roleIds: roles,
+      storeIds: stores,
+    };
   }
 }

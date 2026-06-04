@@ -1,8 +1,12 @@
+import { STORE_QUERY_ALIAS } from '@/libConst/store.const';
 import { CreateStoreDto, StoreResponseDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
-import { StoreHelperService } from '@/storeServices/helper.service';
 import { User } from '@/userEntities/user.entity';
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
@@ -13,7 +17,6 @@ export class CreateService {
   constructor(
     @InjectRepository(Store)
     private readonly storeRepository: Repository<Store>,
-    private readonly storeHelper: StoreHelperService,
   ) {}
 
   /**
@@ -33,7 +36,7 @@ export class CreateService {
   }): Promise<StoreResponseDto> {
     const { name, code, viewCode } = createDto;
 
-    await this.storeHelper.throwIfExists({ name, code, viewCode });
+    await this.throwIfNotUnique({ name, code, viewCode });
 
     const newStore = this.storeRepository.create(createDto);
 
@@ -42,5 +45,48 @@ export class CreateService {
     } as User;
 
     return await this.storeRepository.save(newStore);
+  }
+
+  /**
+   * Validates that a store with the given name, code, or view code does not already exist.
+   * @param name - The name of the store to validate.
+   * @param code - The code of the store to validate.
+   * @param viewCode - The view code of the store to validate.
+   * @throws ConflictException if a store with the given name, code, or view code already exists.
+   */
+  private async throwIfNotUnique({
+    name,
+    code,
+    viewCode,
+  }: {
+    name?: string | undefined;
+    code?: string | undefined;
+    viewCode?: string | undefined;
+  }): Promise<void> {
+    if (name == undefined && code == undefined && viewCode == undefined) {
+      throw new UnprocessableEntityException(
+        'Cannot validate if store exists.',
+      );
+    }
+
+    const query = this.storeRepository.createQueryBuilder(STORE_QUERY_ALIAS);
+
+    if (name != undefined) {
+      query.orWhere(`${STORE_QUERY_ALIAS}.name = :name`, { name });
+    }
+
+    if (code != undefined) {
+      query.orWhere(`${STORE_QUERY_ALIAS}.code = :code`, { code });
+    }
+
+    if (viewCode != undefined) {
+      query.orWhere(`${STORE_QUERY_ALIAS}.viewCode = :viewCode`, { viewCode });
+    }
+
+    const existingStore = await query.getMany();
+
+    if (existingStore.length > 0) {
+      throw new ConflictException('A store already exists.');
+    }
   }
 }

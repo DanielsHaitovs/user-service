@@ -63,7 +63,7 @@ function isSkippable(obj: unknown): boolean {
   if (obj === null || typeof obj !== 'object') return true;
 
   const ctor = (obj as { constructor?: { name?: string } }).constructor;
-  if (!ctor) return true;
+  if (!ctor || ctor.name === '') return true;
 
   const builtin = [Object, Array, Map, Set, Date, RegExp, WeakMap, WeakSet];
   if (builtin.includes(ctor as never)) return true;

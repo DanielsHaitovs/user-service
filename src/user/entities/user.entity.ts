@@ -143,7 +143,7 @@ export class User extends MecBaseEntity {
     const resetExpiryDate = new Date();
     resetExpiryDate.setMonth(resetExpiryDate.getMonth() + 3);
     this.passwordResetExpires = resetExpiryDate; // 3 months from now
-    this.isTwoFactorEnabled = true;
+    this.isTwoFactorEnabled = false;
     this.twoFactorSecret = twoFactorSecret;
     this.userRoles = userRoles;
     this.userStores = userStores;

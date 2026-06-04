@@ -60,7 +60,9 @@ export class RolePermissionService {
     }
 
     const permissionIds = [
-      ...(await this.permissionHelper.manyExistByCodeOrThrow(permissionCodes)),
+      ...(permissionCodes.length > 0
+        ? await this.permissionHelper.checkIfManyExistOrThrow(permissionCodes)
+        : []),
       ...permissions.flatMap((p) => p.id),
     ] as UUID[];
 

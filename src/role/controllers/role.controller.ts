@@ -1,5 +1,5 @@
 import { JwtPayload } from '@/auth/auth.interface';
-import { extractAccess } from '@/base/permissions';
+import { extractAccess } from '@/base/helper/permissions';
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
@@ -9,7 +9,6 @@ import {
   ASSIGN_PERMISSION_TO_ROLE,
   CONFLICT_ROLE_NAME_MSG,
   EXAMPLE_ROLE_ID,
-  EXAMPLE_ROLE_NAME,
   READ_USER_ROLE,
   ROLE_GENERIC_BAD_REQUEST_MSG,
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
@@ -137,39 +136,6 @@ export class RoleController {
   })
   async findById(@Param('id', ParseUUIDPipe) id: UUID): Promise<GetRoleDto> {
     return await this.pipelineService.getByIdOrThrow(id);
-  }
-
-  @Get('name/:name')
-  @Version('1')
-  @HttpCode(HttpStatus.OK)
-  @Permissions({
-    required: READ_ROLE_ENDPOINT_PERMISSION,
-  })
-  @ApiOkList({
-    operation: {
-      summary: 'Get role by name',
-      description: 'Retrieves a role by its unique name.',
-    },
-    okOperation: {
-      description: 'Role found and returned successfully',
-      type: GetRoleDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    notFound: {
-      description: ROLE_NOT_FOUND_MSG,
-    },
-  })
-  @ApiParam({
-    name: 'name',
-    type: String,
-    description: 'Unique name of the role to search for',
-    example: EXAMPLE_ROLE_NAME,
-  })
-  async findByName(@Param('name') name: string): Promise<GetRoleDto> {
-    return await this.pipelineService.getByNameOrThrow(name);
   }
 
   @Get()

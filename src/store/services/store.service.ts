@@ -103,6 +103,7 @@ export class StoreService {
 
     return await this.queryService.paginatedResult({
       query,
+      cache: true,
     });
   }
 
@@ -113,7 +114,9 @@ export class StoreService {
    * @throws EntityNotFoundException if no store with the given ID is found.
    */
   async getByIdOrThrow(id: UUID): Promise<GetStoreDto> {
-    return await this.storeRepository.findOneByOrFail({ id });
+    return await this.storeRepository.findOneOrFail({
+      where: { id },
+    });
   }
 
   /**
@@ -123,7 +126,9 @@ export class StoreService {
    * @throws EntityNotFoundException if no store with the given code is found.
    */
   async getByCodeOrThrow(code: string): Promise<GetStoreDto> {
-    return await this.storeRepository.findOneByOrFail({ code });
+    return await this.storeRepository.findOneOrFail({
+      where: { code },
+    });
   }
 
   /**
@@ -133,6 +138,8 @@ export class StoreService {
    * @throws EntityNotFoundException if no store with the given view code is found.
    */
   async getByViewCodeOrThrow(viewCode: string): Promise<GetStoreDto> {
-    return await this.storeRepository.findOneByOrFail({ viewCode });
+    return await this.storeRepository.findOneOrFail({
+      where: { viewCode },
+    });
   }
 }

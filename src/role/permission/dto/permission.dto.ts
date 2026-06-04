@@ -163,20 +163,20 @@ export class PermissionResponseDto extends GetPermissionDto {
 
 export class PermissionListResponseDto extends PaginatedResponseDto {
   @ApiProperty({
-    type: PermissionResponseDto,
+    type: GetPermissionDto,
     isArray: true,
     description: 'List of permissions',
   })
-  @Type(() => PermissionResponseDto)
+  @Type(() => GetPermissionDto)
   @ValidateNested({ each: true })
-  permissions: PermissionResponseDto[];
+  permissions: GetPermissionDto[];
 
   constructor(
     total: number,
     page: number,
     limit: number,
     totalPages: number,
-    permissions: PermissionResponseDto[],
+    permissions: GetPermissionDto[],
   ) {
     super(total, page, limit, totalPages);
     this.permissions = permissions;

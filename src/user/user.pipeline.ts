@@ -6,14 +6,14 @@ import {
   UserListResponseDto,
   UserResponseDto,
 } from '@/userDto/user.dto';
+import { CacheService } from '@/userServices/cache.service';
 import { CreateService } from '@/userServices/create.service';
+import { DeleteService } from '@/userServices/delete.service';
 import { UpdateService } from '@/userServices/update.service';
 import { UserService } from '@/userServices/user.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
-
-import { DeleteService } from './services/user/delete.service';
 
 @Injectable()
 export class UserPipelineService {
@@ -22,6 +22,7 @@ export class UserPipelineService {
     private readonly createService: CreateService,
     private readonly updateService: UpdateService,
     private readonly deleteService: DeleteService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async getMany(data: UserQueryRequest): Promise<UserListResponseDto> {
@@ -29,11 +30,31 @@ export class UserPipelineService {
   }
 
   async getByIdOrThrow(id: UUID): Promise<GetUserDto> {
-    return await this.userService.getByIdOrThrow(id);
+    const cached = await this.cacheService.getById(id);
+
+    if (cached) {
+      return cached;
+    }
+
+    const user = await this.userService.getByIdOrThrow(id);
+
+    await this.cacheService.set(user);
+
+    return user;
   }
 
   async getByEmailOrThrow(email: string): Promise<GetUserDto> {
-    return await this.userService.getByEmailOrThrow(email);
+    const cached = await this.cacheService.getByEmail(email);
+
+    if (cached) {
+      return cached;
+    }
+
+    const user = await this.userService.getByEmailOrThrow(email);
+
+    await this.cacheService.set(user);
+
+    return user;
   }
 
   async create({
@@ -43,17 +64,27 @@ export class UserPipelineService {
     createDto: CreateUserDto;
     createdById: UUID;
   }): Promise<UserResponseDto> {
-    return await this.createService.create({ createDto, createdById });
+    const user = await this.createService.create({ createDto, createdById });
+
+    await this.cacheService.set(user);
+
+    return user;
   }
 
   async update({
-    userId,
+    id,
     data,
   }: {
-    userId: UUID;
+    id: UUID;
     data: UpdateUserDto;
   }): Promise<boolean> {
-    return await this.updateService.update({ userId, data });
+    const updated = await this.updateService.update({ id, data });
+
+    if (updated) {
+      await this.cacheService.revalidate({ id });
+    }
+
+    return updated;
   }
 
   async delete({
@@ -65,10 +96,16 @@ export class UserPipelineService {
     canRemoveFromRelatedRoles: boolean;
     canRemoveFromRelatedStores: boolean;
   }): Promise<boolean> {
-    return await this.deleteService.delete({
+    const deleted = await this.deleteService.delete({
       id,
       canRemoveFromRelatedRoles,
       canRemoveFromRelatedStores,
     });
+
+    if (deleted) {
+      await this.cacheService.invalidate({ id });
+    }
+
+    return deleted;
   }
 }

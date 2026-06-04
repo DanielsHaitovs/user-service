@@ -1,9 +1,8 @@
-import { deletedResults } from '@/base/delete';
+import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/libConst/database.const';
 import { Store } from '@/storeEntities/store.entity';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import { UserStores } from '@/userEntities/userStores.entity';
-import { UserStoresService } from '@/userStoreServices/store.service';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -18,7 +17,6 @@ export class DeleteService {
     @InjectRepository(UserStores)
     private readonly userStoreRepository: Repository<UserStores>,
     private readonly helperService: StoreHelperService,
-    private readonly userStoreService: UserStoresService,
   ) {}
 
   /** Deletes a store by its ID. If the store is assigned to users, it will either unassign the store from those users or throw an error based on the `canDeleteAssignedStore` flag.
@@ -36,7 +34,7 @@ export class DeleteService {
     id: UUID;
     canDeleteAssignedStore: boolean;
   }): Promise<boolean> {
-    await this.helperService.validateIfExists(id);
+    await this.helperService.checkIfManyExistOrThrow([id]);
 
     try {
       await this.unAssignFromUsers({ id, canDeleteAssignedStore });
@@ -74,7 +72,11 @@ export class DeleteService {
     id: UUID;
     canDeleteAssignedStore: boolean;
   }): Promise<void> {
-    const userRoles = await this.userStoreService.getAssignedUserIds(id);
+    const userRoles = await this.userStoreRepository.find({
+      where: { store: { id } },
+      take: 1,
+      skip: 0,
+    });
 
     if (userRoles.length > 0) {
       if (!canDeleteAssignedStore) {

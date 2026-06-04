@@ -4,6 +4,7 @@ import {
   UserRolesListResponseDto,
   UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
+import { CacheService } from '@/userRoleServices/cache.service';
 import { UserRolesService } from '@/userRoleServices/role.service';
 import { Injectable } from '@nestjs/common';
 
@@ -11,7 +12,10 @@ import { UUID } from 'crypto';
 
 @Injectable()
 export class UserRolePipelineService {
-  constructor(private readonly userRolesService: UserRolesService) {}
+  constructor(
+    private readonly userRolesService: UserRolesService,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async getRoles(
     query: UserRolesQueryRequest,
@@ -34,6 +38,8 @@ export class UserRolePipelineService {
       data,
       assignedById,
     });
+
+    await this.cacheService.revalidate(data.userId);
   }
 
   async unassignRolesFromUser({
@@ -41,5 +47,7 @@ export class UserRolePipelineService {
     roleIds,
   }: UnassignRolesFromUserDto): Promise<void> {
     await this.userRolesService.unassignRolesFromUser({ userId, roleIds });
+
+    await this.cacheService.revalidate(userId);
   }
 }

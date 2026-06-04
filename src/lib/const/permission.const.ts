@@ -12,7 +12,7 @@ export const EXAMPLE_PERMISSION_ID =
  * Standard example name used in API documentation and test fixtures.
  * Represents a permission name that is commonly used for testing scenarios.
  */
-export const PERMISSION_QUERY_ALIAS = 'permissions' as string;
+export const PERMISSION_QUERY_ALIAS = 'permissions';
 
 /**
  * Standard example name used in API documentation and test fixtures.

@@ -33,7 +33,7 @@ export class RolePermissionService {
    * Assigns permissions to a role.
    * @param roleId - The UUID of the role to which permissions will be assigned.
    * @param permissionCodes - An array of permission codes to assign to the role.
-   * @returns A promise that resolves to the RoleResponseDto containing the updated role and its permissions.
+   * @returns A promise that resolves when the permissions have been successfully assigned to the role.
    * @throws EntityNotFoundException if no role with the given ID is found.
    * @throws UnprocessableEntityException if any of the provided permission codes do not exist.
    * @throws UnprocessableEntityException if no permission codes are provided.
@@ -44,7 +44,7 @@ export class RolePermissionService {
   }: {
     roleId: UUID;
     permissionCodes: string[];
-  }): Promise<RoleResponseDto> {
+  }): Promise<void> {
     if (!permissionCodes.length) {
       throw new UnprocessableEntityException(
         'At least one permission code must be provided to assign permissions to the role.',
@@ -74,15 +74,13 @@ export class RolePermissionService {
         } as Permission;
       }),
     });
-
-    return await this.getPermissionsOrThrow(roleId);
   }
 
   /**
    * Unassigns permissions from a role.
    * @param roleId - The UUID of the role from which permissions will be unassigned.
    * @param permissionCodes - An array of permission codes to unassign from the role.
-   * @returns A promise that resolves to the RoleResponseDto containing the updated role and its remaining permissions.
+   * @returns A promise that resolves when the permissions have been successfully unassigned from the role.
    * @throws EntityNotFoundException if no role with the given ID is found.
    * @throws UnprocessableEntityException if any of the provided permission codes are not currently assigned to the role.
    * @throws UnprocessableEntityException if no permission codes are provided.
@@ -93,7 +91,7 @@ export class RolePermissionService {
   }: {
     roleId: UUID;
     permissionCodes: string[];
-  }): Promise<RoleResponseDto> {
+  }): Promise<void> {
     if (!permissionCodes.length) {
       throw new UnprocessableEntityException(
         'At least one permission code must be provided to unassign permissions from the role.',
@@ -120,7 +118,5 @@ export class RolePermissionService {
         } as Permission;
       }),
     });
-
-    return await this.getPermissionsOrThrow(roleId);
   }
 }

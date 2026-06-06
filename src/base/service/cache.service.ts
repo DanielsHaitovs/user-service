@@ -1,53 +1,38 @@
 import { EnvConfigService } from '@/config/env/env.config.service';
+import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS, USER_ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import {
+  STORE_QUERY_ALIAS,
+  USER_STORES_QUERY_ALIAS,
+} from '@/libConst/store.const';
+import { USER_QUERY_ALIAS } from '@/libConst/user.const';
 import KeyvRedis, { Keyv, RedisClientType } from '@keyv/redis';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { Cache } from 'cache-manager';
+import { UUID } from 'crypto';
+
+type alias =
+  | typeof USER_QUERY_ALIAS
+  | typeof STORE_QUERY_ALIAS
+  | typeof ROLE_QUERY_ALIAS
+  | typeof PERMISSION_QUERY_ALIAS
+  | `${typeof ROLE_QUERY_ALIAS}_${typeof PERMISSION_QUERY_ALIAS}`
+  | typeof USER_ROLE_QUERY_ALIAS
+  | typeof USER_STORES_QUERY_ALIAS;
 
 @Injectable()
-export class BaseCacheService {
+export class CacheService {
   private readonly cacheTtl;
-  private readonly logService = new Logger(BaseCacheService.name);
+  private readonly logService = new Logger(CacheService.name);
+  private readonly pendingOperations = new Map<string, Promise<unknown>>();
 
   constructor(
     @Inject(CACHE_MANAGER) protected readonly cacheManager: Cache,
     private readonly envConfigService: EnvConfigService,
   ) {
     this.cacheTtl = this.envConfigService.userCacheTtl * 1000;
-  }
-
-  async invalidatePaginatedCache(alias: string): Promise<void> {
-    const keyv: Keyv | undefined = this.cacheManager.stores[0];
-
-    if (!keyv) {
-      return;
-    }
-
-    const store = keyv.opts.store as KeyvRedis<unknown> | undefined;
-    const redisClient = store?.client as RedisClientType | undefined;
-
-    if (!redisClient) {
-      return;
-    }
-
-    const pattern = `*${alias}_paginated_*`;
-    const keysToDelete: string[] = [];
-
-    for await (const result of redisClient.scanIterator({
-      MATCH: pattern,
-      COUNT: 100,
-    })) {
-      if (Array.isArray(result)) {
-        keysToDelete.push(...result);
-      } else if (typeof result === 'string') {
-        keysToDelete.push(result);
-      }
-    }
-
-    if (keysToDelete.length > 0) {
-      await redisClient.sendCommand(['UNLINK', ...keysToDelete]);
-    }
   }
 
   async set<T>({
@@ -99,6 +84,175 @@ export class BaseCacheService {
       this.logService.error(
         `Failed to delete cache for key [${key}]): ${error.message}`,
       );
+    }
+  }
+
+  async coalesce<T>({
+    key,
+    operation,
+  }: {
+    key: string;
+    operation: () => Promise<T>;
+  }): Promise<T> {
+    if (this.pendingOperations.has(key)) {
+      return this.pendingOperations.get(key) as Promise<T>;
+    }
+
+    const promise = operation().finally(() => {
+      this.pendingOperations.delete(key);
+    });
+
+    this.pendingOperations.set(key, promise);
+
+    return promise;
+  }
+
+  async invalidateByKeyPattern(pattern: string): Promise<void> {
+    try {
+      const keyv: Keyv | undefined = this.cacheManager.stores[0];
+
+      if (!keyv) {
+        return;
+      }
+
+      const store = keyv.opts.store as KeyvRedis<unknown> | undefined;
+      const redisClient = store?.client as RedisClientType | undefined;
+
+      if (!redisClient) {
+        return;
+      }
+
+      const keysToDelete: string[] = [];
+
+      for await (const result of redisClient.scanIterator({
+        MATCH: pattern,
+        COUNT: 100,
+      })) {
+        if (Array.isArray(result)) {
+          keysToDelete.push(...result);
+        } else if (typeof result === 'string') {
+          keysToDelete.push(result);
+        }
+      }
+
+      if (keysToDelete.length > 0) {
+        await redisClient.sendCommand(['UNLINK', ...keysToDelete]);
+      }
+    } catch (e) {
+      const error = e as Error;
+
+      this.logService.error(
+        `Failed to invalidate cache for pattern [${pattern}]): ${error.message}`,
+      );
+    }
+  }
+
+  async invalidateByTags({
+    tag,
+    alias,
+  }: {
+    tag: {
+      purge?: boolean | undefined;
+      all?: boolean | undefined;
+      paginated?: boolean | undefined;
+    };
+    alias: alias;
+  }): Promise<void> {
+    if (tag.purge != undefined && tag.purge) {
+      await this.invalidateByKeyPattern(`${alias}:*`);
+      return;
+    }
+
+    if (tag.all != undefined && tag.all) {
+      await this.invalidateByKeyPattern(`${alias}_all_*`);
+      return;
+    }
+
+    if (tag.paginated != undefined && tag.paginated) {
+      await this.invalidateByKeyPattern(`${alias}_paginated_*`);
+    }
+  }
+
+  async invalidateById({
+    id,
+    alias,
+  }: {
+    id: UUID;
+    alias: alias;
+  }): Promise<void> {
+    await this.del(this.getIdKeyPrefixByAlias({ id, alias }));
+  }
+
+  async getById<T>({
+    id,
+    alias,
+  }: {
+    id: UUID;
+    alias: alias;
+  }): Promise<T | undefined> {
+    return await this.get<T>(this.getIdKeyPrefixByAlias({ id, alias }));
+  }
+
+  getIdKeyPrefixByAlias({ id, alias }: { id: UUID; alias: alias }): string {
+    switch (alias) {
+      case USER_QUERY_ALIAS:
+        return `id:${id}:${USER_QUERY_ALIAS}`;
+      case STORE_QUERY_ALIAS:
+        return `id:${id}:${STORE_QUERY_ALIAS}`;
+      case ROLE_QUERY_ALIAS:
+        return `id:${id}:${ROLE_QUERY_ALIAS}`;
+      case PERMISSION_QUERY_ALIAS:
+        return `id:${id}:${PERMISSION_QUERY_ALIAS}`;
+      case `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`:
+        return `id:${id}:${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`;
+      case USER_ROLE_QUERY_ALIAS:
+        return `id:${id}:${USER_ROLE_QUERY_ALIAS}`;
+      case USER_STORES_QUERY_ALIAS:
+        return `id:${id}:${USER_STORES_QUERY_ALIAS}`;
+      default:
+        throw new Error('Unsupported alias provided for cache key generation');
+    }
+  }
+
+  getAllKeyPrefixByAlias(alias: alias): string {
+    switch (alias) {
+      case USER_QUERY_ALIAS:
+        return `${USER_QUERY_ALIAS}_all_`;
+      case STORE_QUERY_ALIAS:
+        return `${STORE_QUERY_ALIAS}_all_`;
+      case ROLE_QUERY_ALIAS:
+        return `${ROLE_QUERY_ALIAS}_all_`;
+      case PERMISSION_QUERY_ALIAS:
+        return `${PERMISSION_QUERY_ALIAS}_all_`;
+      case `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`:
+        return `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}_all_`;
+      case USER_ROLE_QUERY_ALIAS:
+        return `${USER_ROLE_QUERY_ALIAS}_all_`;
+      case USER_STORES_QUERY_ALIAS:
+        return `${USER_STORES_QUERY_ALIAS}_all_`;
+      default:
+        throw new Error('Unsupported alias provided for cache key generation');
+    }
+  }
+
+  getPaginatedKeyPrefixByAlias(alias: alias): string {
+    switch (alias) {
+      case USER_QUERY_ALIAS:
+        return `${USER_QUERY_ALIAS}_paginated_`;
+      case STORE_QUERY_ALIAS:
+        return `${STORE_QUERY_ALIAS}_paginated_`;
+      case ROLE_QUERY_ALIAS:
+        return `${ROLE_QUERY_ALIAS}_paginated_`;
+      case PERMISSION_QUERY_ALIAS:
+        return `${PERMISSION_QUERY_ALIAS}_paginated_`;
+      case `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`:
+        return `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}_paginated_`;
+      case USER_ROLE_QUERY_ALIAS:
+        return `${USER_ROLE_QUERY_ALIAS}_paginated_`;
+      case USER_STORES_QUERY_ALIAS:
+        return `${USER_STORES_QUERY_ALIAS}_paginated_`;
+      default:
+        throw new Error('Unsupported alias provided for cache key generation');
     }
   }
 }

@@ -8,7 +8,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 
-import { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import { catchError, Observable, tap, throwError } from 'rxjs';
 
 @Injectable()
@@ -16,11 +16,10 @@ export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger();
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const req = context
-      .switchToHttp()
-      .getRequest<Request<Record<string, unknown>, unknown, unknown>>();
+    const req = context.switchToHttp().getRequest<FastifyRequest>();
 
     const traceId = getTraceId() ?? 'N/A';
+
     const { method, url, body } = req;
     const controllerName = context.getClass().name;
     const handlerName = context.getHandler().name;

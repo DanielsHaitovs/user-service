@@ -1,4 +1,4 @@
-import { BaseCacheService } from '@/baseServices/cache.service';
+import { CacheService } from '@/baseServices/cache.service';
 import { EntityQueryService } from '@/baseServices/query.service';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
@@ -13,15 +13,12 @@ import { UserPipelineService } from '@/user/user.pipeline';
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserStores } from '@/userEntities/userStores.entity';
-import { CacheService as RoleCacheService } from '@/userRoleServices/cache.service';
 import { UserRolesService } from '@/userRoleServices/role.service';
-import { CacheService } from '@/userServices/cache.service';
 import { CreateService } from '@/userServices/create.service';
 import { DeleteService } from '@/userServices/delete.service';
 import { UserHelperService } from '@/userServices/helper.service';
 import { UpdateService } from '@/userServices/update.service';
 import { UserService } from '@/userServices/user.service';
-import { CacheService as StoreCacheService } from '@/userStoreServices/cache.service';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { Logger, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -33,9 +30,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   controllers: [UserController, UserRolesController, UserStoresController],
   providers: [
     Logger,
-    CacheService,
-    StoreCacheService,
-    RoleCacheService,
     CreateService,
     UserService,
     UpdateService,
@@ -49,7 +43,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     StoreHelperService,
     RoleHelperService,
     EntityQueryService,
-    BaseCacheService,
+    CacheService,
   ],
   exports: [
     UserPipelineService,

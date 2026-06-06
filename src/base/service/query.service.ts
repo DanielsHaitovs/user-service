@@ -3,13 +3,11 @@ import {
   PaginationDto,
   SortDto,
 } from '@/baseDto/pagination.dto';
-import { EnvConfigService } from '@/config/env/env.config.service';
+import { CacheService } from '@/baseServices/cache.service';
 import { hashObject } from '@/utils/token-generator.util';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 
-import { Cache } from 'cache-manager';
 import { isEmpty } from 'class-validator';
 import {
   EntityManager,
@@ -34,9 +32,7 @@ export class EntityQueryService {
   constructor(
     @InjectEntityManager()
     protected entityManager: EntityManager,
-    @Inject(CACHE_MANAGER)
-    private readonly cacheManager: Cache,
-    private readonly envConfigService: EnvConfigService,
+    private readonly cacheService: CacheService,
   ) {}
 
   /**
@@ -254,43 +250,49 @@ export class EntityQueryService {
     query: SelectQueryBuilder<T>;
     cache?: boolean | undefined;
   }): Promise<T[]> {
-    const response = new Array<T>();
-    const batchSize = 100;
     const { alias } = query;
-    let offset = 0;
+    const cacheKey = `${alias}_all_${hashObject(query.getQueryAndParameters())}`;
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    while (true) {
-      const batchQuery = query.clone();
-      const cacheKey = `${alias}_all_${hashObject(batchQuery.getQueryAndParameters())}`;
-
-      batchQuery.skip(offset).take(batchSize);
-      const cached = await this.cacheManager.get<T[]>(cacheKey);
-
-      const result = cached ?? (await batchQuery.getMany());
-
-      if (!cached && cache === true) {
-        await this.cacheManager.set(
-          cacheKey,
-          result,
-          this.envConfigService.userCacheTtl * 1000,
-        );
-      }
-
-      if (isEmpty(result)) {
-        break; // No more results, exit loop
-      }
-
-      response.push(...result);
-
-      if (result.length < batchSize) {
-        break;
-      }
-
-      offset += batchSize;
+    const cached = await this.cacheService.get<T[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    return response;
+    const batchQuery = query.clone();
+
+    return this.cacheService.coalesce({
+      key: cacheKey,
+      operation: async () => {
+        const response = new Array<T>();
+        const batchSize = 100;
+        let offset = 0;
+
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        while (true) {
+          batchQuery.skip(offset).take(batchSize);
+
+          const result = await batchQuery.getMany();
+
+          if (isEmpty(result)) {
+            break;
+          }
+
+          response.push(...result);
+
+          if (result.length < batchSize) {
+            break;
+          }
+
+          offset += batchSize;
+        }
+
+        if (cache === true) {
+          await this.cacheService.set({ key: cacheKey, value: response });
+        }
+
+        return response;
+      },
+    });
   }
 
   /**
@@ -390,16 +392,15 @@ export class EntityQueryService {
 
     const cacheKey = `${alias}_paginated_${hashObject(query.getQueryAndParameters())}`;
 
-    const cached = await this.cacheManager.get<[T[], number]>(cacheKey);
+    const cached = await this.cacheService.get<[T[], number]>(cacheKey);
 
     const [items, totalCount] = cached ?? (await query.getManyAndCount());
 
     if (!cached && cache === true) {
-      await this.cacheManager.set(
-        cacheKey,
-        [items, totalCount],
-        this.envConfigService.userCacheTtl * 1000,
-      );
+      await this.cacheService.set({
+        key: cacheKey,
+        value: [items, totalCount],
+      });
     }
 
     return {

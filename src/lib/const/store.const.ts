@@ -35,9 +35,9 @@ export const EXAMPLE_STORE_VIEW_CODE = 'de_de' as string;
  * Standard example name used in API documentation and test fixtures.
  * Represents a STORE name that is commonly used for testing scenarios.
  */
-export const STORE_QUERY_ALIAS = 'stores' as string;
+export const STORE_QUERY_ALIAS = 'stores';
 
-export const USER_STORES_QUERY_ALIAS = 'userStores' as string;
+export const USER_STORES_QUERY_ALIAS = 'userStores';
 
 /**
  * Standard example message used in API documentation and test fixtures.

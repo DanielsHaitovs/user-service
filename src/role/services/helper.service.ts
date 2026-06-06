@@ -57,6 +57,7 @@ export class RoleHelperService {
 
     const roles = await this.queryService.getAll<Roles>({
       query,
+      cache: true,
     });
 
     const permissionCodes = new Set<string>();

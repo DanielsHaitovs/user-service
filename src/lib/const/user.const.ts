@@ -91,7 +91,7 @@ export const EXAMPLE_USER_PASSWORD_RESET_TOKEN =
  * Alias used in TypeORM queries to refer to the user entity.
  * Ensures consistent naming across query service implementations.
  */
-export const USER_QUERY_ALIAS = 'users' as string;
+export const USER_QUERY_ALIAS = 'users';
 
 /**
  * Sample UUID v4 for user identification in tests and API documentation.

@@ -1,7 +1,7 @@
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 
 export const extractBearerFromHeader = (
-  request: Request,
+  request: FastifyRequest,
 ): string | undefined => {
   const [type, token] = request.headers.authorization?.split(' ') ?? [];
   return type === 'Bearer' ? token : undefined;

@@ -1,6 +1,5 @@
 import { GetPermissionDto } from '@/permissionDto/permission.dto';
 import { Permission } from '@/permissionEntities/permissions.entity';
-import { CacheService } from '@/permissionServices/cache.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -12,7 +11,6 @@ export class PermissionService {
   constructor(
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
-    private readonly cacheService: CacheService,
   ) {}
 
   /**
@@ -22,19 +20,9 @@ export class PermissionService {
    * @throws EntityNotFoundException if no permission with the given ID is found.
    */
   async getByIdOrThrow(id: UUID): Promise<GetPermissionDto> {
-    const cached = await this.cacheService.getById(id);
-
-    if (cached) {
-      return cached;
-    }
-
-    const permission = await this.permissionRepository.findOneOrFail({
+    return await this.permissionRepository.findOneOrFail({
       where: { id },
     });
-
-    await this.cacheService.set(permission);
-
-    return permission;
   }
 
   /**

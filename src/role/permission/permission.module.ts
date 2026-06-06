@@ -1,9 +1,8 @@
-import { BaseCacheService } from '@/baseServices/cache.service';
+import { CacheService } from '@/baseServices/cache.service';
 import { EntityQueryService } from '@/baseServices/query.service';
 import { PermissionController } from '@/permission/controllers/permission.controller';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import { Permission } from '@/permissionEntities/permissions.entity';
-import { CacheService } from '@/permissionServices/cache.service';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { PermissionService } from '@/permissionServices/permission.service';
 import { Roles } from '@/roleEntities/role.entity';
@@ -21,7 +20,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     PermissionPipelineService,
     PermissionHelperService,
     RoleHelperService,
-    BaseCacheService,
+    CacheService,
     EntityQueryService,
   ],
   exports: [PermissionPipelineService, PermissionHelperService],

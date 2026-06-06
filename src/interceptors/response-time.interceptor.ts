@@ -5,7 +5,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 
-import type { Response as ExpressResponse } from 'express';
+import type { FastifyReply } from 'fastify';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
@@ -21,8 +21,10 @@ export class ResponseTimeInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         const time = Date.now() - start;
-        const response = ctx.switchToHttp().getResponse<ExpressResponse>();
-        response.setHeader('X-Response-Time', `${time.toString()}ms`);
+
+        const reply = ctx.switchToHttp().getResponse<FastifyReply>();
+
+        reply.header('X-Response-Time', `${time.toString()}ms`);
       }),
     );
   }

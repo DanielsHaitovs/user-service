@@ -62,11 +62,6 @@ export class RolePermissionsController {
         'Each roleId must be a valid UUIDv4',
       ],
     },
-    createdResponse: {
-      description: 'Permissions successfully assigned to role',
-      type: RoleResponseDto,
-      isArray: false,
-    },
     notFound: {
       description:
         'Role with the specified ID was not found or Permission code(s) not found',
@@ -75,8 +70,8 @@ export class RolePermissionsController {
   async assign(
     @Body()
     assignDto: PermissionsToRoleDto,
-  ): Promise<RoleResponseDto> {
-    return await this.pipelineService.assignPermissionsToRole(assignDto);
+  ): Promise<void> {
+    await this.pipelineService.assignPermissionsToRole(assignDto);
   }
 
   @Delete('unAssign')
@@ -103,11 +98,6 @@ export class RolePermissionsController {
         'Each roleId must be a valid UUIDv4',
       ],
     },
-    createdResponse: {
-      description: 'Permissions successfully assigned to role',
-      type: RoleResponseDto,
-      isArray: false,
-    },
     notFound: {
       description:
         'Role with the specified ID was not found or Permission code(s) not found',
@@ -116,8 +106,8 @@ export class RolePermissionsController {
   async unAssign(
     @Body()
     unAssignDto: PermissionsToRoleDto,
-  ): Promise<RoleResponseDto> {
-    return await this.pipelineService.unassignPermissionsFromRole(unAssignDto);
+  ): Promise<void> {
+    await this.pipelineService.unassignPermissionsFromRole(unAssignDto);
   }
 
   @Get(':roleId')

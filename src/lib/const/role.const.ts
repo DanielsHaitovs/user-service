@@ -55,7 +55,7 @@ export const DELETE_ROLE = 'role:delete' as string;
  * Alias used in TypeORM queries to refer to the user role entity.
  * Ensures consistent naming across query service implementations.
  */
-export const USER_ROLE_QUERY_ALIAS = 'userRoles' as string;
+export const USER_ROLE_QUERY_ALIAS = 'userRoles';
 
 export const READ_USER_ROLE = 'user-role:read' as string;
 

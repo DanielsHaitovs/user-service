@@ -7,10 +7,23 @@ import { ResponseTimeInterceptor } from '@/interceptors/response-time.intercepto
 import { AppModule } from '@/src/app.module';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import {
+  FastifyAdapter,
+  type NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+import { Logger as PinoLogger } from 'nestjs-pino';
+
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ logger: false }),
+    { bufferLogs: true },
+  );
+
+  app.useLogger(app.get(PinoLogger));
+
   const envConfig = app.get(EnvConfigService);
 
   app.enableVersioning({
@@ -67,15 +80,15 @@ async function bootstrap(): Promise<void> {
   //   config.addTag('Seed', 'Seed operations');
   // }
 
-  const logger = new Logger(bootstrap.name);
-
   const document = SwaggerModule.createDocument(app, config.build());
 
   SwaggerModule.setup('api', app, document, swaggerSetupOptions);
 
   const port = Number(envConfig.apiPort) || 3000;
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
+
+  const logger = new Logger('NestApplication');
 
   if (envConfig.nodeEnv === Environment.Development) {
     logger.debug('You are in development mode');
@@ -84,6 +97,30 @@ async function bootstrap(): Promise<void> {
       logger.debug('Authentication is disabled');
     }
   }
+
+  setInterval(() => {
+    const start = Date.now();
+    setTimeout(() => {
+      const lag = Date.now() - start;
+      if (lag > 100) {
+        logger.warn(
+          `EVENT LOOP LAG: ${lag.toString()}ms - Something is blocking the thread!`,
+        );
+      }
+    });
+  }, 1000);
+
+  process.on('uncaughtException', (err: Error) => {
+    const nodeErr = err as NodeJS.ErrnoException;
+
+    if (nodeErr.code === 'ENOBUFS') {
+      logger.warn('Network buffer overflowing (ENOBUFS). Dropping a socket.');
+      return;
+    }
+
+    logger.error('FATAL UNCAUGHT EXCEPTION:', err);
+    process.exit(1);
+  });
 }
 
 void bootstrap();

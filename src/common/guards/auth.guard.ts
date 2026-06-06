@@ -1,5 +1,7 @@
 import { AuthenticatedRequest, JwtPayload } from '@/auth/auth.interface';
+import { CacheService } from '@/baseServices/cache.service';
 import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
+import { EnvConfigService } from '@/config/env/env.config.service';
 import { extractBearerFromHeader } from '@/utils/headers.utils';
 import {
   CanActivate,
@@ -15,6 +17,8 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
+    private readonly cacheService: CacheService,
+    private readonly envConfigService: EnvConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,8 +39,32 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
+    const cacheKey = `auth_token:${token}`;
+
     try {
-      request.user = await this.jwtService.verifyAsync<JwtPayload>(token);
+      const cachedPayload = await this.cacheService.get<JwtPayload>(cacheKey);
+
+      if (cachedPayload) {
+        request.user = cachedPayload;
+        return true;
+      }
+
+      const payload = await this.cacheService.coalesce<JwtPayload>({
+        key: cacheKey,
+        operation: async () => {
+          const decoded = await this.jwtService.verifyAsync<JwtPayload>(token);
+
+          await this.cacheService.set({
+            key: cacheKey,
+            value: decoded,
+            ttl: this.envConfigService.jwtExpiration * 1000,
+          });
+
+          return decoded;
+        },
+      });
+
+      request.user = payload;
     } catch {
       throw new UnauthorizedException();
     }

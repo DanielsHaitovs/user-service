@@ -16,12 +16,35 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { LoggerModule } from 'nestjs-pino';
+
 @Module({
   controllers: [],
   providers: [],
   imports: [
     EnvConfigModule,
     ScheduleModule.forRoot(),
+    LoggerModule.forRootAsync({
+      useFactory: () => {
+        return {
+          pinoHttp: {
+            autoLogging: false,
+            level: 'trace',
+            // transport: {
+            //   target: 'pino-pretty',
+            //   options: {
+            //     pid: true,
+            //     colorize: true,
+            //     singleLine: true,
+            //     translateTime: 'SYS:mm/dd/yyyy, h:MM:ss TT',
+            //     messageFormat: '[{context}] {msg}',
+            //     ignore: 'hostname,context',
+            //   },
+            // },
+          },
+        };
+      },
+    }),
     ThrottlerModule.forRootAsync({
       useFactory: (configService: EnvConfigService) => {
         return {
@@ -63,31 +86,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       // 4. This injects your custom service and passes it to the useFactory above
       inject: [EnvConfigService],
     }),
-    // CacheModule.registerAsync({
-    //   isGlobal: true,
-    //   inject: [EnvConfigService],
-    //   useFactory: async (configService: EnvConfigService) => ({
-    //     store: await redisStore({
-    //       socket: {
-    //         host: configService.redisHost,
-    //         port: configService.redisPort,
-    //       },
-    //       password: configService.redisPassword,
-    //       ttl: configService.userCacheTtl,
-    //     }),
-    //   }),
-    // }),
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [EnvConfigService],
       useFactory: (configService: EnvConfigService) => {
-        // Construct the Redis connection string
         const redisUrl = `redis://:${configService.redisPassword}@${configService.redisHost}:${configService.redisPort.toString()}`;
 
         return {
           // Notice it is 'stores' (plural) and uses createKeyv!
           stores: [createKeyv(redisUrl)],
-          ttl: configService.userCacheTtl * 1000,
+          ttl: 10000,
         };
       },
     }),

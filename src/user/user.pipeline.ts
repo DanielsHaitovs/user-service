@@ -1,3 +1,5 @@
+import { CacheService } from '@/baseServices/cache.service';
+import { USER_QUERY_ALIAS } from '@/libConst/user.const';
 import { UserQueryRequest } from '@/userDto/query.dto';
 import {
   CreateUserDto,
@@ -6,17 +8,19 @@ import {
   UserListResponseDto,
   UserResponseDto,
 } from '@/userDto/user.dto';
-import { CacheService } from '@/userServices/cache.service';
 import { CreateService } from '@/userServices/create.service';
 import { DeleteService } from '@/userServices/delete.service';
 import { UpdateService } from '@/userServices/update.service';
 import { UserService } from '@/userServices/user.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { UUID } from 'crypto';
 
 @Injectable()
 export class UserPipelineService {
+  private readonly setEmailCacheKeyPrefix = `email:${USER_QUERY_ALIAS}:`;
+  private readonly logger = new Logger(UserPipelineService.name);
+
   constructor(
     private readonly userService: UserService,
     private readonly createService: CreateService,
@@ -30,31 +34,37 @@ export class UserPipelineService {
   }
 
   async getByIdOrThrow(id: UUID): Promise<GetUserDto> {
-    const cached = await this.cacheService.getById(id);
+    const cached = await this.cacheService.getById<GetUserDto>({
+      id,
+      alias: USER_QUERY_ALIAS,
+    });
 
     if (cached) {
       return cached;
     }
 
-    const user = await this.userService.getByIdOrThrow(id);
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id,
+      alias: USER_QUERY_ALIAS,
+    });
 
-    await this.cacheService.set(user);
+    return await this.cacheService.coalesce<GetUserDto>({
+      key: cacheKey,
+      operation: async () => {
+        const store = await this.userService.getByIdOrThrow(id);
 
-    return user;
+        await this.cacheService.set<GetUserDto>({
+          key: cacheKey,
+          value: store,
+        });
+
+        return store;
+      },
+    });
   }
 
   async getByEmailOrThrow(email: string): Promise<GetUserDto> {
-    const cached = await this.cacheService.getByEmail(email);
-
-    if (cached) {
-      return cached;
-    }
-
-    const user = await this.userService.getByEmailOrThrow(email);
-
-    await this.cacheService.set(user);
-
-    return user;
+    return await this.userService.getByEmailOrThrow(email);
   }
 
   async create({
@@ -64,9 +74,12 @@ export class UserPipelineService {
     createDto: CreateUserDto;
     createdById: UUID;
   }): Promise<UserResponseDto> {
-    const user = await this.createService.create({ createDto, createdById });
+    const user = await this.createService.create({
+      createDto,
+      createdById,
+    });
 
-    await this.cacheService.set(user);
+    await this.setUserCache(user);
 
     return user;
   }
@@ -81,7 +94,10 @@ export class UserPipelineService {
     const updated = await this.updateService.update({ id, data });
 
     if (updated) {
-      await this.cacheService.revalidate({ id });
+      await Promise.all([
+        this.cacheService.invalidateById({ id, alias: USER_QUERY_ALIAS }),
+        this.cacheService.invalidateByKeyPattern(this.setEmailCacheKeyPrefix),
+      ]);
     }
 
     return updated;
@@ -103,9 +119,25 @@ export class UserPipelineService {
     });
 
     if (deleted) {
-      await this.cacheService.invalidate({ id });
+      await this.cacheService.invalidateById({ id, alias: USER_QUERY_ALIAS });
     }
 
     return deleted;
+  }
+
+  private async setUserCache(user: GetUserDto): Promise<void> {
+    await Promise.all([
+      this.cacheService.set<GetUserDto>({
+        key: this.cacheService.getIdKeyPrefixByAlias({
+          id: user.id,
+          alias: USER_QUERY_ALIAS,
+        }),
+        value: user,
+      }),
+      this.cacheService.set<GetUserDto>({
+        key: this.setEmailCacheKeyPrefix + user.email,
+        value: user,
+      }),
+    ]);
   }
 }

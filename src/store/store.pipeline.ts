@@ -1,3 +1,9 @@
+import { CacheService } from '@/baseServices/cache.service';
+import {
+  STORE_QUERY_ALIAS,
+  USER_STORES_QUERY_ALIAS,
+} from '@/libConst/store.const';
+import { USER_QUERY_ALIAS } from '@/libConst/user.const';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
   CreateStoreDto,
@@ -6,7 +12,6 @@ import {
   StoreResponseDto,
   UpdateStoreDto,
 } from '@/storeDto/store.dto';
-import { CacheService } from '@/storeServices/cache.service';
 import { CreateService } from '@/storeServices/create.service';
 import { DeleteService } from '@/storeServices/delete.service';
 import { StoreService } from '@/storeServices/store.service';
@@ -30,17 +35,33 @@ export class StorePipelineService {
   }
 
   async getByIdOrThrow(id: UUID): Promise<GetStoreDto> {
-    const cached = await this.cacheService.getById(id);
+    const cached = await this.cacheService.getById<GetStoreDto>({
+      id,
+      alias: USER_QUERY_ALIAS,
+    });
 
     if (cached) {
       return cached;
     }
 
-    const store = await this.storeService.getByIdOrThrow(id);
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id,
+      alias: STORE_QUERY_ALIAS,
+    });
 
-    await this.cacheService.set(store);
+    return await this.cacheService.coalesce<GetStoreDto>({
+      key: cacheKey,
+      operation: async () => {
+        const store = await this.storeService.getByIdOrThrow(id);
 
-    return store;
+        await this.cacheService.set<GetStoreDto>({
+          key: cacheKey,
+          value: store,
+        });
+
+        return store;
+      },
+    });
   }
 
   async getByCodeOrThrow(code: string): Promise<GetStoreDto> {
@@ -60,7 +81,13 @@ export class StorePipelineService {
   }): Promise<StoreResponseDto> {
     const store = await this.createService.create({ createDto, createdById });
 
-    await this.cacheService.set(store);
+    await this.cacheService.set<StoreResponseDto>({
+      key: this.cacheService.getIdKeyPrefixByAlias({
+        id: store.id,
+        alias: STORE_QUERY_ALIAS,
+      }),
+      value: store,
+    });
 
     return store;
   }
@@ -75,7 +102,10 @@ export class StorePipelineService {
     const updated = await this.updateService.update({ updateDto, id });
 
     if (updated) {
-      await this.cacheService.revalidate(id);
+      await this.cacheService.invalidateById({
+        id,
+        alias: STORE_QUERY_ALIAS,
+      });
     }
 
     return updated;
@@ -94,7 +124,16 @@ export class StorePipelineService {
     });
 
     if (deleted) {
-      await this.cacheService.invalidate(id);
+      await Promise.all([
+        this.cacheService.invalidateById({
+          id,
+          alias: STORE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateByTags({
+          tag: { purge: true },
+          alias: USER_STORES_QUERY_ALIAS,
+        }),
+      ]);
     }
 
     return deleted;

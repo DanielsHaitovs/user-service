@@ -1,11 +1,10 @@
-import { BaseCacheService } from '@/baseServices/cache.service';
+import { CacheService } from '@/baseServices/cache.service';
 import { EntityQueryService } from '@/baseServices/query.service';
 import { PermissionModule } from '@/permission/permission.module';
 import { RolePermissionsController } from '@/role/controllers/permissions.controller';
 import { RoleController } from '@/role/controllers/role.controller';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { Roles } from '@/roleEntities/role.entity';
-import { CacheService } from '@/roleServices/cache.service';
 import { CreateService } from '@/roleServices/create.service';
 import { DeleteService } from '@/roleServices/delete.service';
 import { RoleHelperService } from '@/roleServices/helper.service';
@@ -27,7 +26,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   providers: [
     Logger,
     RoleService,
-    CacheService,
     RolePermissionService,
     CreateService,
     UpdateService,
@@ -35,7 +33,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     UserHelperService,
     RoleHelperService,
     RolePipelineService,
-    BaseCacheService,
+    CacheService,
     EntityQueryService,
   ],
   exports: [RolePipelineService, RoleHelperService],

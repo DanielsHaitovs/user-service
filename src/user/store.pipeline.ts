@@ -1,3 +1,5 @@
+import { CacheService } from '@/baseServices/cache.service';
+import { USER_STORES_QUERY_ALIAS } from '@/libConst/store.const';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import {
   AssignStoresToUserDto,
@@ -5,7 +7,6 @@ import {
   UserStoresListResponseDto,
   UserStoresQueryRequest,
 } from '@/userDto/stores.dto';
-import { CacheService } from '@/userStoreServices/cache.service';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { Injectable } from '@nestjs/common';
 
@@ -36,7 +37,10 @@ export class UserStorePipelineService {
       assignedById,
     });
 
-    await this.cacheService.revalidate(data.userId);
+    await this.cacheService.invalidateById({
+      id: data.userId,
+      alias: USER_STORES_QUERY_ALIAS,
+    });
   }
 
   async unassignStoresFromUser({
@@ -45,20 +49,39 @@ export class UserStorePipelineService {
   }: UnassignStoresFromUserDto): Promise<void> {
     await this.userStoresService.unassignStoresFromUser({ userId, storeIds });
 
-    await this.cacheService.revalidate(userId);
+    await this.cacheService.invalidateById({
+      id: userId,
+      alias: USER_STORES_QUERY_ALIAS,
+    });
   }
 
   async getAssignedStores(userId: UUID): Promise<GetRelatedStoreDto[]> {
-    const cachedStores = await this.cacheService.getById(userId);
+    const cachedStores = await this.cacheService.getById<GetRelatedStoreDto[]>({
+      id: userId,
+      alias: USER_STORES_QUERY_ALIAS,
+    });
 
     if (cachedStores) {
       return cachedStores;
     }
 
-    const stores = await this.userStoresService.getAssignedStores(userId);
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: userId,
+      alias: USER_STORES_QUERY_ALIAS,
+    });
 
-    await this.cacheService.set({ id: userId, stores });
+    return await this.cacheService.coalesce<GetRelatedStoreDto[]>({
+      key: cacheKey,
+      operation: async () => {
+        const stores = await this.userStoresService.getAssignedStores(userId);
 
-    return stores;
+        await this.cacheService.set<GetRelatedStoreDto[]>({
+          key: cacheKey,
+          value: stores,
+        });
+
+        return stores;
+      },
+    });
   }
 }

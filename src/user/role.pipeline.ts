@@ -1,10 +1,12 @@
+import { CacheService } from '@/baseServices/cache.service';
+import { USER_ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import {
   AssignRolesToUserDto,
   UnassignRolesFromUserDto,
   UserRolesListResponseDto,
   UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
-import { CacheService } from '@/userRoleServices/cache.service';
 import { UserRolesService } from '@/userRoleServices/role.service';
 import { Injectable } from '@nestjs/common';
 
@@ -39,7 +41,10 @@ export class UserRolePipelineService {
       assignedById,
     });
 
-    await this.cacheService.revalidate(data.userId);
+    await this.cacheService.invalidateById({
+      id: data.userId,
+      alias: USER_ROLE_QUERY_ALIAS,
+    });
   }
 
   async unassignRolesFromUser({
@@ -48,6 +53,39 @@ export class UserRolePipelineService {
   }: UnassignRolesFromUserDto): Promise<void> {
     await this.userRolesService.unassignRolesFromUser({ userId, roleIds });
 
-    await this.cacheService.revalidate(userId);
+    await this.cacheService.invalidateById({
+      id: userId,
+      alias: USER_ROLE_QUERY_ALIAS,
+    });
+  }
+
+  async getAssignedRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
+    const cachedStores = await this.cacheService.getById<GetRelatedRoleDto[]>({
+      id: userId,
+      alias: USER_ROLE_QUERY_ALIAS,
+    });
+
+    if (cachedStores) {
+      return cachedStores;
+    }
+
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: userId,
+      alias: USER_ROLE_QUERY_ALIAS,
+    });
+
+    return await this.cacheService.coalesce<GetRelatedRoleDto[]>({
+      key: cacheKey,
+      operation: async () => {
+        const stores = await this.userRolesService.getAssignedRoles(userId);
+
+        await this.cacheService.set<GetRelatedRoleDto[]>({
+          key: cacheKey,
+          value: stores,
+        });
+
+        return stores;
+      },
+    });
   }
 }

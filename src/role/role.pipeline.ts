@@ -1,3 +1,6 @@
+import { CacheService } from '@/baseServices/cache.service';
+import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS, USER_ROLE_QUERY_ALIAS } from '@/libConst/role.const';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {
   CreateRoleDto,
@@ -7,7 +10,6 @@ import {
   RoleResponseDto,
   UpdateRoleDto,
 } from '@/roleDto/role.dto';
-import { CacheService } from '@/roleServices/cache.service';
 import { CreateService } from '@/roleServices/create.service';
 import { DeleteService } from '@/roleServices/delete.service';
 import { RolePermissionService } from '@/roleServices/permission.service';
@@ -33,32 +35,63 @@ export class RolePipelineService {
   }
 
   async getByIdOrThrow(id: UUID): Promise<GetRoleDto> {
-    const cachedRole = await this.cacheService.getById(id);
+    const cachedRole = await this.cacheService.getById<GetRoleDto>({
+      id,
+      alias: ROLE_QUERY_ALIAS,
+    });
 
     if (cachedRole) {
       return cachedRole;
     }
 
-    const cached = await this.roleService.getByIdOrThrow(id);
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id,
+      alias: ROLE_QUERY_ALIAS,
+    });
 
-    await this.cacheService.set(cached);
+    return await this.cacheService.coalesce<GetRoleDto>({
+      key: cacheKey,
+      operation: async () => {
+        const role = await this.roleService.getByIdOrThrow(id);
 
-    return cached;
+        await this.cacheService.set<GetRoleDto>({
+          key: cacheKey,
+          value: role,
+        });
+
+        return role;
+      },
+    });
   }
 
   async getPermissionsOrThrow(roleId: UUID): Promise<RoleResponseDto> {
-    const cached =
-      await this.cacheService.getWithRelatedPermissionsById(roleId);
+    const cached = await this.cacheService.getById<RoleResponseDto>({
+      id: roleId,
+      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+    });
 
     if (cached) {
       return cached;
     }
 
-    const role = await this.permissionService.getPermissionsOrThrow(roleId);
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: roleId,
+      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+    });
 
-    await this.cacheService.setRolePermissions(role);
+    return await this.cacheService.coalesce<RoleResponseDto>({
+      key: cacheKey,
+      operation: async () => {
+        const role = await this.permissionService.getPermissionsOrThrow(roleId);
 
-    return role;
+        await this.cacheService.set<RoleResponseDto>({
+          key: cacheKey,
+          value: role,
+        });
+
+        return role;
+      },
+    });
   }
 
   async create({
@@ -68,40 +101,59 @@ export class RolePipelineService {
     createDto: CreateRoleDto;
     createdById: UUID;
   }): Promise<RoleResponseDto> {
-    const role = await this.createService.create({ createDto, createdById });
+    const { permissions, ...role } = await this.createService.create({
+      createDto,
+      createdById,
+    });
 
-    await this.cacheService.set(role);
+    await Promise.all([
+      this.cacheService.set({
+        key: this.cacheService.getIdKeyPrefixByAlias({
+          id: role.id,
+          alias: ROLE_QUERY_ALIAS,
+        }),
+        value: role,
+      }),
+      this.cacheService.set<RoleResponseDto>({
+        key: this.cacheService.getIdKeyPrefixByAlias({
+          id: role.id,
+          alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+        }),
+        value: { ...role, permissions },
+      }),
+    ]);
 
-    return role;
+    return { ...role, permissions };
   }
 
   async assignPermissionsToRole({
     roleId,
     permissionCodes,
-  }: PermissionsToRoleDto): Promise<RoleResponseDto> {
-    const assignedRoles = await this.permissionService.assignPermissionsToRole({
+  }: PermissionsToRoleDto): Promise<void> {
+    await this.permissionService.assignPermissionsToRole({
       roleId,
       permissionCodes,
     });
 
-    await this.cacheService.revalidateRolePermissions(roleId);
-
-    return assignedRoles;
+    await this.cacheService.invalidateById({
+      id: roleId,
+      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+    });
   }
 
   async unassignPermissionsFromRole({
     roleId,
     permissionCodes,
-  }: PermissionsToRoleDto): Promise<RoleResponseDto> {
-    const unAssignRoles =
-      await this.permissionService.unassignPermissionsFromRole({
-        roleId,
-        permissionCodes,
-      });
+  }: PermissionsToRoleDto): Promise<void> {
+    await this.permissionService.unassignPermissionsFromRole({
+      roleId,
+      permissionCodes,
+    });
 
-    await this.cacheService.revalidateRolePermissions(roleId);
-
-    return unAssignRoles;
+    await this.cacheService.invalidateById({
+      id: roleId,
+      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+    });
   }
 
   async update({
@@ -114,7 +166,10 @@ export class RolePipelineService {
     const updated = await this.updateService.update({ updateDto, id });
 
     if (updated) {
-      await this.cacheService.revalidate(id);
+      await this.cacheService.invalidateById({
+        id,
+        alias: ROLE_QUERY_ALIAS,
+      });
     }
 
     return updated;
@@ -133,7 +188,28 @@ export class RolePipelineService {
     });
 
     if (deleted) {
-      await this.cacheService.invalidate(id);
+      await Promise.all([
+        this.cacheService.invalidateByTags({
+          tag: {
+            purge: true,
+          },
+          alias: ROLE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id,
+          alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+        }),
+        this.cacheService.invalidateById({
+          id,
+          alias: ROLE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateByTags({
+          tag: {
+            purge: true,
+          },
+          alias: USER_ROLE_QUERY_ALIAS,
+        }),
+      ]);
     }
 
     return deleted;

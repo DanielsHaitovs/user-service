@@ -1,5 +1,5 @@
 import type { UUID } from 'crypto';
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 
 export interface JwtPayload {
   id: UUID;
@@ -7,6 +7,6 @@ export interface JwtPayload {
   permissions: string[];
 }
 
-export interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends FastifyRequest {
   user: JwtPayload;
 }

@@ -1,7 +1,7 @@
 import { classesToSkip } from '@/config/log.config';
 import { screenSensitiveData } from '@/utils/screening.util';
 
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 
 export function safeStringify(value: unknown): string {
   try {
@@ -34,7 +34,8 @@ export function safeStringify(value: unknown): string {
 function handleObject(v: object): unknown {
   const ctorName = (v as { constructor?: { name?: string } }).constructor?.name;
 
-  if (isExpressRequest(v, ctorName)) return simplifyRequest(v as Request);
+  if (isExpressRequest(v, ctorName))
+    return simplifyRequest(v as FastifyRequest);
   if (ctorName != undefined && isSkipClass(ctorName)) return `[${ctorName}]`;
 
   return v;
@@ -56,7 +57,7 @@ function isExpressRequest(v: object, ctorName?: string): boolean {
   return ctorName === 'IncomingMessage' && 'method' in v && 'url' in v;
 }
 
-function simplifyRequest(req: Request): Record<string, unknown> {
+function simplifyRequest(req: FastifyRequest): Record<string, unknown> {
   const { headers = {} } = req;
 
   return {
@@ -66,7 +67,7 @@ function simplifyRequest(req: Request): Record<string, unknown> {
     query: req.query,
     params: req.params,
     body: req.body,
-    baseUrl: req.baseUrl,
+    baseUrl: req.url,
     originalUrl: req.originalUrl,
     headers: {
       host: headers.host ?? 'unknown host',

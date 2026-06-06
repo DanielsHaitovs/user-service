@@ -229,7 +229,6 @@ export class UserStoresService {
 
     const userStores = await this.queryService.getAll<UserStores>({
       query,
-      cache: true,
     });
 
     const stores: GetRelatedStoreDto[] = userStores.map(

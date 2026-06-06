@@ -229,7 +229,6 @@ export class UserRolesService {
 
     const userRoles = await this.queryService.getAll<UserRoles>({
       query,
-      cache: true,
     });
 
     return userRoles.map((userRole) => userRole.role);

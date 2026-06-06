@@ -1,0 +1,36 @@
+config:
+  target: "http://localhost/users" # Update if your port is different
+  phases:
+    # Phase 1: The Warmup (10 requests/sec for 10 seconds)
+    # This triggers your Redis Coalescer and caches the initial DB queries safely
+    - duration: 10
+      arrivalRate: 10
+      name: "Warmup: Populating Redis Cache"
+
+    # Phase 2: The Ramp-Up (Gradually increase from 10 to 500 req/sec over 30s)
+    - duration: 30
+      arrivalRate: 10
+      rampTo: 500
+      name: "Ramp-up: Scaling to peak load"
+
+    # Phase 3: The Legion Test (500 requests/sec for 3 minutes)
+    # This will generate ~90,000 total requests
+    - duration: 180
+      arrivalRate: 500
+      name: "Sustained Peak Load"
+
+  # Optional: Define environments so you can switch between dev/prod easily
+  environments:
+    local:
+      target: "http://localhost/users"
+
+scenarios:
+  - name: "Fetch User by ID"
+    flow:
+      - get:
+          url: "/v1/user/id/8dbc72e7-b57c-438a-9104-c5f39110437e"
+          headers:
+            authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhkYmM3MmU3LWI1N2MtNDM4YS05MTA0LWM1ZjM5MTEwNDM3ZSIsImVtYWlsIjoic3lzdGVtQG1lY1NlcnZpY2UuY29tIiwicGVybWlzc2lvbnMiOlsicm9vdF9hZG1pbiJdLCJpYXQiOjE3ODA3NTQwMjQsImV4cCI6MTc4MDc1NzYyNH0.XiTwdJ9JJsjSj9mfdGuOpao6UupodeCCT-tS2NYoKsU"
+            
+          expect:
+            - statusCode: 200

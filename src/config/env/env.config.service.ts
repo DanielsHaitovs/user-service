@@ -40,7 +40,7 @@ export class EnvConfigService {
   }
 
   get passwordSaltRounds(): number {
-    return this.configService.get<number>('USER_PASSWEORD_SALT_ROUNDS', {
+    return this.configService.get<number>('USER_PASSWORD_SALT_ROUNDS', {
       infer: true,
     }) as number;
   }

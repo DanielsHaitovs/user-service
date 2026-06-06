@@ -1,4 +1,6 @@
 import { EntityQueryService } from '@/baseServices/query.service';
+import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
 import { Roles } from '@/roleEntities/role.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -50,10 +52,13 @@ export class RoleHelperService {
    */
   async getAllPermissions(roleIds: UUID[]): Promise<string[]> {
     const query = this.roleRepository
-      .createQueryBuilder('role')
-      .leftJoinAndSelect('role.permissions', 'permission')
-      .where('role.id IN (:...roleIds)', { roleIds })
-      .select(['role.id', 'permission.code']);
+      .createQueryBuilder(ROLE_QUERY_ALIAS)
+      .leftJoinAndSelect(
+        `${ROLE_QUERY_ALIAS}.${PERMISSION_QUERY_ALIAS}`,
+        'permission',
+      )
+      .where(`${ROLE_QUERY_ALIAS}.id IN (:...roleIds)`, { roleIds })
+      .select([`${ROLE_QUERY_ALIAS}.id`, 'permission.code']);
 
     const roles = await this.queryService.getAll<Roles>({
       query,

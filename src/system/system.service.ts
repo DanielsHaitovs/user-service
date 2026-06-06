@@ -44,44 +44,56 @@ export class SystemSeedService implements OnApplicationBootstrap {
       let systemUserId = systemUserExists?.id;
       if (!systemUserExists) {
         systemUserId = (await this.createSystemUser()).id;
+        this.systemIdentityService.setSystemUserId(systemUserId);
+
         this.logger.debug('System user created successfully!');
       } else {
         this.logger.debug('System user already exists!');
       }
+
       if (systemUserId != undefined) {
-        this.systemIdentityService.setSystemUserId(systemUserId);
         this.logger.debug('Creating system roles and permissions!');
+
         const rolesMap = await this.createSystemRoles(systemUserId);
         const adminRoleId = rolesMap.get('ADMIN');
+
         if (adminRoleId == undefined) {
           this.logger.error(
             'ADMIN role not found, cannot assign to system user!',
           );
           return;
         }
+
         const permissionsMap = await this.createSystemPermissions(systemUserId);
+
         await this.assignPermissionsToRoles(rolesMap, permissionsMap);
+
         this.logger.debug(
           'System roles and permissions are created and successfully assigned!',
         );
+
         const existingUserRole = await this.entityManager.findOne(UserRoles, {
           where: {
             user: { id: systemUserId },
             role: { id: adminRoleId },
           },
         });
+
         if (existingUserRole) {
           this.logger.debug(
             'System user already has ADMIN role assigned, skipping assignment!',
           );
           return;
         }
+
         const systemUserRole = this.entityManager.create(UserRoles, {
           user: { id: systemUserId },
           role: { id: adminRoleId },
           assignedBy: { id: systemUserId },
         });
+
         await this.entityManager.save(systemUserRole);
+
         this.logger.debug('Assigned ADMIN role to system user successfully!');
       }
     } catch (error) {
@@ -222,33 +234,42 @@ export class SystemSeedService implements OnApplicationBootstrap {
     rolesMap: Map<string, UUID>,
     permissionsMap: Map<string, UUID>,
   ): Promise<void> {
-    if (rolesMap.size === 0) {
-      this.logger.warn('No system roles found to assign permissions to!');
-      return;
-    }
-
-    if (permissionsMap.size === 0) {
-      this.logger.warn('No system permissions found to assign to roles!');
-      return;
-    }
-
-    for (const systemRole of this.systemRoles) {
-      const { name, permissions } = systemRole;
-      const roleId = rolesMap.get(name);
-      const permissionIds = permissions
-        .map((permissionName) => permissionsMap.get(permissionName))
-        .filter((id): id is UUID => id !== undefined);
-
-      if (roleId == undefined || permissionIds.length === 0) {
-        continue;
+    try {
+      if (rolesMap.size === 0) {
+        this.logger.warn('No system roles found to assign permissions to!');
+        return;
       }
 
-      const role = this.entityManager.create(Roles, {
-        id: roleId,
-        permissions: permissionIds.map((id) => ({ id })),
-      });
+      if (permissionsMap.size === 0) {
+        this.logger.warn('No system permissions found to assign to roles!');
+        return;
+      }
 
-      await this.entityManager.save(role);
+      for (const systemRole of this.systemRoles) {
+        const { name, permissions } = systemRole;
+
+        const roleId = rolesMap.get(name);
+
+        const permissionIds = permissions
+          .map((permissionName) =>
+            permissionsMap.get(permissionName.toUpperCase()),
+          )
+          .filter((id): id is UUID => id !== undefined);
+
+        if (roleId == undefined || permissionIds.length === 0) {
+          continue;
+        }
+
+        const role = this.entityManager.create(Roles, {
+          id: roleId,
+          permissions: permissionIds.map((id) => ({ id })),
+        });
+
+        await this.entityManager.save(role);
+      }
+    } catch (error) {
+      this.logger.error('Error assigning permissions to roles', error);
+      throw error;
     }
   }
 }

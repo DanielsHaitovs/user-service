@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-sys
+spec:
+  # ⚠️ CRITICAL: Start with 1 replica for safe DB seeding
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-sys
+  template:
+    metadata:
+      labels:
+        app: user-sys
+    spec:
+      containers:
+        - name: user-sys
+          image: user_sys:latest
+          imagePullPolicy: Never # Use your local Docker build
+          ports:
+            - containerPort: 3001 # Make sure this matches your NestJS listen port!
+          env:
+            - name: UV_THREADPOOL_SIZE
+              value: '16'
+            - name: NODE_OPTIONS
+              value: '--max-old-space-size=2048 --max-semi-space-size=256'
+
+            # --- Infrastructure Routing ---
+            # K8s automatically routes these hostnames to the correct pods
+            - name: USER_DATABASE_HOST
+              value: 'postgres-service'
+            - name: REDIS_HOST
+              value: 'redis-service'
+
+            # ⚠️ Add your required database/redis credentials here to match your .env
+            - name: USER_NODE_ENV
+              value: 'development'
+            - name: USER_JWT_SECRET
+              value: 'your_jwt_secret'
+            - name: USER_JWT_EXPIRATION
+              value: '3600'
+            - name: USER_REQUIRE_AUTH
+              value: 'false'
+            - name: USER_THROTTLE_TTL
+              value: '60'
+            - name: USER_THROTTLE_LIMIT
+              value: '5'
+            - name: USER_ENCRYPTION_KEY
+              value: 'wpkHKy+YMmNiyhCRFY6d7vu/ntio7A4J+bGEvrtMLPk='
+            - name: USER_API_PORT
+              value: '3001'
+            - name: USER_DATABASE_NAME
+              value: 'users'
+            - name: USER_DATABASE_PORT
+              value: '5432'
+            - name: USER_DATABASE_SYNC
+              value: 'true'
+            - name: USER_DATABASE_LOGGING
+              value: 'false'
+            - name: USER_DATABASE_USERNAME
+              value: 'user'
+            - name: USER_DATABASE_PASSWORD
+              value: 'password'
+            - name: REDIS_PASSWORD
+              value: 'MySuperSecurePassword123'
+            - name: REDIS_PORT
+              value: '6379'
+            - name: USER_CACHE_TTL
+              value: '60000'
+            - name: USER_PASSWORD_SALT_ROUNDS
+              value: '4'
+
+---
+# The Kubernetes NodePort Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-sys-np
+spec:
+  type: NodePort
+  selector:
+    app: user-sys
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001 # Must match containerPort above
+      nodePort: 30000 # Hardcoded port for Artillery

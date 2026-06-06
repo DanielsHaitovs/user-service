@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 
 import * as bcrypt from 'bcrypt';
 
+import { CacheService } from '../base/service/cache.service';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -16,6 +18,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userRoleService: UserRolesService,
     private readonly userHelperService: UserHelperService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async signIn(data: AuthenticateDto): Promise<string> {
@@ -39,7 +42,15 @@ export class AuthService {
       permissions,
     };
 
-    return await this.jwtService.signAsync(payload);
+    const token = await this.jwtService.signAsync(payload);
+
+    await this.cacheService.set({
+      key: `auth_token:${token}`,
+      value: payload,
+      ttl: this.envConfigService.jwtExpiration * 1000,
+    });
+
+    return token;
   }
 
   private async validateUserByEmail(email: string): Promise<User> {

@@ -105,7 +105,7 @@ export class EnvironmentVariables {
     return Number(value);
   })
   @IsDefined()
-  USER_PASSWEORD_SALT_ROUNDS: number;
+  USER_PASSWORD_SALT_ROUNDS: number;
 
   @IsNumber()
   @Transform(({ value }) => {
@@ -185,7 +185,7 @@ export class EnvironmentVariables {
     this.USER_JWT_SECRET = jwtSecret;
     this.USER_JWT_EXPIRATION = jwtExpiration;
     this.USER_REQUIRE_AUTH = requireAuth;
-    this.USER_PASSWEORD_SALT_ROUNDS = passwordSaltRounds;
+    this.USER_PASSWORD_SALT_ROUNDS = passwordSaltRounds;
     this.USER_DATABASE_NAME = databaseName;
     this.USER_DATABASE_HOST = databaseHost;
     this.USER_DATABASE_PORT = databasePort;

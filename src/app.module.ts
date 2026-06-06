@@ -29,7 +29,7 @@ import { LoggerModule } from 'nestjs-pino';
         return {
           pinoHttp: {
             autoLogging: false,
-            level: 'trace',
+            level: 'silent',
             // transport: {
             //   target: 'pino-pretty',
             //   options: {

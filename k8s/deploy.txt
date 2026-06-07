@@ -1,0 +1,2 @@
+kubectl apply -f user-db-deployment.yaml -f user-sys-deployment.yaml -f user-sys-hpa.yaml -f user-db-service.yaml -f user-sys-service.yaml -n mec-app
+kubectl delete -f user-db-deployment.yaml -f user-sys-deployment.yaml -f user-sys-hpa.yaml -f user-db-service.yaml -f user-sys-service.yaml -n mec-app

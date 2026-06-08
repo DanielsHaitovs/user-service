@@ -29,18 +29,18 @@ import { LoggerModule } from 'nestjs-pino';
         return {
           pinoHttp: {
             autoLogging: false,
-            level: 'silent',
-            // transport: {
-            //   target: 'pino-pretty',
-            //   options: {
-            //     pid: true,
-            //     colorize: true,
-            //     singleLine: true,
-            //     translateTime: 'SYS:mm/dd/yyyy, h:MM:ss TT',
-            //     messageFormat: '[{context}] {msg}',
-            //     ignore: 'hostname,context',
-            //   },
-            // },
+            level: 'trace',
+            transport: {
+              target: 'pino-pretty',
+              options: {
+                pid: true,
+                colorize: true,
+                singleLine: true,
+                translateTime: 'SYS:mm/dd/yyyy, h:MM:ss TT',
+                messageFormat: '[{context}] {msg}',
+                ignore: 'hostname,context,req',
+              },
+            },
           },
         };
       },

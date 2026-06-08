@@ -1,4 +1,4 @@
-import { AuthenticateDto } from '@/auth/auth.dto';
+import { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import { JwtPayload } from '@/auth/auth.interface';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { User } from '@/userEntities/user.entity';
@@ -21,7 +21,7 @@ export class AuthService {
     private readonly cacheService: CacheService,
   ) {}
 
-  async signIn(data: AuthenticateDto): Promise<string> {
+  async signIn(data: AuthenticateDto): Promise<AuthenticateResponseDto> {
     const { email, password } = data;
 
     const user = await this.validateUserByEmail(email);
@@ -50,7 +50,7 @@ export class AuthService {
       ttl: this.envConfigService.jwtExpiration * 1000,
     });
 
-    return token;
+    return { token };
   }
 
   private async validateUserByEmail(email: string): Promise<User> {

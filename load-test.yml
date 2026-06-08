@@ -1,5 +1,6 @@
 config:
-  target: "http://localhost:30080/users" # Base URL
+  target: "http://localhost/users" # Base URL
+  # target: "http://localhost:30080/users" # Base URL
   
   # 🚀 THE REAL FIX: Flattened directly under config
   http:
@@ -8,32 +9,33 @@ config:
 
   phases:
     # Phase 1: The Warmup (10 requests/sec for 10 seconds)
-    - duration: 10
+    - duration: 1000
       arrivalRate: 10
       name: "Warmup: Populating Redis Cache"
 
     # Phase 2: The Ramp-Up (Gradually increase from 10 to 500 req/sec over 180s)
-    - duration: 180
-      arrivalRate: 10
-      rampTo: 500
-      name: "Ramp-up: Scaling to peak load"
+    # - duration: 180
+    #   arrivalRate: 10
+    #   rampTo: 500
+    #   name: "Ramp-up: Scaling to peak load"
 
     # Phase 3: The Legion Test (500 requests/sec for 600s)
-    - duration: 600
-      arrivalRate: 500
-      name: "Sustained Peak Load"
+    # - duration: 600
+    #   arrivalRate: 500
+    #   name: "Sustained Peak Load"
 
   environments:
     local:
-      target: "http://localhost:30080/users"
+      target: "http://localhost/users"
+      # target: "http://localhost:30080/users"
 
 scenarios:
   - name: "Fetch User by ID"
     flow:
       - get:
-          url: "/v1/user/id/67b5c669-231f-46f6-b6f8-69b4b5269805"
+          url: "/v1/user/id/4990d65a-d00f-447d-a0f9-6d73ab297523"
           headers:
-            authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZlYTMyM2JkLTRhZTYtNGZlMS1iOWJjLWM3NmY2YzJhNzY5MSIsImVtYWlsIjoic3lzdGVtQG1lY1NlcnZpY2UuY29tIiwicGVybWlzc2lvbnMiOlsicm9vdF9hZG1pbiJdLCJpYXQiOjE3ODA4NDYwNTYsImV4cCI6MTc4MDg0OTY1Nn0.E-ggpjEcSou4GVX_y9m0ciMKgkhpyLByroxNlIHSuGc"
+            authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQ5OTBkNjVhLWQwMGYtNDQ3ZC1hMGY5LTZkNzNhYjI5NzUyMyIsImVtYWlsIjoic3lzdGVtQG1lY1NlcnZpY2UuY29tIiwicGVybWlzc2lvbnMiOlsicm9vdF9hZG1pbiJdLCJpYXQiOjE3ODA5MTkwMjIsImV4cCI6MTc4MDkyMjYyMn0.xD4KkK726fctMtGYnA6_3IxTssNLnwOHwzmeXjz9oWA"
             
           expect:
             - statusCode: 200

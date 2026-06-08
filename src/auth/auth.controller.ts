@@ -1,8 +1,8 @@
-import { AuthenticateDto } from '@/auth/auth.dto';
+import { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import { AuthService } from '@/auth/auth.service';
 import { Public } from '@/commonDecorators/public.decorator';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @Controller({
   path: 'auth',
@@ -21,7 +21,18 @@ export class AuthController {
     required: true,
     description: 'The credentials of the user to authenticate',
   })
-  async signIn(@Body() signInDto: AuthenticateDto): Promise<string> {
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'The JWT token for authenticated user',
+    type: AuthenticateResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized - Invalid credentials',
+  })
+  async signIn(
+    @Body() signInDto: AuthenticateDto,
+  ): Promise<AuthenticateResponseDto> {
     return this.authService.signIn(signInDto);
   }
 }

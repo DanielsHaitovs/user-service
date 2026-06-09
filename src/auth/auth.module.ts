@@ -1,6 +1,6 @@
 import { AuthController } from '@/auth/auth.controller';
 import { AuthService } from '@/auth/auth.service';
-import { CacheService } from '@/baseServices/cache.service';
+import { AuthCacheService } from '@/auth/cache.service';
 import { AuthGuard } from '@/commonGuards/auth.guard';
 import { PermissionsGuard } from '@/commonGuards/permission.guard';
 import { EnvConfigService } from '@/config/env/env.config.service';
@@ -25,7 +25,7 @@ import { JwtModule } from '@nestjs/jwt';
   ],
   controllers: [AuthController],
   providers: [
-    CacheService,
+    AuthCacheService,
     AuthService,
     {
       provide: APP_GUARD,

@@ -26,24 +26,27 @@ function wrapMethods(proto: GenericObject, logger: Logger): void {
       const ctor = (this as { constructor: { name?: string } }).constructor;
       const className: string = ctor.name ?? 'Unknown';
 
-      logger.log(
-        `[Trace: ${traceId}] -> ${className} -> ${String(key)} args: ${safeStringify(args)}`,
-      );
+      logger.log({
+        trace: `[Trace: ${traceId}] -> ${className} -> ${String(key)}`,
+        args: safeStringify(args),
+      });
 
       const result = fn.apply(this, args);
 
       if (result instanceof Promise) {
         return result.then((res: unknown) => {
-          logger.verbose(
-            `[Trace: ${traceId}] <- ${className} <- ${String(key)} returned: ${safeStringify(res)}`,
-          );
+          logger.log({
+            trace: `[Trace: ${traceId}] <- ${className} <- ${String(key)}`,
+            returned: safeStringify(res),
+          });
           return res;
         });
       }
 
-      logger.verbose(
-        `[Trace: ${traceId}] <- ${className} <- ${String(key)} returned: ${safeStringify(result)}`,
-      );
+      logger.log({
+        trace: `[Trace: ${traceId}] <- ${className} <- ${String(key)}`,
+        returned: safeStringify(result),
+      });
       return result;
     };
 
@@ -116,11 +119,11 @@ function wrapInjectedServices(
             depthMap.set(traceId, depth + 1);
 
             try {
-              if (depth === 0) {
-                logger.log(
-                  `[Trace: ${traceId}] !! Skipped tracing ${className} -> ${String(key)}`,
-                );
-              }
+              // if (depth === 0) {
+              //   logger.log(
+              //     `[Trace: ${traceId}] !! Skipped tracing ${className} -> ${String(key)}`,
+              //   );
+              // }
               return (original as (...a: unknown[]) => unknown).apply(
                 target,
                 args,

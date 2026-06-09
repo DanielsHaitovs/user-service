@@ -17,6 +17,7 @@ export const classesToSkip = [
   'Logger',
   'QueryRunner',
   'ConfigService',
+  'AuthCacheService',
   'EnvironmentVariables',
   'EnvConfigService',
   'SystemSeedService',

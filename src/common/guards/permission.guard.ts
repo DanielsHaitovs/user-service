@@ -1,5 +1,5 @@
-import { AuthenticatedRequest, JwtPayload } from '@/auth/auth.interface';
-import { CacheService } from '@/base/service/cache.service';
+import { AuthenticatedRequest } from '@/auth/auth.interface';
+import { AuthCacheService } from '@/auth/cache.service';
 import { PERMISSIONS_KEY } from '@/commonDecorators/permission.decorator';
 import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
 import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
@@ -10,12 +10,8 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
-
-import { EnvConfigService } from '../../config/env/env.config.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -23,9 +19,7 @@ export class PermissionsGuard implements CanActivate {
 
   constructor(
     private readonly reflector: Reflector,
-    private readonly jwtService: JwtService,
-    private readonly cacheService: CacheService,
-    private readonly envConfigService: EnvConfigService,
+    private readonly cacheService: AuthCacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -56,7 +50,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.getPermissionsFromCache(token);
+      const payload = await this.cacheService.get(token);
 
       const { permissions } = payload;
 
@@ -83,35 +77,6 @@ export class PermissionsGuard implements CanActivate {
     } catch (error) {
       this.logger.error(error);
       throw new ForbiddenException('Invalid token');
-    }
-  }
-
-  private async getPermissionsFromCache(token: string): Promise<JwtPayload> {
-    const cacheKey = `auth_token:${token}`;
-
-    try {
-      const cachedPayload = await this.cacheService.get<JwtPayload>(cacheKey);
-
-      if (cachedPayload) {
-        return cachedPayload;
-      }
-
-      return await this.cacheService.coalesce<JwtPayload>({
-        key: cacheKey,
-        operation: async () => {
-          const decoded = await this.jwtService.verifyAsync<JwtPayload>(token);
-
-          await this.cacheService.set({
-            key: cacheKey,
-            value: decoded,
-            ttl: this.envConfigService.jwtExpiration * 1000,
-          });
-
-          return decoded;
-        },
-      });
-    } catch {
-      throw new UnauthorizedException();
     }
   }
 }

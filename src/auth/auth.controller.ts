@@ -1,6 +1,7 @@
 import { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import { AuthService } from '@/auth/auth.service';
 import { Public } from '@/commonDecorators/public.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 
@@ -10,6 +11,7 @@ import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 })
 @ApiTags('Auth')
 @ApiBearerAuth('JWT-auth')
+@TraceController()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

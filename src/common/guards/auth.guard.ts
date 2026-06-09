@@ -1,7 +1,6 @@
-import { AuthenticatedRequest, JwtPayload } from '@/auth/auth.interface';
-import { CacheService } from '@/baseServices/cache.service';
+import { AuthenticatedRequest } from '@/auth/auth.interface';
+import { AuthCacheService } from '@/auth/cache.service';
 import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
-import { EnvConfigService } from '@/config/env/env.config.service';
 import { extractBearerFromHeader } from '@/utils/headers.utils';
 import {
   CanActivate,
@@ -10,15 +9,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
-    private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
-    private readonly cacheService: CacheService,
-    private readonly envConfigService: EnvConfigService,
+    private readonly cacheService: AuthCacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,36 +35,13 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    const cacheKey = `auth_token:${token}`;
-
     try {
-      const cachedPayload = await this.cacheService.get<JwtPayload>(cacheKey);
-
-      if (cachedPayload) {
-        request.user = cachedPayload;
-        return true;
-      }
-
-      const payload = await this.cacheService.coalesce<JwtPayload>({
-        key: cacheKey,
-        operation: async () => {
-          const decoded = await this.jwtService.verifyAsync<JwtPayload>(token);
-
-          await this.cacheService.set({
-            key: cacheKey,
-            value: decoded,
-            ttl: this.envConfigService.jwtExpiration * 1000,
-          });
-
-          return decoded;
-        },
-      });
+      const payload = await this.cacheService.get(token);
 
       request.user = payload;
+      return true;
     } catch {
       throw new UnauthorizedException();
     }
-
-    return true;
   }
 }

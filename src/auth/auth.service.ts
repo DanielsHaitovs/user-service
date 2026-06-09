@@ -1,5 +1,6 @@
 import { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import { JwtPayload } from '@/auth/auth.interface';
+import { AuthCacheService } from '@/auth/cache.service';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { User } from '@/userEntities/user.entity';
 import { UserRolesService } from '@/userRoleServices/role.service';
@@ -9,8 +10,6 @@ import { JwtService } from '@nestjs/jwt';
 
 import * as bcrypt from 'bcrypt';
 
-import { CacheService } from '../base/service/cache.service';
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -18,13 +17,13 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userRoleService: UserRolesService,
     private readonly userHelperService: UserHelperService,
-    private readonly cacheService: CacheService,
+    private readonly cacheService: AuthCacheService,
   ) {}
 
   async signIn(data: AuthenticateDto): Promise<AuthenticateResponseDto> {
     const { email, password } = data;
 
-    const user = await this.validateUserByEmail(email);
+    const user = await this.validateUserByEmail({ email });
 
     const isMatch = await bcrypt.compare(password, user.password);
 
@@ -44,17 +43,17 @@ export class AuthService {
 
     const token = await this.jwtService.signAsync(payload);
 
-    await this.cacheService.set({
-      key: `auth_token:${token}`,
-      value: payload,
-      ttl: this.envConfigService.jwtExpiration * 1000,
-    });
+    await this.cacheService.set({ payload, token });
 
     return { token };
   }
 
-  private async validateUserByEmail(email: string): Promise<User> {
-    const user = await this.userHelperService.getByEmail(email);
+  private async validateUserByEmail({
+    email,
+  }: {
+    email: string;
+  }): Promise<User> {
+    const user = await this.userHelperService.getByEmail({ email });
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');

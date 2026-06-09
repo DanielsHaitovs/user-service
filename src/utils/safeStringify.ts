@@ -59,11 +59,9 @@ function isExpressRequest(v: object, ctorName?: string): boolean {
 
 function simplifyRequest(req: FastifyRequest): Record<string, unknown> {
   const { headers = {} } = req;
-
   return {
     method: req.method,
     url: req.url,
-    // user: req.user,
     query: req.query,
     params: req.params,
     body: req.body,

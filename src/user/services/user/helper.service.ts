@@ -63,7 +63,7 @@ export class UserHelperService {
    * @returns A promise that resolves to the GetUserDto of the found user.
    * @throws EntityNotFoundException if no user is found with the given email.
    */
-  async getByEmail(email: string): Promise<User | null> {
+  async getByEmail({ email }: { email: string }): Promise<User | null> {
     return await this.userRepository.findOne({
       where: {
         email,

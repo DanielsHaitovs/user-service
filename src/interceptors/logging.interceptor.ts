@@ -20,26 +20,29 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const traceId = getTraceId() ?? 'N/A';
 
-    const { method, url, body } = req;
+    const { method, url } = req;
     const controllerName = context.getClass().name;
     const handlerName = context.getHandler().name;
     const start = Date.now();
 
-    if (method === 'GET') {
-      this.logger.verbose(
-        `[Trace: ${traceId}] -> ${method} ${url} -> ${controllerName}.${handlerName}`,
-      );
-    } else {
-      this.logger.verbose(
-        `[Trace: ${traceId}] -> ${method} ${url} -> ${controllerName}.${handlerName} | Body: ${safeStringify(body)}`,
-      );
-    }
+    this.logger.verbose(
+      {
+        trace: `[Trace: ${traceId}] -> ${method} ${url} -> ${controllerName}.${handlerName}`,
+        request: safeStringify(req),
+      },
+      'Incoming Request',
+    );
 
     return next.handle().pipe(
       tap((data: unknown) => {
         const duration = Date.now() - start;
         this.logger.verbose(
-          `[Trace: ${traceId}] <- ${method} ${url} | Duration: ${duration.toString()}ms | Response: ${safeStringify(data)}`,
+          {
+            trace: `[Trace: ${traceId}] <- ${method} ${url}`,
+            duration: `${duration.toString()}ms`,
+            response: safeStringify(data),
+          },
+          'Outgoing Response',
         );
       }),
       catchError((err: unknown) => {
@@ -61,8 +64,13 @@ export class LoggingInterceptor implements NestInterceptor {
         const stack = typeof errorObj.stack === 'string' ? errorObj.stack : '';
 
         this.logger.error(
-          `[Trace: ${traceId}] !! ${method} ${url} | Duration: ${duration.toString()}ms | Status: ${status.toString()} | Error: ${message}`,
+          {
+            trace: `[Trace: ${traceId}] !! ${method} ${url} | Status: ${status.toString()}`,
+            duration: `${duration.toString()}ms`,
+            error: message,
+          },
           stack,
+          'Request Error Response',
         );
 
         return throwError(() => err);

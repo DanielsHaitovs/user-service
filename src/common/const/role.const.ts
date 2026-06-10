@@ -1,4 +1,4 @@
-import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
+import { INPUT_BAD_REQUEST_MSG } from '@/commonConst/system.const';
 
 /**
  * Sample UUID v4 for user identification in tests and API documentation.

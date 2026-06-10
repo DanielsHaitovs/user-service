@@ -1,6 +1,5 @@
-import { EnvConfigService } from '@/config/env/env.config.service';
-import { COUNTRIES } from '@/libConst/countries.const';
-import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { COUNTRIES } from '@/commonConst/countries.const';
+import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import {
   EXAMPLE_USER_DATE_OF_BIRTH,
   EXAMPLE_USER_EMAIL_VERIFICATION_TOKEN,
@@ -8,7 +7,8 @@ import {
   EXAMPLE_USER_PHONE,
   SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,
-} from '@/libConst/user.const';
+} from '@/commonConst/user.const';
+import { EnvConfigService } from '@/config/env/env.config.service';
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { Roles } from '@/roleEntities/role.entity';
 import { SystemIdentityService } from '@/system/identity.service';

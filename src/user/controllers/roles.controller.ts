@@ -1,8 +1,8 @@
+import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
 import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
-import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import {
   ASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
   READ_USER_PERMISSIONS_ENDPOINT_PERMISSION,

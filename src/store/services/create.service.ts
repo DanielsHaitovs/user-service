@@ -1,4 +1,4 @@
-import { STORE_QUERY_ALIAS } from '@/libConst/store.const';
+import { STORE_QUERY_ALIAS } from '@/commonConst/store.const';
 import { CreateStoreDto, StoreResponseDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import { User } from '@/userEntities/user.entity';

@@ -1,4 +1,4 @@
-import { READ_PERMISSION } from '@/libConst/permission.const';
+import { READ_PERMISSION } from '@/commonConst/permission.const';
 import type { SystemRole } from '@/system/system-role.interface';
 
 /**

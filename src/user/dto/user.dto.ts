@@ -1,8 +1,11 @@
 import { PaginatedResponseDto } from '@/baseDto/pagination.dto';
+import { COUNTRIES } from '@/commonConst/countries.const';
+import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
+import {
+  EXAMPLE_USER_ID,
+  SYSTEM_USER_PASSWORD,
+} from '@/commonConst/user.const';
 import { ToArray } from '@/commonDecorators/array.decorator';
-import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
-import { COUNTRIES } from '@/libConst/countries.const';
-import { EXAMPLE_USER_ID, SYSTEM_USER_PASSWORD } from '@/libConst/user.const';
 import { GetUserRoleDto } from '@/userDto/roles.dto';
 import { GetUserStoreDto } from '@/userDto/stores.dto';
 import {

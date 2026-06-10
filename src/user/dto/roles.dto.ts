@@ -2,9 +2,9 @@ import {
   PaginatedResponseDto,
   QueryRequestDto,
 } from '@/baseDto/pagination.dto';
+import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
+import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
 import { ToArray } from '@/commonDecorators/array.decorator';
-import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
-import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { GetAssignedByDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';

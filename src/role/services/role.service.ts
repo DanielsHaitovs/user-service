@@ -1,5 +1,5 @@
 import { EntityQueryService } from '@/baseServices/query.service';
-import { ROLE_QUERY_ALIAS } from '@/lib/const/role.const';
+import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import { GetRoleDto, RoleListResponseDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';

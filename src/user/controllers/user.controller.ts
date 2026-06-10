@@ -1,28 +1,28 @@
 import { JwtPayload } from '@/auth/auth.interface';
 import { extractAccess } from '@/base/helper/permissions';
-import { ApiOkList } from '@/commonDecorators/api.decorator';
-import { Permissions } from '@/commonDecorators/permission.decorator';
-import { TraceController } from '@/commonDecorators/trace.decorator';
-import { CurrentUser } from '@/commonDecorators/user.decorator';
 import {
   ASSIGN_USER_ROLE,
   READ_ROLE,
   READ_USER_ROLE,
   UNASSIGN_USER_ROLE,
-} from '@/lib/const/role.const';
+} from '@/commonConst/role.const';
 import {
   ASSIGN_USER_STORE,
   READ_STORE,
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
-} from '@/lib/const/store.const';
+} from '@/commonConst/store.const';
 import {
   EMAIL_EXISTS_MSG,
   EXAMPLE_USER_EMAIL,
   EXAMPLE_USER_ID,
   USER_API_OK_RESPONSE_MSG,
   USER_MIN_OPERATION_BAD_REQUEST_MSG,
-} from '@/libConst/user.const';
+} from '@/commonConst/user.const';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUser } from '@/commonDecorators/user.decorator';
 import {
   CREATE_USER_ENDPOINT_PERMISSION,
   DELETE_USER_ENDPOINT_PERMISSION,

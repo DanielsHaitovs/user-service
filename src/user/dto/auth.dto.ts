@@ -3,7 +3,7 @@ import {
   EXAMPLE_TWO_FACTOR_SECRET,
   EXAMPLE_USER_ID,
   SYSTEM_USER_PASSWORD,
-} from '@/libConst/user.const';
+} from '@/commonConst/user.const';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { ToBoolean } from 'class-sanitizer';

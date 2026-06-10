@@ -3,26 +3,26 @@ import {
   READ_DEPARTMENT,
   READ_USER_DEPARTMENT,
   UNASSIGN_USER_DEPARTMENT,
-} from '@/libConst/department.const';
-import { READ_PERMISSION } from '@/libConst/permission.const';
+} from '@/commonConst/department.const';
+import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_USER_ROLE,
   READ_ROLE,
   READ_USER_ROLE,
   UNASSIGN_USER_ROLE,
-} from '@/libConst/role.const';
+} from '@/commonConst/role.const';
 import {
   ASSIGN_USER_STORE,
   READ_STORE,
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
-} from '@/libConst/store.const';
+} from '@/commonConst/store.const';
 import {
   CREATE_USER,
   DELETE_USER,
   READ_USER,
   UPDATE_USER,
-} from '@/libConst/user.const';
+} from '@/commonConst/user.const';
 import type { SystemRole } from '@/system/system-role.interface';
 
 /**

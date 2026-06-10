@@ -1,8 +1,8 @@
 import {
   PERMISSION_QUERY_ALIAS,
   ROOT_ADMIN_PERMISSION,
-} from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+} from '@/commonConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { Roles } from '@/roleEntities/role.entity';
 import {

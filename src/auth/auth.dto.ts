@@ -1,7 +1,7 @@
 import {
   SYSTEM_USER_EMAIL,
   SYSTEM_USER_PASSWORD,
-} from '@/lib/const/user.const';
+} from '@/commonConst/user.const';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { IsEmail, IsString } from 'class-validator';

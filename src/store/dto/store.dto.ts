@@ -3,7 +3,7 @@ import {
   EXAMPLE_STORE_CODE,
   EXAMPLE_STORE_NAME,
   EXAMPLE_STORE_VIEW_CODE,
-} from '@/lib/const/store.const';
+} from '@/commonConst/store.const';
 import { GetCreatedByDto, GetRelatedUserDto } from '@/userDto/user.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 

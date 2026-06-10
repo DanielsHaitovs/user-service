@@ -2,8 +2,14 @@ import { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import { AuthService } from '@/auth/auth.service';
 import { Public } from '@/commonDecorators/public.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Post } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
 @Controller({
   path: 'auth',
@@ -15,7 +21,6 @@ import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @HttpCode(HttpStatus.OK)
   @Post('login')
   @Public()
   @ApiBody({
@@ -23,13 +28,11 @@ export class AuthController {
     required: true,
     description: 'The credentials of the user to authenticate',
   })
-  @ApiResponse({
-    status: HttpStatus.OK,
+  @ApiOkResponse({
     description: 'The JWT token for authenticated user',
     type: AuthenticateResponseDto,
   })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
+  @ApiUnauthorizedResponse({
     description: 'Unauthorized - Invalid credentials',
   })
   async signIn(

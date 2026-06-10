@@ -1,5 +1,4 @@
 import type { JwtPayload } from '@/auth/auth.interface';
-import type { UserAccessPermissions } from '@/baseInterface/query.request';
 import {
   ASSIGN_USER_DEPARTMENT,
   CREATE_DEPARTMENT,
@@ -8,8 +7,8 @@ import {
   READ_USER_DEPARTMENT,
   UNASSIGN_USER_DEPARTMENT,
   UPDATE_DEPARTMENT,
-} from '@/libConst/department.const';
-import { READ_PERMISSION } from '@/libConst/permission.const';
+} from '@/commonConst/department.const';
+import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CREATE_ROLE,
@@ -18,7 +17,7 @@ import {
   READ_USER_ROLE,
   UNASSIGN_PERMISSION_FROM_ROLE,
   UPDATE_ROLE,
-} from '@/libConst/role.const';
+} from '@/commonConst/role.const';
 import {
   ASSIGN_USER_STORE,
   CREATE_STORE,
@@ -27,13 +26,14 @@ import {
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
   UPDATE_STORE,
-} from '@/libConst/store.const';
+} from '@/commonConst/store.const';
 import {
   CREATE_USER,
   DELETE_USER,
   READ_USER,
   UPDATE_USER,
-} from '@/libConst/user.const';
+} from '@/commonConst/user.const';
+import type { UserAccessPermissions } from '@/system/system-role.interface';
 
 export function extractAccess(
   createdByUser: JwtPayload,

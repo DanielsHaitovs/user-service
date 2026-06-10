@@ -3,8 +3,8 @@ import {
   EXAMPLE_PERMISSION_CODE,
   EXAMPLE_PERMISSION_ID,
   EXAMPLE_PERMISSION_NAME,
-} from '@/libConst/permission.const';
-import { EXAMPLE_ROLE_ID } from '@/libConst/role.const';
+} from '@/commonConst/permission.const';
+import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { GetCreatedByDto } from '@/userDto/user.dto';
 import { ApiProperty, PickType } from '@nestjs/swagger';

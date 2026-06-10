@@ -1,4 +1,4 @@
-import { READ_PERMISSION } from '@/libConst/permission.const';
+import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CREATE_ROLE,
@@ -8,7 +8,7 @@ import {
   UNASSIGN_PERMISSION_FROM_ROLE,
   UNASSIGN_USER_ROLE,
   UPDATE_ROLE,
-} from '@/libConst/role.const';
+} from '@/commonConst/role.const';
 import type { SystemRole } from '@/system/system-role.interface';
 
 /**

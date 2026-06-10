@@ -1,12 +1,12 @@
-import { ApiOkList } from '@/commonDecorators/api.decorator';
-import { Permissions } from '@/commonDecorators/permission.decorator';
-import { TraceController } from '@/commonDecorators/trace.decorator';
 import {
   EXAMPLE_PERMISSION_CODE,
   PERMISSION_MIN_OPERATION_BAD_REQUEST_MSG,
   PERMISSION_NOT_FOUND_MSG,
-} from '@/lib/const/permission.const';
-import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+} from '@/commonConst/permission.const';
+import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import { GetPermissionDto } from '@/permissionDto/permission.dto';
 import { READ_PERMISSION_ENDPOINT_PERMISSION } from '@/system/const/permission.const';

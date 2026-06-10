@@ -1,5 +1,5 @@
 import { EntityQueryService } from '@/baseServices/query.service';
-import { USER_QUERY_ALIAS } from '@/lib/const/user.const';
+import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { UserQueryRequest } from '@/userDto/query.dto';
 import { GetUserDto, UserListResponseDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';

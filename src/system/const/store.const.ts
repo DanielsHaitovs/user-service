@@ -5,7 +5,7 @@ import {
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
   UPDATE_STORE,
-} from '@/libConst/store.const';
+} from '@/commonConst/store.const';
 import type { SystemRole } from '@/system/system-role.interface';
 
 /**

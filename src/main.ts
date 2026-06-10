@@ -57,7 +57,6 @@ async function bootstrap(): Promise<void> {
     .addTag('App', 'Health check and basic operations')
     .addTag('Auth', 'Authentication operations')
     .addTag('Users', 'User management operations')
-    .addTag('Users Authorizarion', 'User authentication management operations')
     .addTag('Users Roles', 'User roles management operations')
     .addTag('Users Stores', 'User stores management operations')
     .addTag('Roles', 'Roles management operations')

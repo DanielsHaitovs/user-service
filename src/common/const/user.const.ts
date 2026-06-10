@@ -3,8 +3,8 @@
  * These values should be used consistently across tests and documentation
  * to maintain uniformity in examples and mock data.
  */
-import { COUNTRIES } from '@/libConst/countries.const';
-import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
+import { COUNTRIES } from '@/commonConst/countries.const';
+import { INPUT_BAD_REQUEST_MSG } from '@/commonConst/system.const';
 
 // Standard email address for the system user.
 // This email is used in tests and API documentation to represent the system user.

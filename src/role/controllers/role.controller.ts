@@ -1,10 +1,6 @@
 import { JwtPayload } from '@/auth/auth.interface';
 import { extractAccess } from '@/base/helper/permissions';
-import { ApiOkList } from '@/commonDecorators/api.decorator';
-import { Permissions } from '@/commonDecorators/permission.decorator';
-import { TraceController } from '@/commonDecorators/trace.decorator';
-import { CurrentUser } from '@/commonDecorators/user.decorator';
-import { READ_PERMISSION } from '@/libConst/permission.const';
+import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CONFLICT_ROLE_NAME_MSG,
@@ -14,8 +10,12 @@ import {
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
   ROLE_NOT_FOUND_MSG,
   UNASSIGN_USER_ROLE,
-} from '@/libConst/role.const';
-import { EXAMPLE_USER_ID } from '@/libConst/user.const';
+} from '@/commonConst/role.const';
+import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUser } from '@/commonDecorators/user.decorator';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {

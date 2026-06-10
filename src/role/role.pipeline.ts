@@ -1,6 +1,9 @@
 import { CacheService } from '@/baseServices/cache.service';
-import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS, USER_ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
+import {
+  ROLE_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
+} from '@/commonConst/role.const';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {
   CreateRoleDto,

@@ -1,8 +1,8 @@
 import { AuthenticatedRequest } from '@/auth/auth.interface';
 import { AuthCacheService } from '@/auth/cache.service';
+import { ROOT_ADMIN_PERMISSION } from '@/commonConst/permission.const';
 import { PERMISSIONS_KEY } from '@/commonDecorators/permission.decorator';
 import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
-import { ROOT_ADMIN_PERMISSION } from '@/libConst/permission.const';
 import { extractBearerFromHeader } from '@/utils/headers.utils';
 import {
   CanActivate,

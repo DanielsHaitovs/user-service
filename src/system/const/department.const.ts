@@ -3,7 +3,7 @@ import {
   DELETE_DEPARTMENT,
   READ_DEPARTMENT,
   UPDATE_DEPARTMENT,
-} from '@/libConst/department.const';
+} from '@/commonConst/department.const';
 import type { SystemRole } from '@/system/system-role.interface';
 
 export const UPDATE_DEPARTMENT_ENDPOINT_PERMISSION = [

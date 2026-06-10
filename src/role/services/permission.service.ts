@@ -1,6 +1,6 @@
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
-import { RoleResponseDto } from '@/roleDto/role.dto';
+import { PermissionsToRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -41,10 +41,7 @@ export class RolePermissionService {
   async assignPermissionsToRole({
     roleId,
     permissionCodes,
-  }: {
-    roleId: UUID;
-    permissionCodes: string[];
-  }): Promise<void> {
+  }: PermissionsToRoleDto): Promise<void> {
     if (!permissionCodes.length) {
       throw new UnprocessableEntityException(
         'At least one permission code must be provided to assign permissions to the role.',
@@ -88,10 +85,7 @@ export class RolePermissionService {
   async unassignPermissionsFromRole({
     roleId,
     permissionCodes,
-  }: {
-    roleId: UUID;
-    permissionCodes: string[];
-  }): Promise<void> {
+  }: PermissionsToRoleDto): Promise<void> {
     if (!permissionCodes.length) {
       throw new UnprocessableEntityException(
         'At least one permission code must be provided to unassign permissions from the role.',

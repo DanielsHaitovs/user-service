@@ -1,5 +1,5 @@
 import { deletedResults } from '@/base/helper/delete';
-import { pgErrorStatusCodes } from '@/libConst/database.const';
+import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { SystemIdentityService } from '@/system/identity.service';

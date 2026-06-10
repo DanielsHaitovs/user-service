@@ -1,6 +1,6 @@
 import { EntityQueryService } from '@/baseServices/query.service';
-import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
+import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import { Roles } from '@/roleEntities/role.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';

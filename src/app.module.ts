@@ -4,6 +4,7 @@ import { AuthModule } from '@/auth/auth.module';
 import { BaseModule } from '@/base/base.module';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { EnvConfigModule } from '@/config/env/env.module';
+import { Environment } from '@/config/env/env.validation';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
@@ -25,7 +26,8 @@ import { LoggerModule } from 'nestjs-pino';
     EnvConfigModule,
     ScheduleModule.forRoot(),
     LoggerModule.forRootAsync({
-      useFactory: () => {
+      inject: [EnvConfigService],
+      useFactory: (configService: EnvConfigService) => {
         return {
           pinoHttp: {
             autoLogging: false,
@@ -34,17 +36,21 @@ import { LoggerModule } from 'nestjs-pino';
               req: () => undefined,
               res: () => undefined,
             },
-            // transport: {
-            //   target: 'pino-pretty',
-            //   options: {
-            //     pid: true,
-            //     colorize: true,
-            //     singleLine: true,
-            //     translateTime: 'SYS:mm/dd/yyyy, h:MM:ss TT',
-            //     messageFormat: '[{context}] {msg}',
-            //     ignore: 'hostname,context,req',
-            //   },
-            // },
+            ...(configService.nodeEnv === Environment.Test
+              ? {
+                  transport: {
+                    target: 'pino-pretty',
+                    options: {
+                      pid: true,
+                      colorize: true,
+                      singleLine: true,
+                      translateTime: 'SYS:mm/dd/yyyy, h:MM:ss TT',
+                      messageFormat: '[{context}] {msg}',
+                      ignore: 'hostname,context,req',
+                    },
+                  },
+                }
+              : {}),
           },
         };
       },

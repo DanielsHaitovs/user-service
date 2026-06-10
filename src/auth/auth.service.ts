@@ -2,6 +2,7 @@ import { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import { JwtPayload } from '@/auth/auth.interface';
 import { AuthCacheService } from '@/auth/cache.service';
 import { EnvConfigService } from '@/config/env/env.config.service';
+import { Environment } from '@/config/env/env.validation';
 import { User } from '@/userEntities/user.entity';
 import { UserRolesService } from '@/userRoleServices/role.service';
 import { UserHelperService } from '@/userServices/helper.service';
@@ -59,7 +60,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!this.envConfigService.requireAuth) {
+    if (
+      !this.envConfigService.requireAuth &&
+      this.envConfigService.nodeEnv !== Environment.Production
+    ) {
       return user;
     }
 

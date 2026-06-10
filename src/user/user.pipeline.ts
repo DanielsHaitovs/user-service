@@ -1,5 +1,5 @@
 import { CacheService } from '@/baseServices/cache.service';
-import { USER_QUERY_ALIAS } from '@/libConst/user.const';
+import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { UserQueryRequest } from '@/userDto/query.dto';
 import {
   CreateUserDto,

@@ -4,7 +4,7 @@
  * to maintain uniformity in examples and mock data.
  */
 
-import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
+import { INPUT_BAD_REQUEST_MSG } from '@/commonConst/system.const';
 
 /**
  * Sample UUID v4 for STORE identification in tests and API documentation.

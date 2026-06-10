@@ -1,6 +1,6 @@
 import { QueryRequestDto } from '@/baseDto/pagination.dto';
+import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
 import { ToArray } from '@/commonDecorators/array.decorator';
-import { EXAMPLE_ROLE_ID } from '@/lib/const/role.const';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 import { IsOptional, IsString, IsUUID } from 'class-validator';

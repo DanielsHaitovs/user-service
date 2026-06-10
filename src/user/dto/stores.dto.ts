@@ -2,13 +2,13 @@ import {
   PaginatedResponseDto,
   QueryRequestDto,
 } from '@/baseDto/pagination.dto';
-import { ToArray } from '@/commonDecorators/array.decorator';
 import {
   EXAMPLE_STORE_CODE,
   EXAMPLE_STORE_ID,
   EXAMPLE_STORE_VIEW_CODE,
-} from '@/lib/const/store.const';
-import { EXAMPLE_USER_ID } from '@/lib/const/user.const';
+} from '@/commonConst/store.const';
+import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import { ToArray } from '@/commonDecorators/array.decorator';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import { GetAssignedByDto } from '@/userDto/user.dto';
 import { ApiProperty } from '@nestjs/swagger';

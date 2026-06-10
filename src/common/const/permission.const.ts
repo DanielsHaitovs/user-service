@@ -1,5 +1,5 @@
-import { INPUT_BAD_REQUEST_MSG } from '@/libConst/system.const';
-import { READ_USER } from '@/libConst/user.const';
+import { INPUT_BAD_REQUEST_MSG } from '@/commonConst/system.const';
+import { READ_USER } from '@/commonConst/user.const';
 
 /**
  * Sample UUID v4 for permission identification in tests and API documentation.

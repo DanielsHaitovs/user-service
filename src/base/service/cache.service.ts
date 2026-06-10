@@ -1,11 +1,14 @@
-import { EnvConfigService } from '@/config/env/env.config.service';
-import { PERMISSION_QUERY_ALIAS } from '@/libConst/permission.const';
-import { ROLE_QUERY_ALIAS, USER_ROLE_QUERY_ALIAS } from '@/libConst/role.const';
+import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
+import {
+  ROLE_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
+} from '@/commonConst/role.const';
 import {
   STORE_QUERY_ALIAS,
   USER_STORES_QUERY_ALIAS,
-} from '@/libConst/store.const';
-import { USER_QUERY_ALIAS } from '@/libConst/user.const';
+} from '@/commonConst/store.const';
+import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
+import { EnvConfigService } from '@/config/env/env.config.service';
 import KeyvRedis, { Keyv, RedisClientType } from '@keyv/redis';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';

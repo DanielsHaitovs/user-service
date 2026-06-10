@@ -1,6 +1,6 @@
 import { QueryRequestDto } from '@/baseDto/pagination.dto';
+import { EXAMPLE_STORE_ID } from '@/commonConst/store.const';
 import { ToArray } from '@/commonDecorators/array.decorator';
-import { EXAMPLE_STORE_ID } from '@/lib/const/store.const';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 import { IsOptional, IsString, IsUUID } from 'class-validator';

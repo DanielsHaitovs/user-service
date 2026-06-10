@@ -1,11 +1,11 @@
-import { ApiOkList } from '@/commonDecorators/api.decorator';
-import { Permissions } from '@/commonDecorators/permission.decorator';
-import { TraceController } from '@/commonDecorators/trace.decorator';
 import {
   EXAMPLE_ROLE_ID,
   ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
   ROLE_NOT_FOUND_MSG,
-} from '@/libConst/role.const';
+} from '@/commonConst/role.const';
+import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { Permissions } from '@/commonDecorators/permission.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { PermissionsToRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
 import {
@@ -25,7 +25,15 @@ import {
   Post,
   Version,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+  ApiUnprocessableEntityResponse,
+} from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -45,27 +53,32 @@ export class RolePermissionsController {
   @Permissions({
     required: ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Assign permissions to a role',
-      description: 'Assigns a set of permissions to a specified role.',
+  @ApiOkResponse({
+    description: 'Permissions assigned to role successfully',
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - Insufficient permissions to assign permissions to role',
+  })
+  @ApiUnprocessableEntityResponse({
+    description:
+      'Unprocessable Entity - Invalid input data for assigning permissions to role',
+    examples: {
+      'Invalid permission codes': {
+        summary: 'Invalid permission codes',
+        value: {
+          statusCode: 422,
+          message: [
+            'At least one permission code must be provided to assign permissions to the role.',
+            'permission codes must be an array of strings',
+          ],
+          error: 'Unprocessable Entity',
+        },
+      },
     },
-    body: {
-      description: 'A DTO containing the role ID and the permissions to assign',
-      type: PermissionsToRoleDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: [
-        'permission codes must be an array of strings',
-        'Each permission code must be a non-empty string',
-        'Each roleId must be a valid UUIDv4',
-      ],
-    },
-    notFound: {
-      description:
-        'Role with the specified ID was not found or Permission code(s) not found',
-    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Role with the specified ID was not found ',
   })
   async assign(
     @Body()
@@ -80,28 +93,32 @@ export class RolePermissionsController {
   @Permissions({
     required: UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Unassign permissions to a role',
-      description: 'Unassigns a set of permissions from a specified role.',
+  @ApiOkResponse({
+    description: 'Permissions unassigned from role successfully',
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - Insufficient permissions to unassign permissions from role',
+  })
+  @ApiUnprocessableEntityResponse({
+    description:
+      'Unprocessable Entity - Invalid input data for unassigning permissions from role',
+    examples: {
+      'Invalid permission codes': {
+        summary: 'Invalid permission codes',
+        value: {
+          statusCode: 422,
+          message: [
+            'At least one permission code must be provided to unassign permissions from the role.',
+            'permission codes must be an array of strings',
+          ],
+          error: 'Unprocessable Entity',
+        },
+      },
     },
-    body: {
-      description:
-        'A DTO containing the role ID and the permissions to unassign',
-      type: PermissionsToRoleDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: [
-        'permission codes must be an array of strings',
-        'Each permission code must be a non-empty string',
-        'Each roleId must be a valid UUIDv4',
-      ],
-    },
-    notFound: {
-      description:
-        'Role with the specified ID was not found or Permission code(s) not found',
-    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Role with the specified ID was not found ',
   })
   async unAssign(
     @Body()

@@ -2,8 +2,8 @@ import { CacheService } from '@/baseServices/cache.service';
 import {
   STORE_QUERY_ALIAS,
   USER_STORES_QUERY_ALIAS,
-} from '@/libConst/store.const';
-import { USER_QUERY_ALIAS } from '@/libConst/user.const';
+} from '@/commonConst/store.const';
+import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
   CreateStoreDto,

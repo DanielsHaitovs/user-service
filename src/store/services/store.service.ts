@@ -1,5 +1,5 @@
 import { EntityQueryService } from '@/baseServices/query.service';
-import { STORE_QUERY_ALIAS } from '@/lib/const/store.const';
+import { STORE_QUERY_ALIAS } from '@/commonConst/store.const';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import { GetStoreDto, StoreListResponseDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';

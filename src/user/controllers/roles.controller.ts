@@ -1,5 +1,4 @@
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
-import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
@@ -29,7 +28,15 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -59,23 +66,31 @@ export class UserRolesController {
   @Permissions({
     required: ASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Assign roles to a user',
-      description:
-        'Assigns roles to a user with the provided role IDs. The user and roles must exist.',
+  @ApiOperation({
+    summary: 'Assign roles to a user',
+    description:
+      'Assigns roles to a user with the provided role IDs. The user and roles must exist.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid input data for assigning roles to a user',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-userId-uuid',
+        },
+      },
+      'Invalid roleIds format': {
+        summary: 'Invalid roleIds format',
+        value: {
+          roleIds: ['12345-invalid-roleId-uuid'],
+        },
+      },
     },
-    body: {
-      type: AssignRolesToUserDto,
-      description: 'Data required to assign roles to a user',
-    },
-    badRequestMessages: {
-      examples: [
-        'userId must be a valid UUID',
-        'assignedById must be a valid UUID',
-        'roleIds must be an array of valid UUIDs',
-      ],
-    },
+  })
+  @ApiNotFoundResponse({
+    description: 'User or one or more roles not found',
   })
   async assignRole(
     @Body() assignDto: AssignRolesToUserDto,
@@ -93,23 +108,31 @@ export class UserRolesController {
   @Permissions({
     required: UNASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Remove roles from a user',
-      description:
-        'Removes roles from a user with the provided role IDs. The user and roles must exist.',
+  @ApiOperation({
+    summary: 'Remove roles from a user',
+    description:
+      'Removes roles from a user with the provided role IDs. The user and roles must exist.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid input data for removing roles from a user',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-uuid',
+        },
+      },
+      'Invalid roleIds format': {
+        summary: 'Invalid roleIds format',
+        value: {
+          roleIds: ['12345-invalid-uuid'],
+        },
+      },
     },
-    body: {
-      type: UnassignRolesFromUserDto,
-      description: 'Data required to remove roles from a user',
-    },
-    badRequestMessages: {
-      examples: [
-        'userId must be a valid UUID',
-        'assignedById must be a valid UUID',
-        'roleIds must be an array of valid UUIDs',
-      ],
-    },
+  })
+  @ApiNotFoundResponse({
+    description: 'User or one or more roles not found',
   })
   async remove(@Body() unassignDto: UnassignRolesFromUserDto): Promise<void> {
     await this.userRolePipelineService.unassignRolesFromUser(unassignDto);
@@ -121,19 +144,29 @@ export class UserRolesController {
   @Permissions({
     required: READ_USER_ROLE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Searches for user roles by user ID',
-      description: 'Searches for user roles by their user unique identifiers',
+  @ApiOperation({
+    summary: 'Searches for user roles by user ID',
+    description: 'Searches for user roles by their user unique identifiers',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid query parameters for searching user roles',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-uuid',
+        },
+      },
+      'Missing userId': {
+        summary: 'Missing required userId parameter',
+        value: {},
+      },
     },
-    badRequestMessages: {
-      examples: ['user id must be a valid UUID', 'user id is required'],
-    },
-    okOperation: {
-      description: 'Returns a list of user roles matching the provided user ID',
-      type: UserRolesListResponseDto,
-      isArray: false,
-    },
+  })
+  @ApiOkResponse({
+    description: 'Returns a list of user roles matching the provided user ID',
+    type: UserRolesListResponseDto,
   })
   async findRolesByUserId(
     @Query() query: UserRolesQueryRequest,
@@ -147,20 +180,31 @@ export class UserRolesController {
   @Permissions({
     required: READ_USER_PERMISSIONS_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Searches for user permissions by user ID',
-      description: 'Searches for user permissions by user unique identifiers',
+  @ApiOperation({
+    summary: 'Searches for user permissions by user ID',
+    description: 'Searches for user permissions by user unique identifiers',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid query parameters for searching user permissions',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-uuid',
+        },
+      },
+      'Missing userId': {
+        summary: 'Missing required userId parameter',
+        value: {},
+      },
     },
-    badRequestMessages: {
-      examples: ['user id must be a valid UUID', 'user id is required'],
-    },
-    okOperation: {
-      description:
-        'Returns a list of user permissions matching the provided user ID',
-      type: String,
-      isArray: true,
-    },
+  })
+  @ApiOkResponse({
+    description:
+      'Returns a list of user permissions matching the provided user ID',
+    type: String,
+    isArray: true,
   })
   @ApiParam({
     name: 'userId',
@@ -171,6 +215,6 @@ export class UserRolesController {
   async findPermissionsByUserId(
     @Param('userId', ParseUUIDPipe) userId: UUID,
   ): Promise<string[]> {
-    return await this.userRolePipelineService.getPermissionsOrThrow(userId);
+    return await this.userRolePipelineService.getPermissions(userId);
   }
 }

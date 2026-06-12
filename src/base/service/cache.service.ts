@@ -11,7 +11,12 @@ import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import KeyvRedis, { Keyv, RedisClientType } from '@keyv/redis';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 
 import { Cache } from 'cache-manager';
 import { UUID } from 'crypto';
@@ -213,7 +218,9 @@ export class CacheService {
       case USER_STORES_QUERY_ALIAS:
         return `id:${id}:${USER_STORES_QUERY_ALIAS}`;
       default:
-        throw new Error('Unsupported alias provided for cache key generation');
+        throw new InternalServerErrorException(
+          'Failed to construct cache key: Unsupported alias provided for cache key generation',
+        );
     }
   }
 
@@ -234,7 +241,9 @@ export class CacheService {
       case USER_STORES_QUERY_ALIAS:
         return `${USER_STORES_QUERY_ALIAS}_all_`;
       default:
-        throw new Error('Unsupported alias provided for cache key generation');
+        throw new InternalServerErrorException(
+          'Unsupported alias provided for cache key generation',
+        );
     }
   }
 
@@ -255,7 +264,9 @@ export class CacheService {
       case USER_STORES_QUERY_ALIAS:
         return `${USER_STORES_QUERY_ALIAS}_paginated_`;
       default:
-        throw new Error('Unsupported alias provided for cache key generation');
+        throw new InternalServerErrorException(
+          'Unsupported alias provided for cache key generation',
+        );
     }
   }
 }

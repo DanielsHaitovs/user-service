@@ -1,10 +1,5 @@
-import {
-  EXAMPLE_PERMISSION_CODE,
-  PERMISSION_MIN_OPERATION_BAD_REQUEST_MSG,
-  PERMISSION_NOT_FOUND_MSG,
-} from '@/commonConst/permission.const';
+import { EXAMPLE_PERMISSION_CODE } from '@/commonConst/permission.const';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
-import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
@@ -19,7 +14,15 @@ import {
   ParseUUIDPipe,
   Version,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -46,22 +49,24 @@ export class PermissionController {
   @Permissions({
     required: READ_PERMISSION_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Get permission by ID',
-      description: 'Retrieves a permission by its unique identifier.',
+  @ApiNotFoundResponse({
+    description: 'Permission with the specified ID was not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid permission ID format',
+    example: {
+      statusCode: 400,
+      message: 'Validation failed (uuid v4 string expected)',
+      error: 'Bad Request',
     },
-    okOperation: {
-      description: 'Permission found and returned successfully',
-      type: GetPermissionDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: PERMISSION_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    notFound: {
-      description: PERMISSION_NOT_FOUND_MSG,
-    },
+  })
+  @ApiOperation({
+    summary: 'Get permission by ID',
+    description: 'Retrieves a permission by its unique identifier.',
+  })
+  @ApiOkResponse({
+    description: 'Permission found and returned successfully',
+    type: GetPermissionDto,
   })
   @ApiParam({
     name: 'id',
@@ -81,22 +86,24 @@ export class PermissionController {
   @Permissions({
     required: READ_PERMISSION_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Get permission by code',
-      description: 'Retrieves a permission by its unique code.',
+  @ApiNotFoundResponse({
+    description: 'Permission with the specified ID was not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid permission code format',
+    example: {
+      statusCode: 400,
+      message: 'Validation failed (string expected)',
+      error: 'Bad Request',
     },
-    okOperation: {
-      description: 'Permission found and returned successfully',
-      type: GetPermissionDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: PERMISSION_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    notFound: {
-      description: PERMISSION_NOT_FOUND_MSG,
-    },
+  })
+  @ApiOperation({
+    summary: 'Get permission by code',
+    description: 'Retrieves a permission by its unique code.',
+  })
+  @ApiOkResponse({
+    description: 'Permission found and returned successfully',
+    type: GetPermissionDto,
   })
   @ApiParam({
     name: 'code',

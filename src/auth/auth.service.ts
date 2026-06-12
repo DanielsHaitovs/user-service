@@ -32,9 +32,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const permissions = await this.userRoleService.getPermissionsOrThrow(
-      user.id,
-    );
+    const permissions = await this.userRoleService.getPermissions(user.id);
 
     const payload: JwtPayload = {
       id: user.id,

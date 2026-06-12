@@ -121,7 +121,7 @@ export class UserRolesService {
    * @returns A promise that resolves to an array of strings representing the permission codes associated with the user's roles.
    * @throws An EntityNotFoundError if the user does not exist or if no roles are found for the user.
    */
-  async getPermissionsOrThrow(userId: UUID): Promise<string[]> {
+  async getPermissions(userId: UUID): Promise<string[]> {
     const userRoles = await this.getAssignedRoles(userId);
 
     if (userRoles.length === 0) {

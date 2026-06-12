@@ -12,14 +12,7 @@ import {
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
 } from '@/commonConst/store.const';
-import {
-  EMAIL_EXISTS_MSG,
-  EXAMPLE_USER_EMAIL,
-  EXAMPLE_USER_ID,
-  USER_API_OK_RESPONSE_MSG,
-  USER_MIN_OPERATION_BAD_REQUEST_MSG,
-} from '@/commonConst/user.const';
-import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { EXAMPLE_USER_EMAIL, EXAMPLE_USER_ID } from '@/commonConst/user.const';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser } from '@/commonDecorators/user.decorator';
@@ -52,7 +45,17 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -101,30 +104,19 @@ export class UserController {
       READ_USER_STORE,
     ],
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Create a new user',
-      description:
-        'Creates a new user account with the provided information. Email must be unique.',
-    },
-    body: {
-      type: CreateUserDto,
-      description: 'User creation data',
-    },
-    createdResponse: {
-      description: 'User successfully created',
-      type: UserResponseDto,
-    },
-    conflictMessage: {
-      description: EMAIL_EXISTS_MSG,
-    },
-    badRequestMessages: {
-      examples: [
-        'firstName should not be empty',
-        'email must be an email',
-        'password must be longer than or equal to 8 characters',
-      ],
-    },
+  @ApiOperation({
+    summary: 'Create a new user',
+    description:
+      'Creates a new user account with the provided information. Email must be unique.',
+  })
+  @ApiBody({
+    type: CreateUserDto,
+    description: 'User creation data',
+    required: true,
+  })
+  @ApiOkResponse({
+    description: 'User successfully created',
+    type: UserResponseDto,
   })
   async create(
     @Body() createDto: CreateUserDto,
@@ -160,18 +152,38 @@ export class UserController {
   @Permissions({
     required: READ_USER_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Searches for users by ID',
-      description: 'Searches for users by their unique identifiers',
+  @ApiOperation({
+    summary: 'Get user by ID',
+    description:
+      'Retrieves a user by their unique identifier. The ID must be a valid UUID.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid user ID format',
+    examples: {
+      'Invalid UUID': {
+        summary: 'User ID is not a valid UUID',
+        value: {
+          statusCode: 400,
+          message: 'Validation failed (uuid is expected)',
+        },
+      },
     },
-    badRequestMessages: {
-      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    okOperation: {
-      description: USER_API_OK_RESPONSE_MSG,
-      type: GetUserDto,
-      isArray: false,
+  })
+  @ApiOkResponse({
+    description: 'User found and returned successfully',
+    type: GetUserDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found with the provided ID',
+    examples: {
+      'User Not Found': {
+        summary: 'No user exists with the specified ID',
+        value: {
+          statusCode: 404,
+          message: 'User not found',
+          error: 'Not Found',
+        },
+      },
     },
   })
   @ApiParam({
@@ -190,18 +202,39 @@ export class UserController {
   @Permissions({
     required: READ_USER_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Searches for users by email',
-      description: 'Searches for users by their email addresses',
+  @ApiOperation({
+    summary: 'Get user by email',
+    description:
+      'Retrieves a user by their email address. The email must be unique and properly formatted.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid email format',
+    examples: {
+      'Invalid Email': {
+        summary: 'Email is not in a valid format',
+        value: {
+          statusCode: 400,
+          message: 'Validation failed (email must be a valid email)',
+          error: 'Bad Request',
+        },
+      },
     },
-    badRequestMessages: {
-      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    okOperation: {
-      description: USER_API_OK_RESPONSE_MSG,
-      type: GetUserDto,
-      isArray: false,
+  })
+  @ApiOkResponse({
+    description: 'User found and returned successfully',
+    type: GetUserDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found with the provided email',
+    examples: {
+      'User Not Found': {
+        summary: 'No user exists with the specified email',
+        value: {
+          statusCode: 404,
+          message: 'User not found',
+          error: 'Not Found',
+        },
+      },
     },
   })
   @ApiParam({
@@ -220,21 +253,14 @@ export class UserController {
   @Permissions({
     required: READ_USER_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Searches for users by various parameters',
-      description:
-        'Searches for users by their unique identifiers, names, emails, or other attributes. If no query parameters are provided, returns all users.',
-    },
-    badRequestMessages: {
-      examples: ['user id must be a valid UUID', 'user id is required'],
-    },
-    okOperation: {
-      description:
-        'Returns a list of users matching the provided query parameters',
-      type: UserListResponseDto,
-      isArray: false,
-    },
+  @ApiOperation({
+    summary: 'Find users with advanced filtering',
+    description:
+      'Retrieves a list of users based on provided query parameters. Supports filtering by various fields, pagination, and sorting.',
+  })
+  @ApiOkResponse({
+    description: 'Users retrieved successfully',
+    type: UserListResponseDto,
   })
   async findUsers(
     @Query() query: UserQueryRequest,
@@ -248,14 +274,64 @@ export class UserController {
   @Permissions({
     required: UPDATE_USER_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Updates a user',
-      description:
-        'Updates the details of an existing user. User is identified by their unique ID.',
+  @ApiBody({
+    type: UpdateUserDto,
+    description: 'Data for updating the user',
+    required: true,
+  })
+  @ApiOperation({
+    summary: 'Update an existing user',
+    description:
+      'Updates the details of an existing user. User is identified by their unique ID.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid user ID format or validation errors',
+    examples: {
+      'Invalid UUID': {
+        summary: 'User ID is not a valid UUID',
+        value: {
+          statusCode: 400,
+          message: 'Validation failed (uuid is expected)',
+          error: 'Bad Request',
+        },
+      },
+      'Validation Error': {
+        summary: 'Input data failed validation',
+        value: {
+          statusCode: 400,
+          message: [
+            'name must be a string',
+            'email must be a valid email address',
+          ],
+          error: 'Bad Request',
+        },
+      },
     },
-    badRequestMessages: {
-      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
+  })
+  @ApiConflictResponse({
+    description: 'Email already exists for another user',
+    examples: {
+      'Email Conflict': {
+        summary: 'The provided email is already in use by another user',
+        value: {
+          statusCode: 409,
+          message: 'Email already exists',
+          error: 'Conflict',
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found with the provided ID',
+    examples: {
+      'User Not Found': {
+        summary: 'No user exists with the specified ID',
+        value: {
+          statusCode: 404,
+          message: 'User not found',
+          error: 'Not Found',
+        },
+      },
     },
   })
   @ApiParam({
@@ -286,14 +362,35 @@ export class UserController {
       UNASSIGN_USER_STORE,
     ],
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Deletes a user',
-      description:
-        'Deletes an existing user from the system. User is identified by their unique ID.',
+  @ApiOperation({
+    summary: 'Delete a user',
+    description:
+      'Deletes a user by their unique identifier. Also handles unassignment from related roles and stores based on permissions.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid user ID format',
+    examples: {
+      'Invalid UUID': {
+        summary: 'User ID is not a valid UUID',
+        value: {
+          statusCode: 400,
+          message: 'Validation failed (uuid is expected)',
+          error: 'Bad Request',
+        },
+      },
     },
-    badRequestMessages: {
-      examples: USER_MIN_OPERATION_BAD_REQUEST_MSG,
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found with the provided ID',
+    examples: {
+      'User Not Found': {
+        summary: 'No user exists with the specified ID',
+        value: {
+          statusCode: 404,
+          message: 'User not found',
+          error: 'Not Found',
+        },
+      },
     },
   })
   @ApiParam({

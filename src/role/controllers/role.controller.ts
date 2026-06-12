@@ -3,16 +3,11 @@ import { extractAccess } from '@/base/helper/permissions';
 import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
-  CONFLICT_ROLE_NAME_MSG,
   EXAMPLE_ROLE_ID,
   READ_USER_ROLE,
-  ROLE_GENERIC_BAD_REQUEST_MSG,
-  ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
-  ROLE_NOT_FOUND_MSG,
   UNASSIGN_USER_ROLE,
 } from '@/commonConst/role.const';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
-import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser } from '@/commonDecorators/user.decorator';
@@ -44,7 +39,18 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -62,30 +68,54 @@ export class RoleController {
     required: CREATE_ROLE_ENDPOINT_PERMISSION,
     loose: [ASSIGN_PERMISSION_TO_ROLE, READ_PERMISSION],
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Create a new role',
-      description: 'Creates a new role with the provided information.',
+  @ApiBody({
+    description: 'Role creation data',
+    type: CreateRoleDto,
+    isArray: false,
+  })
+  @ApiOperation({
+    summary: 'Create a new role',
+    description: 'Creates a new role with the provided information.',
+  })
+  @ApiOkResponse({
+    description: 'Role successfully created',
+    type: RoleResponseDto,
+  })
+  @ApiCreatedResponse({
+    description: 'Role successfully created',
+    type: RoleResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Not Found - Related resource not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request - Invalid input data for creating a role',
+    examples: {
+      'Invalid role name': {
+        summary: 'Invalid role name',
+        value: {
+          name: 12345,
+          permissions: ['valid-permission-code'],
+        },
+      },
+      'Invalid permissions format': {
+        summary: 'Invalid permissions format',
+        value: {
+          name: 'Example Role',
+          permissions: 'not-an-array',
+        },
+      },
+      'Permission does not exist': {
+        summary: 'Permission does not exist',
+        value: {
+          name: 'Example Role',
+          permissions: 'not-found-permission-code',
+        },
+      },
     },
-    body: {
-      description: 'Role creation data',
-      type: CreateRoleDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: ROLE_GENERIC_BAD_REQUEST_MSG,
-    },
-    createdResponse: {
-      description: 'Role successfully created',
-      type: RoleResponseDto,
-      isArray: false,
-    },
-    conflictMessage: {
-      description: CONFLICT_ROLE_NAME_MSG,
-    },
-    notFound: {
-      description: ROLE_NOT_FOUND_MSG,
-    },
+  })
+  @ApiConflictResponse({
+    description: 'Conflict - A role with the same name already exists',
   })
   async create(
     @Body()
@@ -111,22 +141,26 @@ export class RoleController {
   @Permissions({
     required: READ_ROLE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Get role by ID',
-      description: 'Retrieves a role by its unique identifier.',
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid role ID format. Role ID must be a valid UUID.',
+    examples: {
+      'Invalid UUID format': {
+        summary: 'Role ID is not a valid UUID',
+        value: '12345-invalid-uuid',
+      },
     },
-    okOperation: {
-      description: 'Role found and returned successfully',
-      type: GetRoleDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    notFound: {
-      description: ROLE_NOT_FOUND_MSG,
-    },
+  })
+  @ApiOperation({
+    summary: 'Get role by ID',
+    description: 'Retrieves a role by its unique identifier.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Role with the specified ID was not found',
+  })
+  @ApiOkResponse({
+    description: 'Role found and returned successfully',
+    type: GetRoleDto,
   })
   @ApiParam({
     name: 'id',
@@ -144,20 +178,34 @@ export class RoleController {
   @Permissions({
     required: READ_ROLE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Searches for roles',
-      description:
-        'Searches for roles by their unique identifiers or names. If no query parameters are provided, returns all roles.',
+  @ApiOperation({
+    summary: 'Search for roles',
+    description:
+      'Searches for roles by their unique identifiers or names. If no query parameters are provided, returns all roles.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid query parameters. Role IDs must be valid UUIDs and role names must be valid strings.',
+    examples: {
+      'Invalid role ID format': {
+        summary: 'Role ID is not a valid UUID',
+        value: {
+          ids: ['12345-invalid-uuid'],
+          names: ['Valid Role Name'],
+        },
+      },
+      'Invalid role name format': {
+        summary: 'Role name is not a valid string',
+        value: {
+          ids: ['550e8400-e29b-41d4-a716-446655440000'],
+          names: [12345],
+        },
+      },
     },
-    badRequestMessages: {
-      examples: ['user id must be a valid UUID', 'user id is required'],
-    },
-    okOperation: {
-      description: 'Returns a list of user roles matching the provided user ID',
-      type: RoleListResponseDto,
-      isArray: false,
-    },
+  })
+  @ApiOkResponse({
+    description: 'Returns a list of roles matching the search criteria',
+    type: RoleListResponseDto,
   })
   async findRoles(
     @Query() query: RolesQueryRequest,
@@ -171,30 +219,39 @@ export class RoleController {
   @Permissions({
     required: UPDATE_ROLE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Update role name',
-      description: 'Updates the name of an existing role.',
+  @ApiOkResponse({
+    description: 'Role name successfully updated',
+    type: Boolean,
+  })
+  @ApiOperation({
+    summary: 'Update role name',
+    description: 'Updates the name of an existing role.',
+  })
+  @ApiBody({
+    description: 'Role name update data',
+    type: CreateRoleDto,
+    isArray: false,
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request - Invalid input data for updating role name',
+    examples: {
+      'Invalid role name': {
+        summary: 'Invalid role name',
+        value: {
+          name: 12345,
+        },
+      },
+      'Invalid role ID format': {
+        summary: 'Role ID is not a valid UUID',
+        value: '12345-invalid-uuid',
+      },
     },
-    body: {
-      description: 'Role name update data',
-      type: CreateRoleDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: ROLE_GENERIC_BAD_REQUEST_MSG,
-    },
-    okOperation: {
-      description: 'Role name successfully updated',
-      type: RoleResponseDto,
-      isArray: false,
-    },
-    conflictMessage: {
-      description: CONFLICT_ROLE_NAME_MSG,
-    },
-    notFound: {
-      description: ROLE_NOT_FOUND_MSG,
-    },
+  })
+  @ApiConflictResponse({
+    description: 'Conflict - A role with the same name already exists',
+  })
+  @ApiNotFoundResponse({
+    description: 'Role with the specified ID was not found',
   })
   @ApiParam({
     name: 'id',
@@ -219,25 +276,31 @@ export class RoleController {
     required: DELETE_ROLE_ENDPOINT_PERMISSION,
     loose: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Deletes a role',
-      description:
-        'Deletes an existing role from the system. Role is identified by their unique ID.',
-    },
-    badRequestMessages: {
-      examples: ['role id must be a valid UUID', 'role id is required'],
-    },
-    notFound: {
-      description: ROLE_NOT_FOUND_MSG,
-    },
-  })
   @ApiParam({
     name: 'id',
     type: String,
     description: 'Role unique identifier - must be a valid UUID',
     example: EXAMPLE_ROLE_ID,
     format: 'uuid',
+  })
+  @ApiOperation({
+    summary: 'Delete a role',
+    description:
+      'Deletes an existing role from the system. Role is identified by their unique ID. If the role is currently assigned to any users, it cannot be deleted until it is unassigned from all users.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid role ID format. Role ID must be a valid UUID.',
+    examples: {
+      'Invalid UUID format': {
+        summary: 'Role ID is not a valid UUID',
+        value: '12345-invalid-uuid',
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Role successfully deleted',
+    type: Boolean,
   })
   async delete(
     @Param('id', ParseUUIDPipe) id: UUID,

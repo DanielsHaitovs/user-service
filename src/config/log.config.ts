@@ -3,6 +3,7 @@ export const classesToSkip = [
   'Response',
   'SelectQueryBuilder',
   'EntityManager',
+  'AllExceptionsFilter',
   'Broadcaster',
   'Table',
   'TableColumn',

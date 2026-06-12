@@ -25,8 +25,8 @@ export class UserRolePipelineService {
     return await this.userRolesService.getRoles(query);
   }
 
-  async getPermissionsOrThrow(userId: UUID): Promise<string[]> {
-    return await this.userRolesService.getPermissionsOrThrow(userId);
+  async getPermissions(userId: UUID): Promise<string[]> {
+    return await this.userRolesService.getPermissions(userId);
   }
 
   async assignRolesToUser({

@@ -1,4 +1,3 @@
-import { ApiOkList } from '@/commonDecorators/api.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
@@ -25,7 +24,14 @@ import {
   Query,
   Version,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
 
@@ -55,23 +61,30 @@ export class UserStoresController {
   @Permissions({
     required: ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Assign stores to a user',
-      description:
-        'Assigns stores to a user with the provided store IDs. The user and stores must exist.',
+  @ApiOperation({
+    summary: 'Assign stores to a user',
+    description:
+      'Assigns stores to a user with the provided store IDs. The user and stores must exist.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid input data for assigning stores to a user',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-userId-uuid',
+          assignedById: '12345  -invalid-assignedById-uuid',
+          storeIds: ['12345-invalid-storeId-uuid'],
+        },
+      },
     },
-    body: {
-      type: AssignStoresToUserDto,
-      description: 'Data required to assign stores to a user',
-    },
-    badRequestMessages: {
-      examples: [
-        'userId must be a valid UUID',
-        'assignedById must be a valid UUID',
-        'storeIds must be an array of valid UUIDs',
-      ],
-    },
+  })
+  @ApiNotFoundResponse({
+    description: 'User or one or more stores not found',
+  })
+  @ApiOkResponse({
+    description: 'Stores successfully assigned to the user',
   })
   async assign(
     @Body() assignDto: AssignStoresToUserDto,
@@ -89,23 +102,30 @@ export class UserStoresController {
   @Permissions({
     required: UNASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Unassign stores from a user',
-      description:
-        'Unassigns stores from a user with the provided store IDs. The user and stores must exist.',
+  @ApiOperation({
+    summary: 'Unassign stores from a user',
+    description:
+      'Unassigns stores from a user with the provided store IDs. The user and stores must exist.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid input data for unassigning stores from a user',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-userId-uuid',
+          assignedById: '12345  -invalid-assignedById-uuid',
+          storeIds: ['12345-invalid-storeId-uuid'],
+        },
+      },
     },
-    body: {
-      type: UnassignStoresFromUserDto,
-      description: 'Data required to unassigns stores from a user',
-    },
-    badRequestMessages: {
-      examples: [
-        'userId must be a valid UUID',
-        'assignedById must be a valid UUID',
-        'storeIds must be an array of valid UUIDs',
-      ],
-    },
+  })
+  @ApiNotFoundResponse({
+    description: 'User or one of the provided stores are not found',
+  })
+  @ApiOkResponse({
+    description: 'Stores successfully unassigned from the user',
   })
   async unassign(
     @Body() unassignDto: UnassignStoresFromUserDto,
@@ -119,20 +139,25 @@ export class UserStoresController {
   @Permissions({
     required: READ_USER_STORE_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Searches for user stores by user ID',
-      description: 'Searches for user stores by their user unique identifiers',
+  @ApiOperation({
+    summary: 'Searches for user stores by user ID',
+    description: 'Searches for user stores by their user unique identifiers',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid query parameters for searching user stores',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-userId-uuid',
+        },
+      },
     },
-    badRequestMessages: {
-      examples: ['user id must be a valid UUID', 'user id is required'],
-    },
-    okOperation: {
-      description:
-        'Returns a list of user stores matching the provided user ID',
-      type: UserStoresListResponseDto,
-      isArray: false,
-    },
+  })
+  @ApiOkResponse({
+    description: 'Returns a list of user stores matching the provided user ID',
+    type: UserStoresListResponseDto,
   })
   async findStoresByUserId(
     @Query() query: UserStoresQueryRequest,

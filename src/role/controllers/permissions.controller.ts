@@ -1,9 +1,4 @@
-import {
-  EXAMPLE_ROLE_ID,
-  ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
-  ROLE_NOT_FOUND_MSG,
-} from '@/commonConst/role.const';
-import { ApiOkList } from '@/commonDecorators/api.decorator';
+import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { RolePipelineService } from '@/role/role.pipeline';
@@ -26,13 +21,15 @@ import {
   Version,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiForbiddenResponse,
+  ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiParam,
   ApiTags,
-  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
@@ -53,6 +50,11 @@ export class RolePermissionsController {
   @Permissions({
     required: ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
   })
+  @ApiOperation({
+    summary: 'Assign permissions to a role',
+    description:
+      'Assign one or more permissions to a role. Requires the role ID and an array of permission codes to assign.',
+  })
   @ApiOkResponse({
     description: 'Permissions assigned to role successfully',
   })
@@ -60,25 +62,28 @@ export class RolePermissionsController {
     description:
       'Forbidden - Insufficient permissions to assign permissions to role',
   })
-  @ApiUnprocessableEntityResponse({
-    description:
-      'Unprocessable Entity - Invalid input data for assigning permissions to role',
-    examples: {
-      'Invalid permission codes': {
-        summary: 'Invalid permission codes',
-        value: {
-          statusCode: 422,
-          message: [
-            'At least one permission code must be provided to assign permissions to the role.',
-            'permission codes must be an array of strings',
-          ],
-          error: 'Unprocessable Entity',
-        },
-      },
-    },
+  @ApiInternalServerErrorResponse({
+    description: 'Internal Server Error - An unexpected error occurred',
   })
   @ApiNotFoundResponse({
     description: 'Role with the specified ID was not found ',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid role ID format. Role ID must be a valid UUID.',
+    examples: {
+      'Invalid UUID format': {
+        summary: 'Role ID is not a valid UUID',
+        value: '12345-invalid-uuid',
+      },
+      'Invalid permission codes': {
+        summary: 'Invalid permission codes',
+        value: [
+          'At least one permission code must be provided to unassign permissions from the role.',
+          'permission codes must be an array of strings',
+        ],
+      },
+    },
   })
   async assign(
     @Body()
@@ -93,32 +98,40 @@ export class RolePermissionsController {
   @Permissions({
     required: UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
   })
+  @ApiOperation({
+    summary: 'Unassign permissions from a role',
+    description:
+      'Unassign one or more permissions from a role. Requires the role ID and an array of permission codes to unassign.',
+  })
   @ApiOkResponse({
     description: 'Permissions unassigned from role successfully',
   })
   @ApiForbiddenResponse({
     description:
-      'Forbidden - Insufficient permissions to unassign permissions from role',
+      'Forbidden - Insufficient permissions to unassign permissions to role',
   })
-  @ApiUnprocessableEntityResponse({
-    description:
-      'Unprocessable Entity - Invalid input data for unassigning permissions from role',
-    examples: {
-      'Invalid permission codes': {
-        summary: 'Invalid permission codes',
-        value: {
-          statusCode: 422,
-          message: [
-            'At least one permission code must be provided to unassign permissions from the role.',
-            'permission codes must be an array of strings',
-          ],
-          error: 'Unprocessable Entity',
-        },
-      },
-    },
+  @ApiInternalServerErrorResponse({
+    description: 'Internal Server Error - An unexpected error occurred',
   })
   @ApiNotFoundResponse({
     description: 'Role with the specified ID was not found ',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid role ID format. Role ID must be a valid UUID.',
+    examples: {
+      'Invalid UUID format': {
+        summary: 'Role ID is not a valid UUID',
+        value: '12345-invalid-uuid',
+      },
+      'Invalid permission codes': {
+        summary: 'Invalid permission codes',
+        value: [
+          'At least one permission code must be provided to unassign permissions from the role.',
+          'permission codes must be an array of strings',
+        ],
+      },
+    },
   })
   async unAssign(
     @Body()
@@ -133,29 +146,37 @@ export class RolePermissionsController {
   @Permissions({
     required: READ_ROLE_WITH_PERMISSIONS_ENDPOINT_PERMISSION,
   })
-  @ApiOkList({
-    operation: {
-      summary: 'Get role by ID with permissions',
-      description:
-        'Retrieves a role by its unique ID along with its permissions.',
+  @ApiOperation({
+    summary: 'Get role with permissions by ID',
+    description:
+      'Retrieves a role along with its assigned permissions by the role ID. Requires a valid UUID as the role ID.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid role ID format. Role ID must be a valid UUID.',
+    examples: {
+      'Invalid UUID format': {
+        summary: 'Role ID is not a valid UUID',
+        value: '12345-invalid-uuid',
+      },
     },
-    okOperation: {
-      description: 'Role found and returned successfully',
-      type: RoleResponseDto,
-      isArray: false,
-    },
-    badRequestMessages: {
-      examples: ROLE_MIN_OPERATION_BAD_REQUEST_MSG,
-    },
-    notFound: {
-      description: ROLE_NOT_FOUND_MSG,
-    },
+  })
+  @ApiOkResponse({
+    description: 'Role found and returned successfully',
+    type: RoleResponseDto,
+    isArray: false,
+  })
+  @ApiNotFoundResponse({
+    description: 'Role with the specified ID was not found',
   })
   @ApiParam({
     name: 'roleId',
     type: String,
     description: 'Unique ID of the role to search for',
     example: EXAMPLE_ROLE_ID,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal Server Error - An unexpected error occurred',
   })
   async findByIdWithPermissions(
     @Param('roleId', ParseUUIDPipe) roleId: UUID,

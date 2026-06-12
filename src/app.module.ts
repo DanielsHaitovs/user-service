@@ -18,6 +18,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { LoggerModule } from 'nestjs-pino';
+import pino from 'pino';
 
 @Module({
   controllers: [],
@@ -35,6 +36,7 @@ import { LoggerModule } from 'nestjs-pino';
             serializers: {
               req: () => undefined,
               res: () => undefined,
+              err: pino.stdSerializers.err,
             },
             ...(configService.nodeEnv === Environment.Test
               ? {
@@ -49,6 +51,11 @@ import { LoggerModule } from 'nestjs-pino';
                       ignore: 'hostname,context,req',
                     },
                   },
+                }
+              : {}),
+            ...(configService.nodeEnv !== Environment.Test
+              ? {
+                  stream: pino.destination({ sync: false, minLength: 4096 }),
                 }
               : {}),
           },

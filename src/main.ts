@@ -1,3 +1,4 @@
+import { AllExceptionsFilter } from '@/common/error/all-exceptions-filter';
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { Environment } from '@/config/env/env.validation';
@@ -5,15 +6,18 @@ import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
 import { ResponseTimeInterceptor } from '@/interceptors/response-time.interceptor';
 import { AppModule } from '@/src/app.module';
-import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-import { Logger as PinoLogger } from 'nestjs-pino';
+import { Logger } from 'nestjs-pino';
+
+// import { Logger, PinoLogger } from 'nestjs-pino';
+// import pino from 'pino';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -22,7 +26,7 @@ async function bootstrap(): Promise<void> {
     { bufferLogs: true },
   );
 
-  app.useLogger(app.get(PinoLogger));
+  app.useLogger(app.get(Logger));
 
   const envConfig = app.get(EnvConfigService);
 
@@ -35,7 +39,12 @@ async function bootstrap(): Promise<void> {
     new ResponseTimeInterceptor(),
   );
 
-  app.useGlobalFilters(new EntityNotFoundFilter());
+  const httpAdapter = app.get(HttpAdapterHost);
+
+  app.useGlobalFilters(
+    new EntityNotFoundFilter(),
+    new AllExceptionsFilter(httpAdapter),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -87,9 +96,14 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(port, '0.0.0.0');
 
-  const logger = new Logger('NestApplication');
+  // const logger = new Logger({ context: 'Bootstrap' });
+  const logger = app.get(Logger);
+  // const pinoLogger = app.get(PinoLogger); // 🎯 Grab the inner provider
 
-  if (envConfig.nodeEnv === Environment.Development) {
+  if (
+    envConfig.nodeEnv === Environment.Development ||
+    envConfig.nodeEnv === Environment.Test
+  ) {
     logger.debug('You are in development mode');
 
     if (!envConfig.requireAuth) {

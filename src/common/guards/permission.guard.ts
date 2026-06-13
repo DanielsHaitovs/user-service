@@ -43,14 +43,17 @@ export class PermissionsGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    const token = extractBearerFromHeader(request);
-
-    if (token === undefined) {
-      throw new ForbiddenException('No token provided');
-    }
-
     try {
-      const payload = await this.cacheService.get(token);
+      let payload = request.user;
+
+      if (!payload) {
+        const token = extractBearerFromHeader(request);
+        if (token === undefined) {
+          throw new ForbiddenException('No token provided');
+        }
+
+        payload = request.user = await this.cacheService.get(token);
+      }
 
       const { permissions } = payload;
 

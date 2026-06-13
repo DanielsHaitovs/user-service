@@ -35,9 +35,6 @@ describe('PermissionHelperService', () => {
     expect(service).toBeDefined();
   });
 
-  // ==========================================
-  // Unit Tests: checkIfManyExistOrThrow
-  // ==========================================
   describe('checkIfManyExistOrThrow', () => {
     const mockCodes = ['USER_CREATE', 'USER_DELETE'];
 
@@ -52,15 +49,11 @@ describe('PermissionHelperService', () => {
       },
     ];
 
-    // Scenario 1: Happy Path
     it('should return an array of UUIDs when all provided codes match existing entities', async () => {
-      // Arrange
       mockRepository.find.mockResolvedValue(mockPermissionsArray);
 
-      // Act
       const result = await service.checkIfManyExistOrThrow(mockCodes);
 
-      // Assert
       expect(result).toEqual([
         mockPermissionsArray[0]?.id,
         mockPermissionsArray[1]?.id,
@@ -70,28 +63,21 @@ describe('PermissionHelperService', () => {
       });
     });
 
-    // Scenario 2: Empty Input Boundary Error
     it('should throw UnprocessableEntityException if codes array is undefined or empty', async () => {
-      // Act & Assert (Testing undefined)
       await expect(service.checkIfManyExistOrThrow()).rejects.toThrow(
         new UnprocessableEntityException('No permission codes provided.'),
       );
 
-      // Act & Assert (Testing empty array)
       await expect(service.checkIfManyExistOrThrow([])).rejects.toThrow(
         new UnprocessableEntityException('No permission codes provided.'),
       );
 
-      // Senior Check: Ensure the database was never touched since it should exit early
       expect(mockRepository.find).not.toHaveBeenCalled();
     });
 
-    // Scenario 3: Mismatched Database Ingestion Error
     it('should throw UnprocessableEntityException listing missing codes if some codes are not found', async () => {
-      // Arrange: The user requested two codes, but the database only returns one
       mockRepository.find.mockResolvedValue([mockPermissionsArray[0]]);
 
-      // Act & Assert
       await expect(service.checkIfManyExistOrThrow(mockCodes)).rejects.toThrow(
         new UnprocessableEntityException(
           'The following permission codes do not exist: USER_DELETE',

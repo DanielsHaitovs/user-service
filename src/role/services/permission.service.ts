@@ -51,9 +51,9 @@ export class RolePermissionService {
     const { permissions } = await this.getPermissionsOrThrow(roleId);
 
     if (permissions.length) {
-      permissionCodes = permissions
-        .filter((permission) => !permissionCodes.includes(permission.code))
-        .flatMap((p) => p.code);
+      permissionCodes = permissionCodes.filter(
+        (code) => !permissions.some((p) => p.code === code),
+      );
     }
 
     const permissionIds = [

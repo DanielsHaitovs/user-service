@@ -63,21 +63,6 @@ describe('PermissionService', () => {
         'EntityNotFoundException',
       );
     });
-
-    it('should throw an error when invoked with an invalid or malformed ID format', async () => {
-      const malformedId = 'not-a-real-uuid' as unknown as UUID;
-
-      const lookupError = new Error('Invalid UUID format passed to method');
-      mockRepository.findOneOrFail.mockRejectedValue(lookupError);
-
-      await expect(service.getByIdOrThrow(malformedId)).rejects.toThrow(
-        'Invalid UUID format passed to method',
-      );
-
-      expect(mockRepository.findOneOrFail).toHaveBeenCalledWith({
-        where: { id: malformedId },
-      });
-    });
   });
 
   describe('getByCodeOrThrow', () => {

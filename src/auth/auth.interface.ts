@@ -8,5 +8,5 @@ export interface JwtPayload {
 }
 
 export interface AuthenticatedRequest extends FastifyRequest {
-  user: JwtPayload;
+  user: JwtPayload | undefined;
 }

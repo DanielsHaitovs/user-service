@@ -2,9 +2,11 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { AuthModule } from '@/auth/auth.module';
 import { BaseModule } from '@/base/base.module';
+import { MetricsController } from '@/base/metrics.controller';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { EnvConfigModule } from '@/config/env/env.module';
 import { Environment } from '@/config/env/env.validation';
+import { MetricsInterceptor } from '@/interceptors/metrics.interceptor';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
@@ -13,16 +15,27 @@ import { UserModule } from '@/user/user.module';
 import { createKeyv } from '@keyv/redis';
 import { CacheModule } from '@nestjs/cache-manager';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import {
+  makeHistogramProvider,
+  PrometheusModule,
+} from '@willsoto/nestjs-prometheus';
 
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 
+export const httpRequestDurationProvider = makeHistogramProvider({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+});
+
 @Module({
   controllers: [],
-  providers: [],
   imports: [
     EnvConfigModule,
     ScheduleModule.forRoot(),
@@ -116,6 +129,16 @@ import pino from 'pino';
         };
       },
     }),
+    PrometheusModule.registerAsync({
+      controller: MetricsController,
+      useFactory: () => ({
+        path: '/metrics',
+        global: true,
+        defaultMetrics: {
+          enabled: true,
+        },
+      }),
+    }),
     UserModule,
     RolesModule,
     StoreModule,
@@ -124,9 +147,16 @@ import pino from 'pino';
     SystemModule,
     // ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
+  providers: [
+    httpRequestDurationProvider,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: MetricsInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(TraceMiddleware).forRoutes('*');
+    consumer.apply(TraceMiddleware).exclude('metrics').forRoutes('*');
   }
 }

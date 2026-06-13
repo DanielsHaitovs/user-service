@@ -33,6 +33,10 @@ export class LoggingInterceptor implements NestInterceptor {
       'Incoming Request',
     );
 
+    if (url === '/metrics' || url.includes('metrics')) {
+      return next.handle();
+    }
+
     return next.handle().pipe(
       tap((data: unknown) => {
         const duration = Date.now() - start;

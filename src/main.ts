@@ -1,10 +1,12 @@
+// eslint-disable-next-line simple-import-sort/imports
+import './tracer';
+
 import { AllExceptionsFilter } from '@/common/error/all-exceptions-filter';
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { Environment } from '@/config/env/env.validation';
 import { swaggerSetupOptions } from '@/config/swagger.config';
 import { LoggingInterceptor } from '@/interceptors/logging.interceptor';
-import { ResponseTimeInterceptor } from '@/interceptors/response-time.interceptor';
 import { AppModule } from '@/src/app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
@@ -34,11 +36,7 @@ async function bootstrap(): Promise<void> {
     type: VersioningType.URI,
   });
 
-  app.useGlobalInterceptors(
-    new LoggingInterceptor(),
-    new ResponseTimeInterceptor(),
-  );
-
+  app.useGlobalInterceptors(new LoggingInterceptor());
   const httpAdapter = app.get(HttpAdapterHost);
 
   app.useGlobalFilters(

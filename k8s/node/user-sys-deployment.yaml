@@ -20,6 +20,9 @@ spec:
       annotations:
         kompose.cmd: kompose convert
         kompose.version: 1.38.0 (HEAD)
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "3001"
       labels:
         io.kompose.service: user-sys
     spec:
@@ -35,6 +38,8 @@ spec:
               value: redis-cache
             - name: UV_THREADPOOL_SIZE
               value: "16"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://tempo:4318"
           envFrom:
             - configMapRef:
                 name: env

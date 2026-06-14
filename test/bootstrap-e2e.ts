@@ -1,27 +1,38 @@
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  FastifyAdapter,
+  type NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import { Test, type TestingModule } from '@nestjs/testing';
 
+import type { UUID } from 'crypto';
 import { DataSource } from 'typeorm';
 
-import { AppModule } from '../src/app.module';
+import { SYSTEM_USER_EMAIL } from '../src/common/const/user.const';
 
 export interface BootstrappedApp {
   app: INestApplication;
   moduleFixture: TestingModule;
   dataSource: DataSource;
+  systemUserId: UUID;
 }
 
 export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   process.env.USER_DATABASE_HOST = 'localhost';
   process.env.JWT_SECRET = 'your_jwt_secret';
   process.env.NODE_ENV = 'test';
+  process.env.REDIS_HOST = 'localhost';
+
+  const { AppModule } = await import('../src/app.module');
 
   const moduleFixture = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
 
-  const app = moduleFixture.createNestApplication();
+  const app = moduleFixture.createNestApplication<NestFastifyApplication>(
+    new FastifyAdapter(),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -34,8 +45,20 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   app.useGlobalFilters(new EntityNotFoundFilter());
 
   await app.init();
+  await app.getHttpAdapter().getInstance().ready();
 
   const dataSource = app.get(DataSource);
 
-  return { app, moduleFixture, dataSource };
+  // if (dataSource.isInitialized) {
+  //   await dataSource.synchronize(true);
+  // }
+
+  const { User } = await import('../src/user/entities/user.entity');
+  const userRepository = dataSource.getRepository(User);
+
+  const systemUser = await userRepository.findOneOrFail({
+    where: { email: SYSTEM_USER_EMAIL },
+  });
+
+  return { app, moduleFixture, dataSource, systemUserId: systemUser.id };
 }

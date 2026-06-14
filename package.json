@@ -33,7 +33,6 @@
     "migration:create": "typeorm-ts-node-commonjs migration:create"
   },
   "dependencies": {
-    "@faker-js/faker": "^9.9.0",
     "@fastify/static": "^8.3.0",
     "@keyv/redis": "^5.1.6",
     "@nestjs/cache-manager": "^3.1.2",
@@ -77,6 +76,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
+    "@faker-js/faker": "^9.9.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",

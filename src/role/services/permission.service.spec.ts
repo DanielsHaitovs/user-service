@@ -1,12 +1,11 @@
 import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { Roles } from '@/roleEntities/role.entity';
+import { RolePermissionService } from '@/roleServices/permission.service';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { randomUUID } from 'crypto';
-
-import { RolePermissionService } from './permission.service';
 
 describe('RolePermissionService', () => {
   let service: RolePermissionService;

@@ -1,5 +1,6 @@
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { Roles } from '@/roleEntities/role.entity';
+import { DeleteService } from '@/roleServices/delete.service';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { SystemIdentityService } from '@/system/identity.service';
 import { UserRoles } from '@/userEntities/userRoles.entity';
@@ -9,8 +10,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { randomUUID } from 'crypto';
 import { QueryFailedError } from 'typeorm';
-
-import { DeleteService } from './delete.service';
 
 describe('DeleteService', () => {
   let service: DeleteService;

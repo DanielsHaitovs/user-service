@@ -1,18 +1,16 @@
 /* eslint-disable @typescript-eslint/no-misused-spread */
 import type { UpdateRoleDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
+import { UpdateService } from '@/roleServices/update.service';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { randomUUID } from 'crypto';
 
-import { UpdateService } from './update.service';
-
 describe('UpdateService', () => {
   let service: UpdateService;
 
-  // Strongly typing the repository mock to satisfy strict ESLint rules
   let mockRoleRepository: {
     findOneOrFail: jest.Mock;
     findOne: jest.Mock;

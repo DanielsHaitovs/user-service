@@ -2,12 +2,11 @@ import { EntityQueryService } from '@/baseServices/query.service';
 import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import type { RolesQueryRequest } from '@/roleDto/query.dto';
 import { Roles } from '@/roleEntities/role.entity';
+import { RoleService } from '@/roleServices/role.service';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { randomUUID } from 'crypto';
-
-import { RoleService } from './role.service';
 
 describe('RoleService', () => {
   let service: RoleService;

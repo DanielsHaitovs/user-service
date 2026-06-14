@@ -2,14 +2,13 @@ import { EntityQueryService } from '@/baseServices/query.service';
 import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
 import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import { Roles } from '@/roleEntities/role.entity';
+import { RoleHelperService } from '@/roleServices/helper.service';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { randomUUID, type UUID } from 'crypto';
 import { In } from 'typeorm';
-
-import { RoleHelperService } from './helper.service';
 
 describe('RoleHelperService', () => {
   let service: RoleHelperService;

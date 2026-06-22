@@ -1,6 +1,6 @@
 import type { Permission } from '@/permissionEntities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
-import { createTestPermissions } from '@/test/helper/permission';
+import { createTestPermissions } from '@/test/db/permission';
 import { faker } from '@faker-js/faker';
 
 import { randomUUID, type UUID } from 'crypto';
@@ -102,13 +102,13 @@ export async function getTestRoleWithPermissionsById({
   id,
   name,
   createdById,
-  permissinos,
+  permissions,
 }: {
   dataSource: DataSource;
   id: UUID;
   name?: string;
   createdById?: UUID;
-  permissinos?: Partial<Permission>[];
+  permissions?: Partial<Permission>[];
 }): Promise<Roles> {
   const roleRepository = dataSource.getRepository(Roles);
 
@@ -127,12 +127,12 @@ export async function getTestRoleWithPermissionsById({
     expect(role.createdBy.id).toBe(createdById);
   }
 
-  if (permissinos != undefined) {
+  if (permissions != undefined) {
     expect(role.permissions).toBeDefined();
-    expect(role.permissions).toHaveLength(permissinos.length);
+    expect(role.permissions).toHaveLength(permissions.length);
 
     for (const permission of role.permissions) {
-      const expectedPermission = permissinos.find(
+      const expectedPermission = permissions.find(
         (p) => p.id === permission.id,
       );
       expect(expectedPermission).toBeDefined();

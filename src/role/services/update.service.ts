@@ -26,12 +26,12 @@ export class UpdateService {
     }
 
     if (
-      await this.isUniqueNameOrThrow({
+      !(await this.isUniqueNameOrThrow({
         updateDto,
         id,
-      })
+      }))
     ) {
-      return false;
+      return true;
     }
 
     const updatedRole = this.roleRepository.create(updateDto);
@@ -69,7 +69,7 @@ export class UpdateService {
     });
 
     if (role.name === updateDto.name) {
-      return true;
+      return false;
     }
 
     const existingRole = await this.roleRepository.findOne({

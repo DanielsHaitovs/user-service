@@ -181,7 +181,7 @@ describe('RolePermissionService', () => {
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
-          'None of the provided permission codes are currently assigned to the role.',
+          'Some of the provided permission codes are not currently assigned to the role.',
         ),
       );
 

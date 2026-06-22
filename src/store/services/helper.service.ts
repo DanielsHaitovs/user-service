@@ -32,7 +32,7 @@ export class StoreHelperService {
 
     if (existingStores.length != ids.length) {
       throw new UnprocessableEntityException(
-        `Failed to create role. The following permission ids do not exist: ${ids
+        `Failed to validate store. The following store ids do not exist: ${ids
           .filter((id) => !existingStores.some((s) => s.id === id))
           .join(', ')}`,
       );

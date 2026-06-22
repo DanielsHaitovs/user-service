@@ -62,7 +62,7 @@ describe('UpdateService', () => {
 
       const result = await service.update({ updateDto, id: mockRoleId });
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
     });
 
     it('should return false early if the name property is completely missing or undefined', async () => {
@@ -76,7 +76,7 @@ describe('UpdateService', () => {
       expect(mockRoleRepository.update).not.toHaveBeenCalled();
     });
 
-    it('should return false without executing an update if the new name matches the current name', async () => {
+    it('should return true without executing an update if the new name matches the current name', async () => {
       // Arrange
       const updateDto: UpdateRoleDto = { name: 'SameName' };
 
@@ -87,7 +87,7 @@ describe('UpdateService', () => {
 
       const result = await service.update({ updateDto, id: mockRoleId });
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
       expect(mockRoleRepository.findOne).not.toHaveBeenCalled();
       expect(mockRoleRepository.update).not.toHaveBeenCalled();
     });

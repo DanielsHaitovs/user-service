@@ -142,20 +142,63 @@ export class RolePipelineService {
       id: roleId,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
+
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: roleId,
+      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+    });
+
+    await this.cacheService.coalesce<RoleResponseDto>({
+      key: cacheKey,
+      operation: async () => {
+        const role = await this.permissionService.getPermissionsOrThrow(roleId);
+
+        await this.cacheService.set<RoleResponseDto>({
+          key: cacheKey,
+          value: role,
+        });
+
+        return role;
+      },
+    });
   }
 
   async unassignPermissionsFromRole({
     roleId,
     permissionCodes,
   }: PermissionsToRoleDto): Promise<void> {
-    await this.permissionService.unassignPermissionsFromRole({
-      roleId,
-      permissionCodes,
-    });
+    const amountOfUnassigned =
+      await this.permissionService.unassignPermissionsFromRole({
+        roleId,
+        permissionCodes,
+      });
+
+    if (amountOfUnassigned === 0) {
+      return;
+    }
 
     await this.cacheService.invalidateById({
       id: roleId,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+    });
+
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: roleId,
+      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+    });
+
+    await this.cacheService.coalesce<RoleResponseDto>({
+      key: cacheKey,
+      operation: async () => {
+        const role = await this.permissionService.getPermissionsOrThrow(roleId);
+
+        await this.cacheService.set<RoleResponseDto>({
+          key: cacheKey,
+          value: role,
+        });
+
+        return role;
+      },
     });
   }
 
@@ -169,10 +212,16 @@ export class RolePipelineService {
     const updated = await this.updateService.update({ updateDto, id });
 
     if (updated) {
-      await this.cacheService.invalidateById({
-        id,
-        alias: ROLE_QUERY_ALIAS,
-      });
+      await Promise.all([
+        this.cacheService.invalidateById({
+          id,
+          alias: ROLE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id,
+          alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+        }),
+      ]);
     }
 
     return updated;

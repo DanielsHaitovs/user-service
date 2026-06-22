@@ -5,6 +5,6 @@ import type { UpdateResult } from 'typeorm';
  * @param updated - The result of the update operation
  * @returns A boolean indicating whether any records were affected by the update
  */
-export function updatedResults(updated: UpdateResult): boolean {
-  return updated.affected == undefined ? false : updated.affected > 0;
+export function updatedResults(updated: UpdateResult | undefined): boolean {
+  return updated?.affected == undefined ? false : updated.affected > 0;
 }

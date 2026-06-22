@@ -3,7 +3,6 @@ import {
   STORE_QUERY_ALIAS,
   USER_STORES_QUERY_ALIAS,
 } from '@/commonConst/store.const';
-import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
   CreateStoreDto,
@@ -37,7 +36,7 @@ export class StorePipelineService {
   async getByIdOrThrow(id: UUID): Promise<GetStoreDto> {
     const cached = await this.cacheService.getById<GetStoreDto>({
       id,
-      alias: USER_QUERY_ALIAS,
+      alias: STORE_QUERY_ALIAS,
     });
 
     if (cached) {

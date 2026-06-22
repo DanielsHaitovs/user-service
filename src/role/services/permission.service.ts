@@ -85,7 +85,7 @@ export class RolePermissionService {
   async unassignPermissionsFromRole({
     roleId,
     permissionCodes,
-  }: PermissionsToRoleDto): Promise<void> {
+  }: PermissionsToRoleDto): Promise<number> {
     if (!permissionCodes.length) {
       throw new UnprocessableEntityException(
         'At least one permission code must be provided to unassign permissions from the role.',
@@ -94,13 +94,17 @@ export class RolePermissionService {
 
     const { permissions } = await this.getPermissionsOrThrow(roleId);
 
+    if (!permissions.length) {
+      return 0;
+    }
+
     const remainingPermissionIds = permissions
       .filter((permission) => !permissionCodes.includes(permission.code))
       .flatMap((p) => p.id);
 
     if (remainingPermissionIds.length === permissions.length) {
       throw new UnprocessableEntityException(
-        'None of the provided permission codes are currently assigned to the role.',
+        'Some of the provided permission codes are not currently assigned to the role.',
       );
     }
 
@@ -112,5 +116,7 @@ export class RolePermissionService {
         } as Permission;
       }),
     });
+
+    return permissions.length - remainingPermissionIds.length;
   }
 }

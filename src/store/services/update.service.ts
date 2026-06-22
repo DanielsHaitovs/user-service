@@ -33,8 +33,21 @@ export class UpdateService {
     updateDto: UpdateStoreDto;
     id: UUID;
   }): Promise<boolean> {
+    const store = await this.storeRepository.findOneOrFail({
+      where: { id },
+    });
+
+    if (
+      updateDto.name === store.name &&
+      updateDto.code === store.code &&
+      updateDto.viewCode === store.viewCode
+    ) {
+      return true;
+    }
+
     await this.validateUniqueFields({
       updateDto,
+      store,
       id,
     });
 
@@ -54,15 +67,13 @@ export class UpdateService {
    */
   private async validateUniqueFields({
     updateDto,
+    store,
     id,
   }: {
     updateDto: UpdateStoreDto;
+    store: Store;
     id: UUID;
   }): Promise<void> {
-    const store = await this.storeRepository.findOneOrFail({
-      where: { id },
-    });
-
     const { name, code, viewCode } = updateDto;
 
     if (name == undefined && code == undefined && viewCode == undefined) {
@@ -73,11 +84,10 @@ export class UpdateService {
 
     const match = await this.storeRepository.findOne({
       where: {
-        ...(name != undefined && name !== store.name ? { name } : {}),
-        ...(code != undefined && code !== store.code ? { code } : {}),
-        ...(viewCode != undefined && viewCode !== store.viewCode
-          ? { viewCode }
-          : {}),
+        ...(name != undefined && name !== store.name && { name }),
+        ...(code != undefined && code !== store.code && { code }),
+        ...(viewCode != undefined &&
+          viewCode !== store.viewCode && { viewCode }),
         id: Not(id),
       },
     });

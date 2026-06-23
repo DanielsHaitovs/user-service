@@ -31,7 +31,7 @@ export class AuditProducerService {
   async sendLog(payload: AuditLogPayload): Promise<void> {
     try {
       payload.traceId = getTraceId();
-      await this.auditQueue.add('role-audit', payload);
+      await this.auditQueue.add(`role-audit-${payload.action}`, payload);
     } catch (e) {
       const error = e as Error;
       this.logger.error(

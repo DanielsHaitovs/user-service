@@ -72,39 +72,6 @@ export class CreateRoleDto extends RoleBaseDto {
 export class UpdateRoleDto extends PartialType(RoleBaseDto) {}
 
 /**
- * DTO for assigning permissions to a role, containing the role ID and lists of permission IDs and codes.
- * The AssignPermissionsToRoleDto allows clients to associate permissions with a role by specifying either the permission IDs or their string codes.
- * This design provides flexibility in how permissions are referenced when assigning them to roles, accommodating different client needs and data structures.
- */
-export class PermissionsToRoleDto {
-  @ApiProperty({
-    type: String,
-    isArray: true,
-    description: 'Permission codes to associate with this role',
-    example: ['manage_users', 'create_order'],
-    required: true,
-  })
-  @ToArray()
-  @IsString({ each: true })
-  @IsNotEmpty()
-  permissionCodes: string[];
-
-  @ApiProperty({
-    example: EXAMPLE_ROLE_ID,
-    description: 'Unique identifier of the role',
-    type: String,
-    format: 'uuid',
-  })
-  @IsUUID()
-  roleId: UUID;
-
-  constructor(roleId: UUID, permissionCodes: string[]) {
-    this.roleId = roleId;
-    this.permissionCodes = permissionCodes;
-  }
-}
-
-/**
  * DTO for retrieving role information, extending the RoleBaseDto and adding properties for role ID, creation and update timestamps.
  * The GetRoleDto provides a comprehensive view of a role's details, including its unique identifier, name, timestamps, associated permissions, and creator information.
  * This DTO is designed to be used in responses when fetching role data, ensuring that clients receive all relevant information about a role in a consistent format.
@@ -188,6 +155,43 @@ export class RoleResponseDto extends GetRoleDto {
     this.updatedAt = updatedAt;
     this.permissions = permissions ?? [];
     this.createdBy = createdBy;
+  }
+}
+
+/**
+ * DTO for assigning permissions to a role, containing the role ID and lists of permission IDs and codes.
+ * The AssignPermissionsToRoleDto allows clients to associate permissions with a role by specifying either the permission IDs or their string codes.
+ * This design provides flexibility in how permissions are referenced when assigning them to roles, accommodating different client needs and data structures.
+ */
+export class PermissionsToRoleDto {
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    description: 'Permission codes to associate with this role',
+    example: ['manage_users', 'create_order'],
+    required: true,
+  })
+  @ToArray()
+  @IsString({ each: true })
+  @IsNotEmpty()
+  permissionCodes: string[];
+
+  // @ApiProperty({
+  //   example: EXAMPLE_ROLE_ID,
+  //   description: 'Unique identifier of the role',
+  //   type: RoleResponseDto,
+  // })
+  // @IsUUID()
+  // @ValidateNested()
+  // @Transform(() => RoleResponseDto)
+  // role: RoleResponseDto;
+
+  // constructor(role: RoleResponseDto, permissionCodes: string[]) {
+  //   this.role = role;
+  //   this.permissionCodes = permissionCodes;
+  // }
+  constructor(permissionCodes: string[]) {
+    this.permissionCodes = permissionCodes;
   }
 }
 

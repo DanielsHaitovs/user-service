@@ -39,16 +39,19 @@ export class RolePermissionService {
    * @throws UnprocessableEntityException if no permission codes are provided.
    */
   async assignPermissionsToRole({
-    roleId,
-    permissionCodes,
-  }: PermissionsToRoleDto): Promise<void> {
-    if (!permissionCodes.length) {
+    assignPayload,
+    role,
+  }: {
+    assignPayload: PermissionsToRoleDto;
+    role: RoleResponseDto;
+  }): Promise<void> {
+    if (!assignPayload.permissionCodes.length) {
       throw new UnprocessableEntityException(
         'At least one permission code must be provided to assign permissions to the role.',
       );
     }
-
-    const { permissions } = await this.getPermissionsOrThrow(roleId);
+    const { permissions } = role;
+    let { permissionCodes } = assignPayload;
 
     if (permissions.length) {
       permissionCodes = permissionCodes.filter(
@@ -64,7 +67,7 @@ export class RolePermissionService {
     ] as UUID[];
 
     await this.roleRepository.save({
-      id: roleId,
+      id: role.id,
       permissions: permissionIds.map((id) => {
         return {
           id,
@@ -74,7 +77,7 @@ export class RolePermissionService {
   }
 
   /**
-   * Unassigns permissions from a role.
+   * Unassign permissions from a role.
    * @param roleId - The UUID of the role from which permissions will be unassigned.
    * @param permissionCodes - An array of permission codes to unassign from the role.
    * @returns A promise that resolves when the permissions have been successfully unassigned from the role.
@@ -83,20 +86,23 @@ export class RolePermissionService {
    * @throws UnprocessableEntityException if no permission codes are provided.
    */
   async unassignPermissionsFromRole({
-    roleId,
-    permissionCodes,
-  }: PermissionsToRoleDto): Promise<number> {
-    if (!permissionCodes.length) {
+    unassignPayload,
+    role,
+  }: {
+    unassignPayload: PermissionsToRoleDto;
+    role: RoleResponseDto;
+  }): Promise<number> {
+    if (!unassignPayload.permissionCodes.length) {
       throw new UnprocessableEntityException(
         'At least one permission code must be provided to unassign permissions from the role.',
       );
     }
-
-    const { permissions } = await this.getPermissionsOrThrow(roleId);
-
-    if (!permissions.length) {
+    if (!role.permissions.length) {
       return 0;
     }
+
+    const { permissions } = role;
+    const { permissionCodes } = unassignPayload;
 
     const remainingPermissionIds = permissions
       .filter((permission) => !permissionCodes.includes(permission.code))
@@ -109,7 +115,7 @@ export class RolePermissionService {
     }
 
     await this.roleRepository.save({
-      id: roleId,
+      id: role.id,
       permissions: remainingPermissionIds.map((id) => {
         return {
           id,

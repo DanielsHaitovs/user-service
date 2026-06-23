@@ -42,6 +42,10 @@ export async function createTestRole({
   const newRole = await pipelineService.create({
     createDto,
     createdById,
+    metadata: {
+      ipAddress: faker.internet.ip(),
+      userAgent: faker.internet.userAgent(),
+    },
   });
 
   validateRoleResponseDto({
@@ -112,8 +116,15 @@ export async function createTestRoleWithPermissions({
 
   if (permissions && permissions.length > 0) {
     await pipelineService.assignPermissionsToRole({
-      roleId: newRole.id,
-      permissionCodes: permissions.map((p) => p.code),
+      role: newRole,
+      assignPayload: {
+        permissionCodes: permissions.map((p) => p.code),
+      },
+      requestedByUserId: createdById,
+      metadata: {
+        ipAddress: faker.internet.ip(),
+        userAgent: faker.internet.userAgent(),
+      },
     });
 
     newRole.permissions = permissions;

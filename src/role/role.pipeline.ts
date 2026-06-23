@@ -4,6 +4,8 @@ import {
   ROLE_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/commonConst/role.const';
+import { ClientMetadata } from '@/commonDecorators/meta.decorator';
+import { RoleAction } from '@/role/action.enum';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {
   CreateRoleDto,
@@ -13,6 +15,7 @@ import {
   RoleResponseDto,
   UpdateRoleDto,
 } from '@/roleDto/role.dto';
+import { AuditProducerService } from '@/roleServices/audit.service';
 import { CreateService } from '@/roleServices/create.service';
 import { DeleteService } from '@/roleServices/delete.service';
 import { RolePermissionService } from '@/roleServices/permission.service';
@@ -31,6 +34,7 @@ export class RolePipelineService {
     private readonly updateService: UpdateService,
     private readonly deleteService: DeleteService,
     private readonly cacheService: CacheService,
+    private readonly auditService: AuditProducerService,
   ) {}
 
   async getMany(data: RolesQueryRequest): Promise<RoleListResponseDto> {
@@ -100,9 +104,11 @@ export class RolePipelineService {
   async create({
     createDto,
     createdById,
+    metadata,
   }: {
     createDto: CreateRoleDto;
     createdById: UUID;
+    metadata: ClientMetadata;
   }): Promise<RoleResponseDto> {
     const { permissions, ...role } = await this.createService.create({
       createDto,
@@ -126,36 +132,68 @@ export class RolePipelineService {
       }),
     ]);
 
+    await this.auditService.sendLog({
+      userId: createdById,
+      action: RoleAction.CREATE,
+      targetRoleId: role.id,
+      details: `Role created with name: ${role.name} and permissions: ${permissions.map((permission) => permission.name).join(', ')}`,
+      newState: { ...role, permissions },
+      ipAddress: metadata.ipAddress,
+      userAgent: metadata.userAgent,
+    });
+
     return { ...role, permissions };
   }
 
   async assignPermissionsToRole({
-    roleId,
-    permissionCodes,
-  }: PermissionsToRoleDto): Promise<void> {
+    assignPayload,
+    role,
+    metadata,
+    requestedByUserId,
+  }: {
+    assignPayload: PermissionsToRoleDto;
+    role: RoleResponseDto;
+    requestedByUserId: UUID;
+    metadata: ClientMetadata;
+  }): Promise<void> {
+    const { permissionCodes } = assignPayload;
+
     await this.permissionService.assignPermissionsToRole({
-      roleId,
-      permissionCodes,
+      role,
+      assignPayload,
     });
 
     await this.cacheService.invalidateById({
-      id: roleId,
+      id: role.id,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
 
     const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
-      id: roleId,
+      id: role.id,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
 
     await this.cacheService.coalesce<RoleResponseDto>({
       key: cacheKey,
       operation: async () => {
-        const role = await this.permissionService.getPermissionsOrThrow(roleId);
+        const changedRole = await this.permissionService.getPermissionsOrThrow(
+          role.id,
+        );
 
         await this.cacheService.set<RoleResponseDto>({
           key: cacheKey,
-          value: role,
+          value: changedRole,
+        });
+
+        await this.auditService.sendLog({
+          userId: requestedByUserId,
+          action: RoleAction.ASSIGN,
+          targetRoleId: role.id,
+          details: `Permissions assigned to role with name: ${role.name}. Permissions: ${permissionCodes.join(', ')}`,
+          oldState: role,
+          newState: changedRole,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
         });
 
         return role;
@@ -164,13 +202,22 @@ export class RolePipelineService {
   }
 
   async unassignPermissionsFromRole({
-    roleId,
-    permissionCodes,
-  }: PermissionsToRoleDto): Promise<void> {
+    unassignPayload,
+    role,
+    metadata,
+    requestedByUserId,
+  }: {
+    unassignPayload: PermissionsToRoleDto;
+    role: RoleResponseDto;
+    requestedByUserId: UUID;
+    metadata: ClientMetadata;
+  }): Promise<void> {
+    const { permissionCodes } = unassignPayload;
+
     const amountOfUnassigned =
       await this.permissionService.unassignPermissionsFromRole({
-        roleId,
-        permissionCodes,
+        role,
+        unassignPayload,
       });
 
     if (amountOfUnassigned === 0) {
@@ -178,23 +225,36 @@ export class RolePipelineService {
     }
 
     await this.cacheService.invalidateById({
-      id: roleId,
+      id: role.id,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
 
     const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
-      id: roleId,
+      id: role.id,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
 
     await this.cacheService.coalesce<RoleResponseDto>({
       key: cacheKey,
       operation: async () => {
-        const role = await this.permissionService.getPermissionsOrThrow(roleId);
+        const changedRole = await this.permissionService.getPermissionsOrThrow(
+          role.id,
+        );
 
         await this.cacheService.set<RoleResponseDto>({
           key: cacheKey,
-          value: role,
+          value: changedRole,
+        });
+
+        await this.auditService.sendLog({
+          userId: requestedByUserId,
+          action: RoleAction.UNASSIGN,
+          targetRoleId: role.id,
+          details: `Permissions unassigned from role with name: ${role.name}. Permissions: ${permissionCodes.join(', ')}`,
+          oldState: role,
+          newState: changedRole,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
         });
 
         return role;
@@ -204,12 +264,18 @@ export class RolePipelineService {
 
   async update({
     updateDto,
-    id,
+    role,
+    requestedByUserId,
+    metadata,
   }: {
     updateDto: UpdateRoleDto;
-    id: UUID;
+    role: GetRoleDto;
+    requestedByUserId: UUID;
+    metadata: ClientMetadata;
   }): Promise<boolean> {
-    const updated = await this.updateService.update({ updateDto, id });
+    const { id } = role;
+
+    const updated = await this.updateService.update({ updateDto, role });
 
     if (updated) {
       await Promise.all([
@@ -221,6 +287,17 @@ export class RolePipelineService {
           id,
           alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
         }),
+        this.auditService.sendLog({
+          userId: requestedByUserId,
+          action: RoleAction.UPDATE,
+          targetRoleId: id,
+          details: `Role name was updated`,
+          oldState: role,
+          // eslint-disable-next-line @typescript-eslint/no-misused-spread
+          newState: { ...role, ...updateDto },
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
+        }),
       ]);
     }
 
@@ -230,9 +307,13 @@ export class RolePipelineService {
   async delete({
     id,
     canDeleteAssignedRole,
+    requestedByUserId,
+    metadata,
   }: {
     id: UUID;
     canDeleteAssignedRole: boolean;
+    requestedByUserId: UUID;
+    metadata: ClientMetadata;
   }): Promise<boolean> {
     const deleted = await this.deleteService.delete({
       id,
@@ -260,6 +341,14 @@ export class RolePipelineService {
             purge: true,
           },
           alias: USER_ROLE_QUERY_ALIAS,
+        }),
+        this.auditService.sendLog({
+          userId: requestedByUserId,
+          action: RoleAction.DELETE,
+          targetRoleId: id,
+          details: `Role was deleted`,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
         }),
       ]);
     }

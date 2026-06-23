@@ -8,9 +8,14 @@ import {
   UNASSIGN_USER_ROLE,
 } from '@/commonConst/role.const';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import {
+  ClientMetadata,
+  GetClientMetadata,
+} from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { CurrentUser } from '@/commonDecorators/user.decorator';
+import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
+import { FetchRolePipe } from '@/commonPipes/role.pipe';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {
@@ -121,6 +126,7 @@ export class RoleController {
     @Body()
     createDto: CreateRoleDto,
     @CurrentUser() requestedByUser: JwtPayload,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<RoleResponseDto> {
     const { canAssignPermissionsToRoles, canReadPermissions, id } =
       extractAccess(requestedByUser);
@@ -132,6 +138,7 @@ export class RoleController {
     return await this.pipelineService.create({
       createDto,
       createdById: id,
+      metadata,
     });
   }
 
@@ -260,12 +267,16 @@ export class RoleController {
     example: EXAMPLE_USER_ID,
   })
   async updateName(
-    @Param('id', ParseUUIDPipe) id: UUID,
+    @Param('id', FetchRolePipe) role: GetRoleDto,
     @Body() updateDto: CreateRoleDto,
+    @CurrentUserId() requestedByUserId: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<boolean> {
     return await this.pipelineService.update({
       updateDto,
-      id,
+      role,
+      requestedByUserId,
+      metadata,
     });
   }
 
@@ -305,12 +316,21 @@ export class RoleController {
   async delete(
     @Param('id', ParseUUIDPipe) id: UUID,
     @CurrentUser() requestedByUser: JwtPayload,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
-    const { canReadUserRoles, canUnassignUserFromRoles } =
-      extractAccess(requestedByUser);
+    const {
+      canReadUserRoles,
+      canUnassignUserFromRoles,
+      id: requestedByUserId,
+    } = extractAccess(requestedByUser);
 
     const canDeleteAssignedRole = canReadUserRoles && canUnassignUserFromRoles;
 
-    await this.pipelineService.delete({ id, canDeleteAssignedRole });
+    await this.pipelineService.delete({
+      id,
+      canDeleteAssignedRole,
+      requestedByUserId,
+      metadata,
+    });
   }
 }

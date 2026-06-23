@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-spread */
-import type { UpdateRoleDto } from '@/roleDto/role.dto';
+import type { GetRoleDto, UpdateRoleDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { UpdateService } from '@/roleServices/update.service';
 import { UnprocessableEntityException } from '@nestjs/common';
@@ -19,6 +19,12 @@ describe('UpdateService', () => {
   };
 
   const mockRoleId = randomUUID();
+  const mockRole: GetRoleDto = {
+    id: mockRoleId,
+    name: 'Manager',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
   beforeEach(async () => {
     mockRoleRepository = {
@@ -60,16 +66,15 @@ describe('UpdateService', () => {
 
       mockRoleRepository.update.mockResolvedValue({ affected: 1 });
 
-      const result = await service.update({ updateDto, id: mockRoleId });
+      const result = await service.update({ updateDto, role: mockRole });
 
       expect(result).toBe(true);
     });
 
     it('should return false early if the name property is completely missing or undefined', async () => {
-      // Arrange
       const updateDto: UpdateRoleDto = {};
 
-      const result = await service.update({ updateDto, id: mockRoleId });
+      const result = await service.update({ updateDto, role: mockRole });
 
       expect(result).toBe(false);
       expect(mockRoleRepository.findOneOrFail).not.toHaveBeenCalled();
@@ -77,15 +82,14 @@ describe('UpdateService', () => {
     });
 
     it('should return true without executing an update if the new name matches the current name', async () => {
-      // Arrange
-      const updateDto: UpdateRoleDto = { name: 'SameName' };
+      const updateDto: UpdateRoleDto = { name: mockRole.name };
 
       mockRoleRepository.findOneOrFail.mockResolvedValue({
         id: mockRoleId,
-        name: 'SameName',
+        name: mockRole.name,
       });
 
-      const result = await service.update({ updateDto, id: mockRoleId });
+      const result = await service.update({ updateDto, role: mockRole });
 
       expect(result).toBe(true);
       expect(mockRoleRepository.findOne).not.toHaveBeenCalled();
@@ -105,7 +109,7 @@ describe('UpdateService', () => {
       });
 
       await expect(
-        service.update({ updateDto, id: mockRoleId }),
+        service.update({ updateDto, role: mockRole }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
           'A role with the name "Admin" already exists.',
@@ -115,18 +119,24 @@ describe('UpdateService', () => {
       expect(mockRoleRepository.update).not.toHaveBeenCalled();
     });
 
-    it('should propagate core TypeORM exceptions if the target role ID does not exist', async () => {
+    it('should propagate core TypeORM exceptions if the repository update operation fails', async () => {
       const updateDto: UpdateRoleDto = { name: 'New Name' };
-      mockRoleRepository.findOneOrFail.mockRejectedValue(
-        new Error('EntityNotFound'),
+
+      mockRoleRepository.create.mockReturnValue(updateDto);
+      mockRoleRepository.update.mockRejectedValue(
+        new Error('DatabaseConnectionError'),
       );
 
-      await expect(
-        service.update({ updateDto, id: mockRoleId }),
-      ).rejects.toThrow('EntityNotFound');
+      mockRole.id = randomUUID();
 
-      expect(mockRoleRepository.findOne).not.toHaveBeenCalled();
-      expect(mockRoleRepository.update).not.toHaveBeenCalled();
+      await expect(
+        service.update({ updateDto, role: mockRole }),
+      ).rejects.toThrow('DatabaseConnectionError');
+
+      expect(mockRoleRepository.update).toHaveBeenCalledWith(
+        mockRole.id,
+        expect.objectContaining({ name: 'New Name' }),
+      );
     });
   });
 });

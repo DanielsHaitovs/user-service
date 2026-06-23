@@ -13,6 +13,7 @@ import { StoreModule } from '@/store/store.module';
 import { SystemModule } from '@/system/system.module';
 import { UserModule } from '@/user/user.module';
 import { createKeyv } from '@keyv/redis';
+import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
@@ -39,6 +40,16 @@ export const httpRequestDurationProvider = makeHistogramProvider({
   imports: [
     EnvConfigModule,
     ScheduleModule.forRoot(),
+    BullModule.forRootAsync({
+      inject: [EnvConfigService],
+      useFactory: (configService: EnvConfigService) => ({
+        connection: {
+          host: configService.redisHost,
+          port: configService.redisPort,
+          password: configService.redisPassword,
+        },
+      }),
+    }),
     LoggerModule.forRootAsync({
       inject: [EnvConfigService],
       useFactory: (configService: EnvConfigService) => {

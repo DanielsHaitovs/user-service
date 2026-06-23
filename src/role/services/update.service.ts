@@ -1,10 +1,9 @@
 import { updatedResults } from '@/base/helper/update';
-import { UpdateRoleDto } from '@/roleDto/role.dto';
+import { GetRoleDto, UpdateRoleDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { UUID } from 'crypto';
 import { Not, Repository } from 'typeorm';
 
 @Injectable()
@@ -16,10 +15,10 @@ export class UpdateService {
 
   async update({
     updateDto,
-    id,
+    role,
   }: {
     updateDto: UpdateRoleDto;
-    id: UUID;
+    role: GetRoleDto;
   }): Promise<boolean> {
     if (updateDto.name == undefined) {
       return false;
@@ -28,7 +27,7 @@ export class UpdateService {
     if (
       !(await this.isUniqueNameOrThrow({
         updateDto,
-        id,
+        role,
       }))
     ) {
       return true;
@@ -36,7 +35,7 @@ export class UpdateService {
 
     const updatedRole = this.roleRepository.create(updateDto);
 
-    const updated = await this.roleRepository.update(id, updatedRole);
+    const updated = await this.roleRepository.update(role.id, updatedRole);
 
     return updatedResults(updated);
   }
@@ -51,22 +50,16 @@ export class UpdateService {
    */
   private async isUniqueNameOrThrow({
     updateDto,
-    id,
+    role,
   }: {
     updateDto: UpdateRoleDto;
-    id: UUID;
+    role: GetRoleDto;
   }): Promise<boolean> {
     const { name } = updateDto;
 
     if (name == undefined) {
       throw new UnprocessableEntityException('Name is required for update.');
     }
-
-    const role = await this.roleRepository.findOneOrFail({
-      where: {
-        id,
-      },
-    });
 
     if (role.name === updateDto.name) {
       return false;
@@ -75,7 +68,7 @@ export class UpdateService {
     const existingRole = await this.roleRepository.findOne({
       where: {
         name,
-        id: Not(id),
+        id: Not(role.id),
       },
     });
 

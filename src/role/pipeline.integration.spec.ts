@@ -18,6 +18,7 @@ import {
 } from '@/test/validate/role';
 import type { GetCreatedByDto } from '@/userDto/user.dto';
 import type { User } from '@/userEntities/user.entity';
+import { faker } from '@faker-js/faker/.';
 import {
   ConflictException,
   UnprocessableEntityException,
@@ -86,6 +87,10 @@ describe('RolePipelineService (Integration)', () => {
           name: `Test Role ${randomUUID()}`,
         },
         createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleById({
@@ -104,6 +109,10 @@ describe('RolePipelineService (Integration)', () => {
           permissions: permissions.map((p) => p.code),
         },
         createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleWithPermissionsById({
@@ -115,13 +124,17 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
     });
 
-    it('should throw Conflifct when trying to save role with the same name', async () => {
+    it('should throw Conflict when trying to save role with the same name', async () => {
       const roleName = `Test Role ${randomUUID()}`;
       await pipelineService.create({
         createDto: {
           name: roleName,
         },
         createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await expect(
@@ -130,6 +143,10 @@ describe('RolePipelineService (Integration)', () => {
             name: roleName,
           },
           createdById: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new ConflictException(
@@ -145,6 +162,10 @@ describe('RolePipelineService (Integration)', () => {
           permissions: [],
         },
         createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleWithPermissionsById({
@@ -167,6 +188,10 @@ describe('RolePipelineService (Integration)', () => {
             ],
           },
           createdById: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -234,8 +259,15 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       await pipelineService.assignPermissionsToRole({
-        roleId: expected.id,
-        permissionCodes: permissions.map((p) => p.code),
+        role: expected,
+        assignPayload: {
+          permissionCodes: permissions.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleWithPermissionsById({
@@ -268,8 +300,15 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       await pipelineService.assignPermissionsToRole({
-        roleId: role.id,
-        permissionCodes: permissionsToAssign.map((p) => p.code),
+        role: { ...role, permissions: existingPermissions },
+        assignPayload: {
+          permissionCodes: permissionsToAssign.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleWithPermissionsById({
@@ -296,8 +335,15 @@ describe('RolePipelineService (Integration)', () => {
 
       await expect(
         pipelineService.assignPermissionsToRole({
-          roleId: expected.id,
-          permissionCodes: [invalidPermissionCode],
+          role: expected,
+          assignPayload: {
+            permissionCodes: [invalidPermissionCode],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -315,27 +361,23 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('should throw not found exception when trying to assign permissions to a non-existing role', async () => {
-      const random = randomUUID();
-
-      await expect(
-        pipelineService.assignPermissionsToRole({
-          roleId: random,
-          permissionCodes: [random],
-        }),
-      ).rejects.toThrow(/Could not find any entity of type "Roles"/);
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
-    });
-
     it('should throw UnprocessableEntityException when trying to assign permissions with an empty permissionCodes array', async () => {
-      const random = randomUUID();
+      const role = await createTestRole({
+        pipelineService,
+        createdById: systemUserId,
+      });
 
       await expect(
         pipelineService.assignPermissionsToRole({
-          roleId: random,
-          permissionCodes: [],
+          role,
+          assignPayload: {
+            permissionCodes: [],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -343,7 +385,7 @@ describe('RolePipelineService (Integration)', () => {
         ),
       );
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
   });
@@ -356,8 +398,15 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       await pipelineService.unassignPermissionsFromRole({
-        roleId: expected.id,
-        permissionCodes: permissions.map((p) => p.code),
+        role: expected,
+        unassignPayload: {
+          permissionCodes: permissions.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleWithPermissionsById({
@@ -391,8 +440,15 @@ describe('RolePipelineService (Integration)', () => {
       const permissionsToKeep = [...existingPermissions.slice(2)];
 
       await pipelineService.unassignPermissionsFromRole({
-        roleId: role.id,
-        permissionCodes: permissionsToUnassign.map((p) => p.code),
+        role: { ...role, permissions: existingPermissions },
+        unassignPayload: {
+          permissionCodes: permissionsToUnassign.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleWithPermissionsById({
@@ -420,8 +476,15 @@ describe('RolePipelineService (Integration)', () => {
 
       await expect(
         pipelineService.unassignPermissionsFromRole({
-          roleId: expected.id,
-          permissionCodes: [invalidPermissionCode],
+          role: expected,
+          unassignPayload: {
+            permissionCodes: [invalidPermissionCode],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -446,8 +509,15 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       await pipelineService.unassignPermissionsFromRole({
-        roleId: expected.id,
-        permissionCodes: permissions.map((p) => p.code),
+        role: expected,
+        unassignPayload: {
+          permissionCodes: permissions.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       await getTestRoleWithPermissionsById({
@@ -460,27 +530,23 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('should throw not found exception when trying to unassign permissions from a non-existing role', async () => {
-      const random = randomUUID();
-
-      await expect(
-        pipelineService.unassignPermissionsFromRole({
-          roleId: random,
-          permissionCodes: [random],
-        }),
-      ).rejects.toThrow(/Could not find any entity of type "Roles"/);
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
-    });
-
     it('should throw UnprocessableEntityException when trying to unassign permissions with an empty permissionCodes array', async () => {
-      const random = randomUUID();
+      const role = await createTestRole({
+        pipelineService,
+        createdById: systemUserId,
+      });
 
       await expect(
         pipelineService.unassignPermissionsFromRole({
-          roleId: random,
-          permissionCodes: [],
+          role,
+          unassignPayload: {
+            permissionCodes: [],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -488,7 +554,7 @@ describe('RolePipelineService (Integration)', () => {
         ),
       );
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
   });
@@ -509,9 +575,14 @@ describe('RolePipelineService (Integration)', () => {
       }
 
       const updated = await pipelineService.update({
-        id: role.id,
+        role,
         updateDto: {
           name: newName,
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
         },
       });
 
@@ -526,15 +597,20 @@ describe('RolePipelineService (Integration)', () => {
     });
 
     it('should return true when attempting to update with the same name', async () => {
-      const { id, name } = await createTestRole({
+      const role = await createTestRole({
         pipelineService,
         createdById: systemUserId,
       });
 
       const updated = await pipelineService.update({
-        id,
+        role,
         updateDto: {
-          name,
+          name: role.name,
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
         },
       });
 
@@ -543,8 +619,8 @@ describe('RolePipelineService (Integration)', () => {
 
       await getTestRoleById({
         pipelineService,
-        id,
-        name,
+        id: role.id,
+        name: role.name,
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(3);
@@ -552,7 +628,7 @@ describe('RolePipelineService (Integration)', () => {
     });
 
     it('should throw UnprocessableEntityException when attempting to update with name that is already taken by another role', async () => {
-      const { id, name } = await createTestRole({
+      const role = await createTestRole({
         pipelineService,
         createdById: systemUserId,
       });
@@ -563,9 +639,14 @@ describe('RolePipelineService (Integration)', () => {
 
       await expect(
         pipelineService.update({
-          id,
+          role,
           updateDto: {
             name: conflictRole.name,
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
           },
         }),
       ).rejects.toThrow(
@@ -576,38 +657,34 @@ describe('RolePipelineService (Integration)', () => {
 
       await getTestRoleById({
         pipelineService,
-        id,
-        name,
+        id: role.id,
+        name: role.name,
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(4);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('should throw NotFoundException when trying to update a non-existing role', async () => {
-      await expect(
-        pipelineService.update({
-          id: randomUUID(),
-          updateDto: {
-            name: 'any role name',
-          },
-        }),
-      ).rejects.toThrow(/Could not find any entity of type "Roles"/);
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
-    });
-
     it('should return false when trying to update with an empty updateDto', async () => {
+      const role = await createTestRole({
+        pipelineService,
+        createdById: systemUserId,
+      });
+
       const updated = await pipelineService.update({
-        id: randomUUID(),
+        role,
         updateDto: {},
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(updated).toBeDefined();
       expect(updated).toBe(false);
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
   });
@@ -622,6 +699,11 @@ describe('RolePipelineService (Integration)', () => {
       const deleted = await pipelineService.delete({
         id: role.id,
         canDeleteAssignedRole: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);
@@ -644,6 +726,11 @@ describe('RolePipelineService (Integration)', () => {
       const deleted = await pipelineService.delete({
         id: role.id,
         canDeleteAssignedRole: false,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);
@@ -667,6 +754,11 @@ describe('RolePipelineService (Integration)', () => {
       const deleted = await pipelineService.delete({
         id: role.id,
         canDeleteAssignedRole: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);
@@ -690,6 +782,11 @@ describe('RolePipelineService (Integration)', () => {
       const deleted = await pipelineService.delete({
         id: role.id,
         canDeleteAssignedRole: false,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);
@@ -720,6 +817,11 @@ describe('RolePipelineService (Integration)', () => {
         pipelineService.delete({
           id: role.id,
           canDeleteAssignedRole: false,
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -750,6 +852,11 @@ describe('RolePipelineService (Integration)', () => {
       const deleted = await pipelineService.delete({
         id: role.id,
         canDeleteAssignedRole: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);

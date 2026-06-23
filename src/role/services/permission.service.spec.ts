@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-misused-spread */
 import { PermissionHelperService } from '@/permissionServices/helper.service';
+import type { RoleResponseDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { RolePermissionService } from '@/roleServices/permission.service';
+import type { User } from '@/userEntities/user.entity';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -22,6 +25,34 @@ describe('RolePermissionService', () => {
   const mockRoleId = randomUUID();
   const mockPermissionId1 = randomUUID();
   const mockPermissionId2 = randomUUID();
+  const mockRole: RoleResponseDto = {
+    id: mockRoleId,
+    name: 'Manager',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    createdBy: { id: randomUUID() } as User,
+    permissions: [],
+  };
+  const mockPermissions = [
+    {
+      id: mockPermissionId1,
+      code: 'READ_ONLY',
+      name: 'abc',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: mockPermissionId2,
+      code: 'WRITE_ALL',
+      name: 'abc',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ];
+  const mockRoleWithPermissions: RoleResponseDto = {
+    ...mockRole,
+    permissions: mockPermissions,
+  };
 
   beforeEach(async () => {
     mockRoleRepository = {
@@ -73,8 +104,10 @@ describe('RolePermissionService', () => {
     it('should throw an UnprocessableEntityException if the permissionCodes array is empty', async () => {
       await expect(
         service.assignPermissionsToRole({
-          roleId: mockRoleId,
-          permissionCodes: [],
+          assignPayload: {
+            permissionCodes: [],
+          },
+          role: mockRole,
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -85,42 +118,56 @@ describe('RolePermissionService', () => {
     });
 
     it('should successfully append new permissions to a role without modifying its existing assignments', async () => {
+      const newPermissionId = randomUUID();
       mockRoleRepository.findOneOrFail.mockResolvedValue({
         id: mockRoleId,
-        permissions: [{ id: mockPermissionId1, code: 'READ_ONLY' }],
+        permissions: mockPermissions,
       });
 
       mockPermissionHelper.checkIfManyExistOrThrow.mockResolvedValue([
-        mockPermissionId2,
+        newPermissionId,
       ]);
       mockRoleRepository.save.mockResolvedValue({});
 
       await service.assignPermissionsToRole({
-        roleId: mockRoleId,
-        permissionCodes: ['WRITE_ALL'],
+        assignPayload: {
+          permissionCodes: ['TEST_ALL'],
+        },
+        role: mockRoleWithPermissions,
       });
 
       expect(mockPermissionHelper.checkIfManyExistOrThrow).toHaveBeenCalledWith(
-        ['WRITE_ALL'],
+        ['TEST_ALL'],
       );
 
       expect(mockRoleRepository.save).toHaveBeenCalledWith({
         id: mockRoleId,
-        permissions: [{ id: mockPermissionId2 }, { id: mockPermissionId1 }],
+        permissions: [
+          { id: newPermissionId },
+          { id: mockPermissionId1 },
+          { id: mockPermissionId2 },
+        ],
       });
     });
 
     it('should bypass helper validation calls if all incoming permission codes are already assigned to the role', async () => {
       mockRoleRepository.findOneOrFail.mockResolvedValue({
         id: mockRoleId,
-        permissions: [{ id: mockPermissionId1, code: 'READ_ONLY' }],
+        permissions: mockPermissions,
       });
+
+      mockPermissionHelper.checkIfManyExistOrThrow.mockResolvedValue([
+        mockPermissionId1,
+        mockPermissionId2,
+      ]);
 
       mockRoleRepository.save.mockResolvedValue({});
 
       await service.assignPermissionsToRole({
-        roleId: mockRoleId,
-        permissionCodes: ['READ_ONLY'],
+        assignPayload: {
+          permissionCodes: ['READ_ONLY'],
+        },
+        role: mockRoleWithPermissions,
       });
 
       expect(
@@ -128,7 +175,7 @@ describe('RolePermissionService', () => {
       ).not.toHaveBeenCalled();
       expect(mockRoleRepository.save).toHaveBeenCalledWith({
         id: mockRoleId,
-        permissions: [{ id: mockPermissionId1 }],
+        permissions: [{ id: mockPermissionId1 }, { id: mockPermissionId2 }],
       });
     });
   });
@@ -137,8 +184,10 @@ describe('RolePermissionService', () => {
     it('should throw an UnprocessableEntityException if the permissionCodes unassign array is empty', async () => {
       await expect(
         service.unassignPermissionsFromRole({
-          roleId: mockRoleId,
-          permissionCodes: [],
+          unassignPayload: {
+            permissionCodes: [],
+          },
+          role: mockRole,
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
@@ -150,16 +199,17 @@ describe('RolePermissionService', () => {
     it('should successfully remove specified permission matches and save remaining entries', async () => {
       mockRoleRepository.findOneOrFail.mockResolvedValue({
         id: mockRoleId,
-        permissions: [
-          { id: mockPermissionId1, code: 'READ_ONLY' },
-          { id: mockPermissionId2, code: 'WRITE_ALL' },
-        ],
+        permissions: mockPermissions,
       });
+
       mockRoleRepository.save.mockResolvedValue({});
+      mockRole.permissions = mockPermissions;
 
       await service.unassignPermissionsFromRole({
-        roleId: mockRoleId,
-        permissionCodes: ['WRITE_ALL'],
+        unassignPayload: {
+          permissionCodes: ['WRITE_ALL'],
+        },
+        role: mockRole,
       });
 
       expect(mockRoleRepository.save).toHaveBeenCalledWith({
@@ -176,8 +226,10 @@ describe('RolePermissionService', () => {
 
       await expect(
         service.unassignPermissionsFromRole({
-          roleId: mockRoleId,
-          permissionCodes: ['DELETE_ALL'],
+          unassignPayload: {
+            permissionCodes: ['DELETE_ALL'],
+          },
+          role: mockRole,
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(

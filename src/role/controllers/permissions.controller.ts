@@ -1,6 +1,12 @@
 import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
+import {
+  ClientMetadata,
+  GetClientMetadata,
+} from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
+import { CurrentUserId } from '@/commonDecorators/user.decorator';
+import { FetchRolePermissionsPipe } from '@/commonPipes/rolePermissions.pipe';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { PermissionsToRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
 import {
@@ -44,11 +50,16 @@ import { UUID } from 'crypto';
 export class RolePermissionsController {
   constructor(protected readonly pipelineService: RolePipelineService) {}
 
-  @Post('assign')
+  @Post('assign/:roleId')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @Permissions({
     required: ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
+  })
+  @ApiParam({
+    name: 'roleId',
+    type: String,
+    format: 'uuid',
   })
   @ApiOperation({
     summary: 'Assign permissions to a role',
@@ -87,16 +98,29 @@ export class RolePermissionsController {
   })
   async assign(
     @Body()
-    assignDto: PermissionsToRoleDto,
+    assignPayload: PermissionsToRoleDto,
+    @Param('roleId', FetchRolePermissionsPipe) role: RoleResponseDto,
+    @CurrentUserId() requestedByUserId: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
-    await this.pipelineService.assignPermissionsToRole(assignDto);
+    await this.pipelineService.assignPermissionsToRole({
+      assignPayload,
+      role,
+      requestedByUserId,
+      metadata,
+    });
   }
 
-  @Delete('unAssign')
+  @Delete('unAssign/:roleId')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @Permissions({
     required: UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
+  })
+  @ApiParam({
+    name: 'roleId',
+    type: String,
+    format: 'uuid',
   })
   @ApiOperation({
     summary: 'Unassign permissions from a role',
@@ -135,9 +159,17 @@ export class RolePermissionsController {
   })
   async unAssign(
     @Body()
-    unAssignDto: PermissionsToRoleDto,
+    unassignPayload: PermissionsToRoleDto,
+    @Param('roleId', FetchRolePermissionsPipe) role: RoleResponseDto,
+    @CurrentUserId() requestedByUserId: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
-    await this.pipelineService.unassignPermissionsFromRole(unAssignDto);
+    await this.pipelineService.unassignPermissionsFromRole({
+      unassignPayload,
+      requestedByUserId,
+      metadata,
+      role,
+    });
   }
 
   @Get(':roleId')

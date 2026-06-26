@@ -8,7 +8,7 @@ import { assignStoreToUser } from '@/test/db/userStore';
 import { createTestStore, getTestStoreById } from '@/test/pipeline/store';
 import { validateStoreResponseDto } from '@/test/validate/store';
 import type { User } from '@/userEntities/user.entity';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 import {
   ConflictException,
   UnprocessableEntityException,

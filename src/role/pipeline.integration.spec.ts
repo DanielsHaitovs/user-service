@@ -19,7 +19,7 @@ import {
 } from '@/test/validate/role';
 import type { GetCreatedByDto } from '@/userDto/user.dto';
 import type { User } from '@/userEntities/user.entity';
-import { faker } from '@faker-js/faker/.';
+import { faker } from '@faker-js/faker';
 import {
   ConflictException,
   UnprocessableEntityException,

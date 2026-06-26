@@ -1,5 +1,5 @@
 import { updatedResults } from '@/base/helper/update';
-import { UpdateStoreDto } from '@/storeDto/store.dto';
+import { GetStoreDto, UpdateStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import {
   ConflictException,
@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { UUID } from 'crypto';
 import { Not, Repository } from 'typeorm';
 
 @Injectable()
@@ -28,15 +27,11 @@ export class UpdateService {
    */
   async update({
     updateDto,
-    id,
+    store,
   }: {
     updateDto: UpdateStoreDto;
-    id: UUID;
+    store: GetStoreDto;
   }): Promise<boolean> {
-    const store = await this.storeRepository.findOneOrFail({
-      where: { id },
-    });
-
     if (
       updateDto.name === store.name &&
       updateDto.code === store.code &&
@@ -48,12 +43,9 @@ export class UpdateService {
     await this.validateUniqueFields({
       updateDto,
       store,
-      id,
     });
 
-    const updateStore = this.storeRepository.create(updateDto);
-
-    const updated = await this.storeRepository.update(id, updateStore);
+    const updated = await this.storeRepository.update(store.id, updateDto);
 
     return updatedResults(updated);
   }
@@ -68,17 +60,15 @@ export class UpdateService {
   private async validateUniqueFields({
     updateDto,
     store,
-    id,
   }: {
     updateDto: UpdateStoreDto;
-    store: Store;
-    id: UUID;
+    store: GetStoreDto;
   }): Promise<void> {
     const { name, code, viewCode } = updateDto;
 
     if (name == undefined && code == undefined && viewCode == undefined) {
       throw new UnprocessableEntityException(
-        `Cannot update store with ID ${id}.`,
+        `Cannot update store with ID ${store.id}.`,
       );
     }
 
@@ -88,13 +78,13 @@ export class UpdateService {
         ...(code != undefined && code !== store.code && { code }),
         ...(viewCode != undefined &&
           viewCode !== store.viewCode && { viewCode }),
-        id: Not(id),
+        id: Not(store.id),
       },
     });
 
     if (match) {
       throw new ConflictException(
-        `Cannot update store with ID ${id}. A store with the same name, code, or view code already exists.`,
+        `Cannot update store with ID ${store.id}. A store with the same name, code, or view code already exists.`,
       );
     }
   }

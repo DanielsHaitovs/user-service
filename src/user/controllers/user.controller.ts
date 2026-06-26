@@ -13,6 +13,10 @@ import {
   UNASSIGN_USER_STORE,
 } from '@/commonConst/store.const';
 import { EXAMPLE_USER_EMAIL, EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import {
+  ClientMetadata,
+  GetClientMetadata,
+} from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser } from '@/commonDecorators/user.decorator';
@@ -121,6 +125,7 @@ export class UserController {
   async create(
     @Body() createDto: CreateUserDto,
     @CurrentUser() requestedByUser: JwtPayload,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<UserResponseDto> {
     const {
       canAssignUserToRoles,
@@ -143,6 +148,7 @@ export class UserController {
     return await this.pipelineService.create({
       createDto,
       createdById,
+      metadata,
     });
   }
 

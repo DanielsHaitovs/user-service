@@ -1,8 +1,14 @@
 import { CacheService } from '@/baseServices/cache.service';
 import { StorePipelineService } from '@/store/store.pipeline';
+import type { StoreResponseDto } from '@/storeDto/store.dto';
+import { AuditProducerService } from '@/storeServices/audit.service';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
+import { createTestUser } from '@/test/db/user';
+import { assignStoreToUser } from '@/test/db/userStore';
 import { createTestStore, getTestStoreById } from '@/test/pipeline/store';
 import { validateStoreResponseDto } from '@/test/validate/store';
+import type { User } from '@/userEntities/user.entity';
+import { faker } from '@faker-js/faker/.';
 import {
   ConflictException,
   UnprocessableEntityException,
@@ -12,17 +18,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
-import { createTestUser } from '../../test/db/user';
-import { assignStoreToUser } from '../../test/db/userStore';
-import type { User } from '../user/entities/user.entity';
-
-import type { StoreResponseDto } from './dto/store.dto';
-
 describe('StorePipelineService (Integration)', () => {
   let pipelineService: StorePipelineService;
   let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
+  let auditLogSpy: jest.SpyInstance;
   let cacheSetSpy: jest.SpyInstance;
   let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
@@ -35,6 +36,7 @@ describe('StorePipelineService (Integration)', () => {
 
     pipelineService =
       moduleFixture.get<StorePipelineService>(StorePipelineService);
+    auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendLog');
     cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
     cacheGetByIdSpy = jest.spyOn(CacheService.prototype, 'getById');
     cacheInvalidateByIdSpy = jest.spyOn(
@@ -48,6 +50,8 @@ describe('StorePipelineService (Integration)', () => {
     conflictStore = await createTestStore({
       pipelineService,
       createdById: systemUserId,
+      cacheSetSpy,
+      auditLogSpy,
     });
     testUser = await createTestUser(dataSource);
   });
@@ -74,19 +78,25 @@ describe('StorePipelineService (Integration)', () => {
           viewCode: `test-store-view-${randomUUID()}`,
         },
         createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestStoreById({
         pipelineService,
         id: createdStore.id,
         expected: createdStore,
+        cacheGetByIdSpy,
+        cacheSetSpy,
       });
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw Conflifct when trying to save store with the same name', async () => {
+    it('should throw Conflict when trying to save store with the same name', async () => {
       const storeName = `Test Store ${randomUUID()}`;
 
       await createTestStore({
@@ -95,6 +105,8 @@ describe('StorePipelineService (Integration)', () => {
           name: storeName,
         },
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       await expect(
@@ -105,14 +117,18 @@ describe('StorePipelineService (Integration)', () => {
             viewCode: `test-store-view-${randomUUID()}`,
           },
           createdById: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(new ConflictException('A store already exists.'));
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('should throw Conflifct when trying to save store with the same code', async () => {
+    it('should throw Conflict when trying to save store with the same code', async () => {
       const storeCode = `test-store-${randomUUID()}`;
 
       await createTestStore({
@@ -121,6 +137,8 @@ describe('StorePipelineService (Integration)', () => {
           code: storeCode,
         },
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       await expect(
@@ -131,14 +149,18 @@ describe('StorePipelineService (Integration)', () => {
             viewCode: `test-store-view-${randomUUID()}`,
           },
           createdById: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(new ConflictException('A store already exists.'));
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('should throw Conflifct when trying to save store with the same viewCode', async () => {
+    it('should throw Conflict when trying to save store with the same viewCode', async () => {
       const storeViewCode = `test-store-view-${randomUUID()}`;
 
       await createTestStore({
@@ -147,6 +169,8 @@ describe('StorePipelineService (Integration)', () => {
           viewCode: storeViewCode,
         },
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       await expect(
@@ -157,11 +181,15 @@ describe('StorePipelineService (Integration)', () => {
             viewCode: storeViewCode,
           },
           createdById: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(new ConflictException('A store already exists.'));
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -170,6 +198,8 @@ describe('StorePipelineService (Integration)', () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       const retrieved = await pipelineService.getByIdOrThrow(store.id);
@@ -179,7 +209,7 @@ describe('StorePipelineService (Integration)', () => {
         expected: store,
       });
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -189,6 +219,7 @@ describe('StorePipelineService (Integration)', () => {
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -197,6 +228,8 @@ describe('StorePipelineService (Integration)', () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       const retrieved = await pipelineService.getByCodeOrThrow(store.code);
@@ -206,7 +239,7 @@ describe('StorePipelineService (Integration)', () => {
         expected: store,
       });
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
 
@@ -216,6 +249,7 @@ describe('StorePipelineService (Integration)', () => {
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -224,6 +258,8 @@ describe('StorePipelineService (Integration)', () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       const retrieved = await pipelineService.getByViewCodeOrThrow(
@@ -235,7 +271,7 @@ describe('StorePipelineService (Integration)', () => {
         expected: store,
       });
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
 
@@ -245,6 +281,7 @@ describe('StorePipelineService (Integration)', () => {
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -253,6 +290,8 @@ describe('StorePipelineService (Integration)', () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       const updatedName = `Updated Store ${randomUUID()}`;
@@ -265,14 +304,20 @@ describe('StorePipelineService (Integration)', () => {
           code: updatedCode,
           viewCode: updatedViewCode,
         },
-        id: store.id,
+        store,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+        requestedByUserId: systemUserId,
       });
 
       expect(updatedStore).toBeDefined();
       expect(updatedStore).toBe(true);
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestStoreById({
         pipelineService,
@@ -283,26 +328,31 @@ describe('StorePipelineService (Integration)', () => {
           code: updatedCode,
           viewCode: updatedViewCode,
         },
+        cacheGetByIdSpy,
+        cacheSetSpy,
+        setCache: true,
       });
-
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
     });
 
     it('Should throw if trying to update store with a name that already exists', async () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
 
       await expect(
         pipelineService.update({
           updateDto: {
             name: conflictStore.name,
           },
-          id: store.id,
+          store,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+          requestedByUserId: systemUserId,
         }),
       ).rejects.toThrow(
         new ConflictException(
@@ -311,22 +361,28 @@ describe('StorePipelineService (Integration)', () => {
       );
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
     it('Should throw if trying to update store with a code that already exists', async () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
 
       await expect(
         pipelineService.update({
           updateDto: {
             code: conflictStore.code,
           },
-          id: store.id,
+          store,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+          requestedByUserId: systemUserId,
         }),
       ).rejects.toThrow(
         new ConflictException(
@@ -335,22 +391,28 @@ describe('StorePipelineService (Integration)', () => {
       );
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('Should throw if trying to update store with a viewcode that already exists', async () => {
+    it('Should throw if trying to update store with a view code that already exists', async () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
 
       await expect(
         pipelineService.update({
           updateDto: {
             viewCode: conflictStore.viewCode,
           },
-          id: store.id,
+          store,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+          requestedByUserId: systemUserId,
         }),
       ).rejects.toThrow(
         new ConflictException(
@@ -359,6 +421,7 @@ describe('StorePipelineService (Integration)', () => {
       );
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -367,40 +430,58 @@ describe('StorePipelineService (Integration)', () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       const deleted = await pipelineService.delete({
-        id: store.id,
+        store,
         canDeleteAssignedStore: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should delete the unused test store with canDeleteAssignedStore set to false', async () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       const deleted = await pipelineService.delete({
-        id: store.id,
+        store,
         canDeleteAssignedStore: false,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('should delete the unused test store with canDeleteAssignedStore set to true', async () => {
+    it('should delete the test store with canDeleteAssignedStore set to true and when store is assigned to user', async () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       await assignStoreToUser({
@@ -410,20 +491,28 @@ describe('StorePipelineService (Integration)', () => {
       });
 
       const deleted = await pipelineService.delete({
-        id: store.id,
+        store,
         canDeleteAssignedStore: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
       });
 
       expect(deleted).toBe(true);
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw unprocessible entity exception when trying to delete a store assigned to users with canDeleteAssignedStore set to false', async () => {
+    it('should throw unprocessable entity exception when trying to delete a store assigned to users with canDeleteAssignedStore set to false', async () => {
       const store = await createTestStore({
         pipelineService,
         createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
       });
 
       await assignStoreToUser({
@@ -434,27 +523,17 @@ describe('StorePipelineService (Integration)', () => {
 
       await expect(
         pipelineService.delete({
-          id: store.id,
+          store,
           canDeleteAssignedStore: false,
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
           'Store cannot be deleted because it is currently assigned to one or more users. Please unassign the store from all users before attempting to delete it.',
-        ),
-      );
-    });
-
-    it('should throw UnprocessableEntityException if the target store does not exist', async () => {
-      const nonExistentId = randomUUID();
-
-      await expect(
-        pipelineService.delete({
-          id: nonExistentId,
-          canDeleteAssignedStore: false,
-        }),
-      ).rejects.toThrow(
-        new UnprocessableEntityException(
-          `Failed to validate store. The following store ids do not exist: ${nonExistentId}`,
         ),
       );
     });

@@ -1,6 +1,7 @@
 import { updatedResults } from '@/base/helper/update';
+import type { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
-import { UpdateService } from '@/storeServices/update.service'; // Adjust path
+import { UpdateService } from '@/storeServices/update.service';
 import {
   ConflictException,
   UnprocessableEntityException,
@@ -25,6 +26,14 @@ describe('UpdateService', () => {
   };
 
   const mockStoreId = randomUUID();
+  const mockStore: GetStoreDto = {
+    id: mockStoreId,
+    name: 'Old Store',
+    code: 'ST-01',
+    viewCode: 'V-01',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
   beforeEach(async () => {
     mockStoreRepository = {
@@ -62,26 +71,17 @@ describe('UpdateService', () => {
         code: 'ST-02',
         viewCode: 'V-02',
       };
-      const mockExistingStore = {
-        id: mockStoreId,
-        name: 'Old Store',
-        code: 'ST-01',
-        viewCode: 'V-01',
-      };
       const mockUpdateResult = { affected: 1 };
 
-      mockStoreRepository.findOneOrFail.mockResolvedValue(mockExistingStore);
-      mockStoreRepository.findOne.mockResolvedValue(null); // No conflicts found
+      mockStoreRepository.findOneOrFail.mockResolvedValue(mockStore);
+      mockStoreRepository.findOne.mockResolvedValue(null);
       mockStoreRepository.create.mockReturnValue(updateDto);
       mockStoreRepository.update.mockResolvedValue(mockUpdateResult);
       (updatedResults as jest.Mock).mockReturnValue(true);
 
-      const result = await service.update({ updateDto, id: mockStoreId });
+      const result = await service.update({ updateDto, store: mockStore });
 
       expect(result).toBe(true);
-      expect(mockStoreRepository.findOneOrFail).toHaveBeenCalledWith({
-        where: { id: mockStoreId },
-      });
       expect(mockStoreRepository.findOne).toHaveBeenCalledWith({
         where: {
           name: 'Updated Store',
@@ -100,19 +100,13 @@ describe('UpdateService', () => {
 
     it('should skip duplicate entity parsing if updated values match current state fields exactly', async () => {
       const updateDto = { name: 'Old Store' };
-      const mockExistingStore = {
-        id: mockStoreId,
-        name: 'Old Store',
-        code: 'ST-01',
-        viewCode: 'V-01',
-      };
 
-      mockStoreRepository.findOneOrFail.mockResolvedValue(mockExistingStore);
+      mockStoreRepository.findOneOrFail.mockResolvedValue(mockStore);
       mockStoreRepository.findOne.mockResolvedValue(null);
       mockStoreRepository.update.mockResolvedValue({ affected: 1 });
       (updatedResults as jest.Mock).mockReturnValue(true);
 
-      await service.update({ updateDto, id: mockStoreId });
+      await service.update({ updateDto, store: mockStore });
 
       expect(mockStoreRepository.findOne).toHaveBeenCalledWith({
         where: {
@@ -123,14 +117,8 @@ describe('UpdateService', () => {
 
     it('should throw ConflictException if unique constraints are broken by another record', async () => {
       const updateDto = { name: 'Old Store', code: 'ST-02', viewCode: 'V-01' };
-      const mockExistingStore = {
-        id: mockStoreId,
-        name: 'Old Store',
-        code: 'ST-01',
-        viewCode: 'V-01',
-      };
 
-      mockStoreRepository.findOneOrFail.mockResolvedValue(mockExistingStore);
+      mockStoreRepository.findOneOrFail.mockResolvedValue(mockStore);
       mockStoreRepository.findOne.mockResolvedValue({
         id: randomUUID(),
         name: 'Old Store',
@@ -139,20 +127,19 @@ describe('UpdateService', () => {
       });
 
       await expect(
-        service.update({ updateDto, id: mockStoreId }),
+        service.update({ updateDto, store: mockStore }),
       ).rejects.toThrow(ConflictException);
 
       expect(mockStoreRepository.update).not.toHaveBeenCalled();
     });
 
     it('should throw UnprocessableEntityException if updateDto lacks target payload parameters', async () => {
-      const updateDto = {}; // Empty payload structure layout validation constraint test
-      const mockExistingStore = { id: mockStoreId, name: 'Old Store' };
+      const updateDto = {};
 
-      mockStoreRepository.findOneOrFail.mockResolvedValue(mockExistingStore);
+      mockStoreRepository.findOneOrFail.mockResolvedValue(mockStore);
 
       await expect(
-        service.update({ updateDto, id: mockStoreId }),
+        service.update({ updateDto, store: mockStore }),
       ).rejects.toThrow(UnprocessableEntityException);
 
       expect(mockStoreRepository.findOne).not.toHaveBeenCalled();

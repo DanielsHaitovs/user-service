@@ -1,5 +1,6 @@
 import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
+import { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import { StoreHelperService } from '@/storeServices/helper.service';
 import { UserStores } from '@/userEntities/userStores.entity';
@@ -22,19 +23,19 @@ export class DeleteService {
   /** Deletes a store by its ID. If the store is assigned to users, it will either unassign the store from those users or throw an error based on the `canDeleteAssignedStore` flag.
    *
    * @param {Object} params - The parameters for deleting a store.
-   * @param {UUID} params.id - The ID of the store to be deleted.
+   * @param {GetStoreDto} params.store - The store object to be deleted.
    * @param {boolean} params.canDeleteAssignedStore - A flag indicating whether the store can be deleted even if it is assigned to users. If false, an error will be thrown if the store is assigned to any users.
    * @returns {Promise<boolean>} - A promise that resolves to true if the store was successfully deleted, or false otherwise.
    * @throws {UnprocessableEntityException} - Throws an exception if the store cannot be deleted due to being assigned to users and `canDeleteAssignedStore` is false.
    */
   async delete({
-    id,
+    store,
     canDeleteAssignedStore,
   }: {
-    id: UUID;
+    store: GetStoreDto;
     canDeleteAssignedStore: boolean;
   }): Promise<boolean> {
-    await this.helperService.checkIfManyExistOrThrow([id]);
+    const { id } = store;
 
     try {
       await this.unAssignFromUsers({ id, canDeleteAssignedStore });
@@ -57,12 +58,12 @@ export class DeleteService {
     }
   }
 
-  /** Unassigns a store from all users it is currently assigned to. If the store is assigned to users and `canDeleteAssignedStore` is false, an error will be thrown.
+  /** Unassign a store from all users it is currently assigned to. If the store is assigned to users and `canDeleteAssignedStore` is false, an error will be thrown.
    *
-   * @param {Object} params - The parameters for unassigning a store from users.
+   * @param {Object} params - The parameters for unassign a store from users.
    * @param {UUID} params.id - The ID of the store to be unassigned from users.
    * @param {boolean} params.canDeleteAssignedStore - A flag indicating whether the store can be unassigned from users. If false, an error will be thrown if the store is assigned to any users.
-   * @returns {Promise<void>} - A promise that resolves when the unassignment process is complete.
+   * @returns {Promise<void>} - A promise that resolves when the unassigned process is complete.
    * @throws {UnprocessableEntityException} - Throws an exception if the store cannot be unassigned from users due to being assigned to users and `canDeleteAssignedStore` is false.
    */
   private async unAssignFromUsers({

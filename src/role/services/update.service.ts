@@ -30,7 +30,7 @@ export class UpdateService {
         role,
       }))
     ) {
-      return true;
+      return false;
     }
 
     const updatedRole = this.roleRepository.create(updateDto);

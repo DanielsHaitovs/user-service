@@ -1,8 +1,10 @@
 import { CacheService } from '@/baseServices/cache.service';
+import { StoreAction } from '@/common/enum/action.enum';
 import {
   STORE_QUERY_ALIAS,
   USER_STORES_QUERY_ALIAS,
 } from '@/commonConst/store.const';
+import { ClientMetadata } from '@/commonDecorators/meta.decorator';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
   CreateStoreDto,
@@ -11,6 +13,7 @@ import {
   StoreResponseDto,
   UpdateStoreDto,
 } from '@/storeDto/store.dto';
+import { AuditProducerService } from '@/storeServices/audit.service';
 import { CreateService } from '@/storeServices/create.service';
 import { DeleteService } from '@/storeServices/delete.service';
 import { StoreService } from '@/storeServices/store.service';
@@ -27,6 +30,7 @@ export class StorePipelineService {
     private readonly updateService: UpdateService,
     private readonly deleteService: DeleteService,
     private readonly cacheService: CacheService,
+    private readonly auditService: AuditProducerService,
   ) {}
 
   async getMany(data: StoreQueryRequest): Promise<StoreListResponseDto> {
@@ -74,63 +78,104 @@ export class StorePipelineService {
   async create({
     createDto,
     createdById,
+    metadata,
   }: {
     createDto: CreateStoreDto;
     createdById: UUID;
+    metadata: ClientMetadata;
   }): Promise<StoreResponseDto> {
     const store = await this.createService.create({ createDto, createdById });
 
-    await this.cacheService.set<StoreResponseDto>({
-      key: this.cacheService.getIdKeyPrefixByAlias({
-        id: store.id,
-        alias: STORE_QUERY_ALIAS,
+    await Promise.all([
+      this.cacheService.set<StoreResponseDto>({
+        key: this.cacheService.getIdKeyPrefixByAlias({
+          id: store.id,
+          alias: STORE_QUERY_ALIAS,
+        }),
+        value: store,
       }),
-      value: store,
-    });
+      this.auditService.sendLog({
+        userId: createdById,
+        action: StoreAction.CREATE,
+        targetStoreId: store.id,
+        details: `Store created with name: ${store.name}`,
+        newState: store,
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+      }),
+    ]);
 
     return store;
   }
 
   async update({
     updateDto,
-    id,
+    store,
+    requestedByUserId,
+    metadata,
   }: {
     updateDto: UpdateStoreDto;
-    id: UUID;
+    store: GetStoreDto;
+    requestedByUserId: UUID;
+    metadata: ClientMetadata;
   }): Promise<boolean> {
-    const updated = await this.updateService.update({ updateDto, id });
+    const updated = await this.updateService.update({ updateDto, store });
 
     if (updated) {
-      await this.cacheService.invalidateById({
-        id,
-        alias: STORE_QUERY_ALIAS,
-      });
+      await Promise.all([
+        this.cacheService.invalidateById({
+          id: store.id,
+          alias: STORE_QUERY_ALIAS,
+        }),
+        this.auditService.sendLog({
+          userId: requestedByUserId,
+          action: StoreAction.UPDATE,
+          targetStoreId: store.id,
+          details: `Store created with name: ${store.name}`,
+          newState: store,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
+        }),
+      ]);
     }
 
     return updated;
   }
 
   async delete({
-    id,
+    store,
     canDeleteAssignedStore,
+    requestedByUserId,
+    metadata,
   }: {
-    id: UUID;
+    store: GetStoreDto;
     canDeleteAssignedStore: boolean;
+    requestedByUserId: UUID;
+    metadata: ClientMetadata;
   }): Promise<boolean> {
     const deleted = await this.deleteService.delete({
-      id,
+      store,
       canDeleteAssignedStore,
     });
 
     if (deleted) {
       await Promise.all([
         this.cacheService.invalidateById({
-          id,
+          id: store.id,
           alias: STORE_QUERY_ALIAS,
         }),
         this.cacheService.invalidateByTags({
           tag: { purge: true },
           alias: USER_STORES_QUERY_ALIAS,
+        }),
+        this.auditService.sendLog({
+          userId: requestedByUserId,
+          action: StoreAction.DELETE,
+          targetStoreId: store.id,
+          details: `Store ${store.id} was deleted.`,
+          oldState: store,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
         }),
       ]);
     }

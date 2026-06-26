@@ -25,10 +25,14 @@ export async function createTestRole({
   pipelineService,
   overrides = {},
   createdById,
+  cacheSetSpy,
+  auditLogSpy,
 }: {
   pipelineService: RolePipelineService;
   overrides?: Partial<CreateRoleDto>;
   createdById: UUID;
+  cacheSetSpy: jest.SpyInstance;
+  auditLogSpy: jest.SpyInstance;
 }): Promise<RoleResponseDto> {
   const generatedName = `${faker.person.jobArea()} ${faker.person.jobType()}`;
 
@@ -53,6 +57,12 @@ export async function createTestRole({
     expected: createDto,
   });
 
+  expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+  expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+  cacheSetSpy.mockClear();
+  auditLogSpy.mockClear();
+
   return newRole;
 }
 
@@ -60,41 +70,81 @@ export async function getTestRoleById({
   pipelineService,
   id,
   name,
+  cacheGetByIdSpy,
+  cacheSetSpy,
+  setCache,
 }: {
   pipelineService: RolePipelineService;
   id: UUID;
   name: string | undefined;
+  cacheGetByIdSpy: jest.SpyInstance;
+  cacheSetSpy: jest.SpyInstance;
+  setCache?: boolean;
 }): Promise<GetRoleDto> {
-  const role = await pipelineService.getByIdOrThrow(id);
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+
+  const response = await pipelineService.getByIdOrThrow(id);
 
   validateRoleResponseDto({
-    response: role,
+    response,
     expected: {
       id,
       name,
     } as Partial<GetRoleDto>,
   });
 
-  return role;
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+
+  if (setCache != undefined && setCache) {
+    expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+  } else {
+    expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+  }
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+
+  return response;
 }
 
 export async function getTestRoleWithPermissionsById({
   pipelineService,
   id,
   expected,
+  cacheGetByIdSpy,
+  cacheSetSpy,
+  setCache,
 }: {
   pipelineService: RolePipelineService;
   id: UUID;
   expected: Partial<RoleResponseDto>;
+  cacheGetByIdSpy: jest.SpyInstance;
+  cacheSetSpy: jest.SpyInstance;
+  setCache?: boolean;
 }): Promise<RoleResponseDto> {
-  const role = await pipelineService.getPermissionsOrThrow(id);
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+
+  const response = await pipelineService.getPermissionsOrThrow(id);
 
   validateRoleWithPermissionsResponseDto({
-    response: role,
+    response,
     expected,
   });
 
-  return role;
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+
+  if (setCache != undefined && setCache) {
+    expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+  } else {
+    expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+  }
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+
+  return response;
 }
 
 export async function createTestRoleWithPermissions({
@@ -102,16 +152,28 @@ export async function createTestRoleWithPermissions({
   role = {},
   permissions,
   createdById,
+  cacheSetSpy,
+  auditLogSpy,
+  cacheInvalidateByIdSpy,
 }: {
   pipelineService: RolePipelineService;
   role?: Partial<CreateRoleDto>;
   permissions?: GetPermissionDto[];
   createdById: UUID;
+  cacheSetSpy: jest.SpyInstance;
+  auditLogSpy: jest.SpyInstance;
+  cacheInvalidateByIdSpy: jest.SpyInstance;
 }): Promise<RoleResponseDto> {
+  cacheSetSpy.mockClear();
+  auditLogSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+
   const newRole = await createTestRole({
     pipelineService,
     overrides: role,
     createdById,
+    cacheSetSpy,
+    auditLogSpy,
   });
 
   if (permissions && permissions.length > 0) {
@@ -128,7 +190,15 @@ export async function createTestRoleWithPermissions({
     });
 
     newRole.permissions = permissions;
+
+    expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+    expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+    expect(auditLogSpy).toHaveBeenCalledTimes(1);
   }
+
+  cacheSetSpy.mockClear();
+  auditLogSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
 
   return newRole;
 }

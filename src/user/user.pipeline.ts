@@ -1,5 +1,8 @@
 import { CacheService } from '@/baseServices/cache.service';
+import { UserAction } from '@/common/enum/action.enum';
 import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
+import { ClientMetadata } from '@/commonDecorators/meta.decorator';
+import { AuditProducerService } from '@/user/services/audit.service';
 import { UserQueryRequest } from '@/userDto/query.dto';
 import {
   CreateUserDto,
@@ -27,6 +30,7 @@ export class UserPipelineService {
     private readonly updateService: UpdateService,
     private readonly deleteService: DeleteService,
     private readonly cacheService: CacheService,
+    private readonly audiService: AuditProducerService,
   ) {}
 
   async getMany(data: UserQueryRequest): Promise<UserListResponseDto> {
@@ -70,16 +74,31 @@ export class UserPipelineService {
   async create({
     createDto,
     createdById,
+    metadata,
   }: {
     createDto: CreateUserDto;
     createdById: UUID;
+    metadata: ClientMetadata;
   }): Promise<UserResponseDto> {
     const user = await this.createService.create({
       createDto,
       createdById,
     });
 
-    await this.setUserCache(user);
+    await Promise.all([
+      this.setUserCache(user),
+      this.audiService.sendLog({
+        createdAt: new Date(),
+        userId: createdById,
+        action: UserAction.CREATE,
+        details: `User ${user.email} created`,
+        targetUserId: user.id,
+        oldState: null,
+        newState: { [user.id]: user },
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+      }),
+    ]);
 
     return user;
   }

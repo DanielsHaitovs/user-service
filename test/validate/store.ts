@@ -44,8 +44,10 @@ export function validateStoreResponseDto({
   expected,
 }: {
   response: StoreResponseDto;
-  expected: Partial<StoreResponseDto>;
+  expected: Partial<StoreResponseDto> | undefined;
 }): void {
+  if (expected == undefined) return;
+
   expect(response).toBeDefined();
   expect(response.id).toBeDefined();
 

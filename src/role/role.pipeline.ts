@@ -1,11 +1,11 @@
 import { CacheService } from '@/baseServices/cache.service';
+import { RoleAction } from '@/common/enum/action.enum';
 import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
 import {
   ROLE_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/commonConst/role.const';
 import { ClientMetadata } from '@/commonDecorators/meta.decorator';
-import { RoleAction } from '@/role/action.enum';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {
   CreateRoleDto,
@@ -130,17 +130,16 @@ export class RolePipelineService {
         }),
         value: { ...role, permissions },
       }),
+      this.auditService.sendLog({
+        userId: createdById,
+        action: RoleAction.CREATE,
+        targetRoleId: role.id,
+        details: `Role created with name: ${role.name} and permissions: ${permissions.map((permission) => permission.name).join(', ')}`,
+        newState: { ...role, permissions },
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+      }),
     ]);
-
-    await this.auditService.sendLog({
-      userId: createdById,
-      action: RoleAction.CREATE,
-      targetRoleId: role.id,
-      details: `Role created with name: ${role.name} and permissions: ${permissions.map((permission) => permission.name).join(', ')}`,
-      newState: { ...role, permissions },
-      ipAddress: metadata.ipAddress,
-      userAgent: metadata.userAgent,
-    });
 
     return { ...role, permissions };
   }
@@ -180,21 +179,22 @@ export class RolePipelineService {
           role.id,
         );
 
-        await this.cacheService.set<RoleResponseDto>({
-          key: cacheKey,
-          value: changedRole,
-        });
-
-        await this.auditService.sendLog({
-          userId: requestedByUserId,
-          action: RoleAction.ASSIGN,
-          targetRoleId: role.id,
-          details: `Permissions assigned to role with name: ${role.name}. Permissions: ${permissionCodes.join(', ')}`,
-          oldState: role,
-          newState: changedRole,
-          ipAddress: metadata.ipAddress,
-          userAgent: metadata.userAgent,
-        });
+        await Promise.all([
+          this.cacheService.set<RoleResponseDto>({
+            key: cacheKey,
+            value: changedRole,
+          }),
+          this.auditService.sendLog({
+            userId: requestedByUserId,
+            action: RoleAction.ASSIGN,
+            targetRoleId: role.id,
+            details: `Permissions assigned to role with name: ${role.name}. Permissions: ${permissionCodes.join(', ')}`,
+            oldState: role,
+            newState: changedRole,
+            ipAddress: metadata.ipAddress,
+            userAgent: metadata.userAgent,
+          }),
+        ]);
 
         return role;
       },
@@ -241,21 +241,22 @@ export class RolePipelineService {
           role.id,
         );
 
-        await this.cacheService.set<RoleResponseDto>({
-          key: cacheKey,
-          value: changedRole,
-        });
-
-        await this.auditService.sendLog({
-          userId: requestedByUserId,
-          action: RoleAction.UNASSIGN,
-          targetRoleId: role.id,
-          details: `Permissions unassigned from role with name: ${role.name}. Permissions: ${permissionCodes.join(', ')}`,
-          oldState: role,
-          newState: changedRole,
-          ipAddress: metadata.ipAddress,
-          userAgent: metadata.userAgent,
-        });
+        await Promise.all([
+          this.cacheService.set<RoleResponseDto>({
+            key: cacheKey,
+            value: changedRole,
+          }),
+          this.auditService.sendLog({
+            userId: requestedByUserId,
+            action: RoleAction.UNASSIGN,
+            targetRoleId: role.id,
+            details: `Permissions unassigned from role with name: ${role.name}. Permissions: ${permissionCodes.join(', ')}`,
+            oldState: role,
+            newState: changedRole,
+            ipAddress: metadata.ipAddress,
+            userAgent: metadata.userAgent,
+          }),
+        ]);
 
         return role;
       },

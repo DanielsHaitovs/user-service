@@ -7,9 +7,14 @@ import {
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
 } from '@/commonConst/store.const';
+import {
+  ClientMetadata,
+  GetClientMetadata,
+} from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
+import { FetchStorePipe } from '@/commonPipes/store.pipe';
 import { StorePipelineService } from '@/store/store.pipeline';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
@@ -119,10 +124,12 @@ export class StoreController {
     @Body()
     createDto: CreateStoreDto,
     @CurrentUserId() createdById: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<StoreResponseDto> {
     return await this.pipelineService.create({
       createDto,
       createdById,
+      metadata,
     });
   }
 
@@ -299,7 +306,7 @@ export class StoreController {
     return await this.pipelineService.getMany(query);
   }
 
-  @Patch(':id/name')
+  @Patch(':id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions({
@@ -355,10 +362,17 @@ export class StoreController {
     type: Boolean,
   })
   async update(
-    @Param('id', ParseUUIDPipe) id: UUID,
+    @Param('id', FetchStorePipe) store: GetStoreDto,
     @Body() updateDto: UpdateStoreDto,
+    @GetClientMetadata() metadata: ClientMetadata,
+    @CurrentUserId() requestedByUserId: UUID,
   ): Promise<boolean> {
-    return await this.pipelineService.update({ updateDto, id });
+    return await this.pipelineService.update({
+      updateDto,
+      store,
+      requestedByUserId,
+      metadata,
+    });
   }
 
   @Delete(':id')
@@ -387,17 +401,23 @@ export class StoreController {
     description: 'Store with the specified ID was not found',
   })
   async delete(
-    @Param('id', ParseUUIDPipe) id: UUID,
+    @Param('id', FetchStorePipe) store: GetStoreDto,
     @CurrentUser() requestedByUser: JwtPayload,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
-    const { canReadUserStore, canUnassignUserFromStore } =
-      extractAccess(requestedByUser);
+    const {
+      canReadUserStore,
+      canUnassignUserFromStore,
+      id: requestedByUserId,
+    } = extractAccess(requestedByUser);
 
     const canDeleteAssignedStore = canReadUserStore && canUnassignUserFromStore;
 
     await this.pipelineService.delete({
-      id,
+      store,
       canDeleteAssignedStore,
+      requestedByUserId,
+      metadata,
     });
   }
 }

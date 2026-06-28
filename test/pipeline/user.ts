@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-misused-spread */
 import { COUNTRIES } from '@/commonConst/countries.const';
-import { User } from '@/userEntities/user.entity';
+import { validateUserResponseDto } from '@/test/validate/user';
+import type { UserPipelineService } from '@/user/user.pipeline';
+import type { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
 import { faker } from '@faker-js/faker';
 
-import type { DataSource } from 'typeorm';
+import type { UUID } from 'crypto';
 
 /**
  * Test Utility Factory to seed a Role directly into the test database context.
@@ -12,10 +15,25 @@ import type { DataSource } from 'typeorm';
  * @param overrides - Partial properties of the Role entity to explicitly test
  * @returns The fully committed database Role entity
  */
-export async function createTestUser(dataSource: DataSource): Promise<User> {
-  const userRepository = dataSource.getRepository(User);
-
-  const defaultUserData: Partial<User> = {
+export async function createTestUser({
+  pipelineService,
+  overrides = {},
+  createdById,
+  cacheSetSpy,
+  auditLogSpy,
+}: {
+  pipelineService: UserPipelineService;
+  overrides?: Partial<CreateUserDto>;
+  createdById: UUID;
+  cacheSetSpy: jest.SpyInstance;
+  auditLogSpy: jest.SpyInstance;
+}): Promise<UserResponseDto> {
+  const defaultUserData: CreateUserDto = {
+    isActive: true,
+    roleIds: [],
+    storeIds: [],
+    phone: faker.phone.number(),
+    dateOfBirth: faker.date.birthdate({ min: 18, max: 65, mode: 'age' }),
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
     email: faker.internet.email(),
@@ -24,7 +42,30 @@ export async function createTestUser(dataSource: DataSource): Promise<User> {
     country: COUNTRIES.US,
   };
 
-  const finalUserData = userRepository.create(defaultUserData);
+  const createDto = {
+    ...defaultUserData,
+    ...overrides,
+  };
 
-  return await userRepository.save(finalUserData);
+  const finalUserData = await pipelineService.create({
+    createDto,
+    createdById,
+    metadata: {
+      ipAddress: faker.internet.ip(),
+      userAgent: faker.internet.userAgent(),
+    },
+  });
+
+  validateUserResponseDto({
+    response: finalUserData,
+    expected: createDto,
+  });
+
+  expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+  expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+  cacheSetSpy.mockClear();
+  auditLogSpy.mockClear();
+
+  return finalUserData;
 }

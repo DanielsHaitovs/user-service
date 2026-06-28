@@ -82,7 +82,8 @@ export class DeleteService {
 
       await this.roleService.unassignRolesFromUser({
         userId: id,
-        roleIds: userRoles.map((role) => role.id),
+        data: { roleIds: userRoles.map((role) => role.id) },
+        assignedRoles: userRoles,
       });
     }
   }
@@ -105,7 +106,8 @@ export class DeleteService {
 
       await this.storeService.unassignStoresFromUser({
         userId: id,
-        storeIds: userStores.map((store) => store.id),
+        data: { storeIds: userStores.map((store) => store.id) },
+        assignedStores: userStores,
       });
     }
   }

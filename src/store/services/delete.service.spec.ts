@@ -1,5 +1,6 @@
 import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
+import type { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import { DeleteService } from '@/storeServices/delete.service';
 import { StoreHelperService } from '@/storeServices/helper.service';
@@ -32,6 +33,14 @@ describe('DeleteService', () => {
   };
 
   const mockStoreId = randomUUID();
+  const mockStore: GetStoreDto = {
+    id: mockStoreId,
+    name: 'Mock Store',
+    code: 'MS001',
+    viewCode: 'MSV001',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
   beforeEach(async () => {
     mockStoreRepository = {
@@ -86,14 +95,11 @@ describe('DeleteService', () => {
       (deletedResults as jest.Mock).mockReturnValue(true);
 
       const result = await service.delete({
-        id: mockStoreId,
+        store: mockStore,
         canDeleteAssignedStore: false,
       });
 
       expect(result).toBe(true);
-      expect(
-        mockStoreHelperService.checkIfManyExistOrThrow,
-      ).toHaveBeenCalledWith([mockStoreId]);
       expect(mockUserStoreRepository.find).toHaveBeenCalledWith({
         where: { store: { id: mockStoreId } },
         take: 1,
@@ -114,7 +120,7 @@ describe('DeleteService', () => {
       (deletedResults as jest.Mock).mockReturnValue(true);
 
       const result = await service.delete({
-        id: mockStoreId,
+        store: mockStore,
         canDeleteAssignedStore: true,
       });
 
@@ -132,7 +138,7 @@ describe('DeleteService', () => {
       mockUserStoreRepository.find.mockResolvedValue([{ id: 'assignment-id' }]);
 
       await expect(
-        service.delete({ id: mockStoreId, canDeleteAssignedStore: false }),
+        service.delete({ store: mockStore, canDeleteAssignedStore: false }),
       ).rejects.toThrow(UnprocessableEntityException);
 
       expect(mockUserStoreRepository.delete).not.toHaveBeenCalled();
@@ -156,7 +162,7 @@ describe('DeleteService', () => {
       mockStoreRepository.delete.mockRejectedValue(dbError);
 
       await expect(
-        service.delete({ id: mockStoreId, canDeleteAssignedStore: false }),
+        service.delete({ store: mockStore, canDeleteAssignedStore: false }),
       ).rejects.toThrow(UnprocessableEntityException);
     });
 
@@ -170,7 +176,7 @@ describe('DeleteService', () => {
       );
 
       await expect(
-        service.delete({ id: mockStoreId, canDeleteAssignedStore: false }),
+        service.delete({ store: mockStore, canDeleteAssignedStore: false }),
       ).rejects.toThrow('Fatal Hardware Failure');
     });
   });

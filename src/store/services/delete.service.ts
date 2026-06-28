@@ -2,7 +2,6 @@ import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
-import { StoreHelperService } from '@/storeServices/helper.service';
 import { UserStores } from '@/userEntities/userStores.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,7 +16,6 @@ export class DeleteService {
     private readonly storeRepository: Repository<Store>,
     @InjectRepository(UserStores)
     private readonly userStoreRepository: Repository<UserStores>,
-    private readonly helperService: StoreHelperService,
   ) {}
 
   /** Deletes a store by its ID. If the store is assigned to users, it will either unassign the store from those users or throw an error based on the `canDeleteAssignedStore` flag.

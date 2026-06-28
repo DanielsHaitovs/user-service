@@ -9,7 +9,7 @@ export async function createTestStore({
   overrides = {},
 }: {
   dataSource: DataSource;
-  overrides: Partial<Store>;
+  overrides?: Partial<Store>;
 }): Promise<Store> {
   const storeRepository = dataSource.getRepository(Store);
   const generatedName = `${faker.word.adjective()} ${faker.word.noun()}`;

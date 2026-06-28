@@ -1,6 +1,8 @@
 import { UserAction, UserScope } from '@/common/enum/action.enum';
 import { USER_AUDIT_QUEUE } from '@/commonConst/queue.const';
-import { GetUserDto } from '@/userDto/user.dto';
+import { GetRelatedRoleDto } from '@/roleDto/role.dto';
+import { GetRelatedStoreDto } from '@/storeDto/store.dto';
+import { UserResponseDto } from '@/userDto/user.dto';
 import { getTraceId } from '@/utils/trace.util';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
@@ -14,8 +16,12 @@ export interface AuditLogPayload {
   action: UserAction;
   details: string;
   targetUserId: UUID;
-  oldState: Record<string, GetUserDto> | null;
-  newState: Record<string, GetUserDto> | null;
+  oldState: Partial<
+    UserResponseDto | GetRelatedRoleDto[] | GetRelatedStoreDto[]
+  > | null;
+  newState: Partial<
+    UserResponseDto | GetRelatedRoleDto[] | GetRelatedStoreDto[]
+  > | null;
   ipAddress?: string;
   userAgent?: string;
 }

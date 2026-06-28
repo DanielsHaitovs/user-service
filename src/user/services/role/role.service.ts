@@ -9,7 +9,6 @@ import {
   UserRolesQueryRequest,
 } from '@/userDto/roles.dto';
 import { UserRoles } from '@/userEntities/userRoles.entity';
-import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -21,7 +20,6 @@ export class UserRolesService {
   constructor(
     @InjectRepository(UserRoles)
     private readonly roleRepository: Repository<UserRoles>,
-    private readonly userHelperService: UserHelperService,
     private readonly roleHelperService: RoleHelperService,
     private readonly queryService: EntityQueryService,
   ) {}
@@ -37,6 +35,7 @@ export class UserRolesService {
   ): Promise<UserRolesListResponseDto> {
     const {
       userId,
+      names,
       page,
       limit,
       sortField,
@@ -80,6 +79,15 @@ export class UserRolesService {
         field: dateFilterParam,
         condition: 'AND',
         date: dateTo,
+      });
+    }
+
+    if (names != undefined && names.length > 0) {
+      this.queryService.whereIn<UserRoles>({
+        query,
+        field: 'role.name',
+        condition: 'AND',
+        values: names,
       });
     }
 
@@ -143,19 +151,19 @@ export class UserRolesService {
    * @throws An EntityNotFoundError if the user or the assigning user does not exist.
    */
   async assignRolesToUser({
+    userId,
+    assignedRoles,
     data,
     assignedById,
   }: {
+    userId: UUID;
+    assignedRoles: GetRelatedRoleDto[];
     data: AssignRolesToUserDto;
     assignedById: UUID;
   }): Promise<void> {
-    const { userId, roleIds } = data;
+    await this.validatePayload({ roleIds: data.roleIds });
 
-    await this.validatePayload({ userId, roleIds });
-
-    const assignedRoles = await this.getAssignedRoles(userId);
-
-    const missingRoleIds = roleIds.filter(
+    const missingRoleIds = data.roleIds.filter(
       (roleId) =>
         !assignedRoles.some((assignedRole) => assignedRole.id === roleId),
     );
@@ -183,18 +191,21 @@ export class UserRolesService {
    */
   async unassignRolesFromUser({
     userId,
-    roleIds,
-  }: UnassignRolesFromUserDto): Promise<void> {
-    await this.validatePayload({ userId, roleIds });
-
-    const assignedRoles = await this.getAssignedRoles(userId);
+    assignedRoles,
+    data,
+  }: {
+    userId: UUID;
+    assignedRoles: GetRelatedRoleDto[];
+    data: UnassignRolesFromUserDto;
+  }): Promise<void> {
+    await this.validatePayload({ roleIds: data.roleIds });
 
     if (assignedRoles.length === 0) {
       return;
     }
 
     const rolesToUnassign = assignedRoles.filter((assignedRole) =>
-      roleIds.includes(assignedRole.id),
+      data.roleIds.includes(assignedRole.id),
     );
 
     if (rolesToUnassign.length === 0) {
@@ -243,15 +254,10 @@ export class UserRolesService {
    * @throws An UnprocessableEntityException if the user does not exist or if any of the specified roles do not exist.
    */
   private async validatePayload({
-    userId,
     roleIds,
   }: {
-    userId: UUID;
     roleIds?: UUID[] | undefined;
   }): Promise<void> {
-    await Promise.all([
-      this.userHelperService.checkIfExists({ id: userId }),
-      this.roleHelperService.checkIfManyExistOrThrow(roleIds),
-    ]);
+    await this.roleHelperService.checkIfManyExistOrThrow(roleIds);
   }
 }

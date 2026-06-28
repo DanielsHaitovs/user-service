@@ -5,6 +5,7 @@ import {
 import {
   EXAMPLE_STORE_CODE,
   EXAMPLE_STORE_ID,
+  EXAMPLE_STORE_NAME,
   EXAMPLE_STORE_VIEW_CODE,
 } from '@/commonConst/store.const';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
@@ -70,16 +71,6 @@ export class GetUserStoreDto {
 
 export class AssignStoresToUserDto {
   @ApiProperty({
-    title: 'User ID',
-    description: 'User unique identifier - must be a valid UUID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    type: String,
-    format: 'uuid',
-  })
-  @IsUUID()
-  userId: UUID;
-
-  @ApiProperty({
     type: String,
     format: 'uuid',
     isArray: true,
@@ -94,8 +85,7 @@ export class AssignStoresToUserDto {
   @IsOptional()
   storeIds: UUID[];
 
-  constructor(userId: UUID, storeIds: UUID[]) {
-    this.userId = userId;
+  constructor(storeIds: UUID[]) {
     this.storeIds = storeIds;
   }
 }
@@ -115,6 +105,20 @@ export class UserStoresQueryRequest extends QueryRequestDto {
   @ApiProperty({
     type: String,
     isArray: true,
+    title: 'Store Names',
+    description:
+      'Store names to filter the user stores - must be valid name of existing stores',
+    example: [EXAMPLE_STORE_NAME],
+    required: false,
+  })
+  @ToArray()
+  @IsString({ each: true })
+  @IsOptional()
+  names?: string[];
+
+  @ApiProperty({
+    type: String,
+    isArray: true,
     title: 'Store Codes',
     description:
       'Store codes to filter the user stores - must be valid codes of existing stores',
@@ -124,7 +128,7 @@ export class UserStoresQueryRequest extends QueryRequestDto {
   @ToArray()
   @IsString({ each: true })
   @IsOptional()
-  codes: string[];
+  codes?: string[];
 
   @ApiProperty({
     type: String,
@@ -138,12 +142,13 @@ export class UserStoresQueryRequest extends QueryRequestDto {
   @ToArray()
   @IsString({ each: true })
   @IsOptional()
-  viewCodes: string[];
+  viewCodes?: string[];
 
   constructor(
     userId: UUID,
     page: number,
     limit: number,
+    names?: string[],
     codes?: string[],
     viewCodes?: string[],
     sortField?: string,
@@ -154,6 +159,7 @@ export class UserStoresQueryRequest extends QueryRequestDto {
   ) {
     super(sortField, sortOrder, page, limit, dateFrom, dateTo, dateFilterParam);
     this.userId = userId;
+    this.names = names ?? [];
     this.codes = codes ?? [];
     this.viewCodes = viewCodes ?? [];
   }

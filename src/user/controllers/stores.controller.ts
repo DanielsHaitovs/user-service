@@ -1,3 +1,12 @@
+import {
+  FetchUserStoresPipe,
+  UserWithStores,
+} from '@/common/pipes/userStores.pipe';
+import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import {
+  ClientMetadata,
+  GetClientMetadata,
+} from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
@@ -20,6 +29,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Query,
   Version,
@@ -30,6 +40,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -55,11 +66,18 @@ export class UserStoresController {
     protected readonly userStorePipelineService: UserStorePipelineService,
   ) {}
 
-  @Post()
+  @Post('user/:userId')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @Permissions({
     required: ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
+  })
+  @ApiParam({
+    name: 'userId',
+    type: String,
+    format: 'uuid',
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
   })
   @ApiOperation({
     summary: 'Assign stores to a user',
@@ -87,29 +105,40 @@ export class UserStoresController {
     description: 'Stores successfully assigned to the user',
   })
   async assign(
+    @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() assignDto: AssignStoresToUserDto,
     @CurrentUserId() assignedById: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
     await this.userStorePipelineService.assignStoresToUser({
       data: assignDto,
       assignedById,
+      userStores,
+      metadata,
     });
   }
 
-  @Delete()
+  @Delete('user/:userId')
   @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions({
     required: UNASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
+  @ApiParam({
+    name: 'userId',
+    type: String,
+    format: 'uuid',
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+  })
   @ApiOperation({
     summary: 'Unassign stores from a user',
     description:
-      'Unassigns stores from a user with the provided store IDs. The user and stores must exist.',
+      'Unassign stores from a user with the provided store IDs. The user and stores must exist.',
   })
   @ApiBadRequestResponse({
     description:
-      'Bad Request - Invalid input data for unassigning stores from a user',
+      'Bad Request - Invalid input data for unassigned stores from a user',
     examples: {
       'Invalid userId format': {
         summary: 'Invalid userId format',
@@ -128,9 +157,17 @@ export class UserStoresController {
     description: 'Stores successfully unassigned from the user',
   })
   async unassign(
+    @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() unassignDto: UnassignStoresFromUserDto,
+    @CurrentUserId() requestedById: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
-    await this.userStorePipelineService.unassignStoresFromUser(unassignDto);
+    await this.userStorePipelineService.unassignStoresFromUser({
+      data: unassignDto,
+      requestedById,
+      userStores,
+      metadata,
+    });
   }
 
   @Get()

@@ -42,7 +42,7 @@ export class UpdateService {
       );
     }
 
-    if (data.email) {
+    if (data.email != undefined) {
       await this.userHelperService.isEmailUniqueOrThrow({
         email: data.email,
         id,

@@ -9,7 +9,6 @@ import {
   UserStoresQueryRequest,
 } from '@/userDto/stores.dto';
 import { UserStores } from '@/userEntities/userStores.entity';
-import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -21,7 +20,6 @@ export class UserStoresService {
   constructor(
     @InjectRepository(UserStores)
     private readonly storeRepository: Repository<UserStores>,
-    private readonly userHelperService: UserHelperService,
     private readonly storeHelperService: StoreHelperService,
     private readonly queryService: EntityQueryService,
   ) {}
@@ -141,34 +139,42 @@ export class UserStoresService {
    * @throws An EntityNotFoundError if the user or the assigning user does not exist.
    */
   async assignStoresToUser({
+    userId,
     data,
+    assignedStores,
     assignedById,
   }: {
+    userId: UUID;
+    assignedStores: GetRelatedStoreDto[];
     data: AssignStoresToUserDto;
     assignedById: UUID;
-  }): Promise<void> {
-    const { userId, storeIds } = data;
+  }): Promise<boolean> {
+    const { storeIds: incomingStoreIds } = data;
 
-    await this.validatePayload({ userId, storeIds });
+    await this.validatePayload({ storeIds: incomingStoreIds });
 
-    const assignedStores = await this.getAssignedStores(userId);
+    const alreadyAssignedIds = new Set(assignedStores.map((store) => store.id));
 
-    const missingStoreIds = storeIds.filter(
-      (storeId) =>
-        !assignedStores.some((assignedStore) => assignedStore.id === storeId),
+    const newStoreIds = incomingStoreIds.filter(
+      (id) => !alreadyAssignedIds.has(id),
     );
 
-    if (missingStoreIds.length === 0) {
-      return;
+    if (incomingStoreIds.length > 0 && newStoreIds.length === 0) {
+      return false;
     }
 
-    const userStores = storeIds.map((storeId) => ({
+    if (newStoreIds.length === 0) {
+      return false;
+    }
+
+    const userStores = newStoreIds.map((storeId) => ({
       user: { id: userId },
       store: { id: storeId },
       assignedBy: { id: assignedById },
     }));
 
     await this.storeRepository.save(userStores);
+    return true;
   }
 
   /**
@@ -181,28 +187,40 @@ export class UserStoresService {
    */
   async unassignStoresFromUser({
     userId,
-    storeIds,
-  }: UnassignStoresFromUserDto): Promise<void> {
-    await this.validatePayload({ userId, storeIds });
-
-    const assignedStores = await this.getAssignedStores(userId);
-
+    data,
+    assignedStores,
+  }: {
+    userId: UUID;
+    assignedStores: GetRelatedStoreDto[];
+    data: UnassignStoresFromUserDto;
+  }): Promise<boolean> {
     if (assignedStores.length === 0) {
-      return;
+      return false;
     }
 
-    const storesToUnassign = assignedStores.filter((assignedStore) =>
-      storeIds.some((storeId) => assignedStore.id === storeId),
+    const { storeIds: storeIdsToRevoke } = data;
+
+    await this.validatePayload({ storeIds: storeIdsToRevoke });
+
+    const alreadyAssignedIds = new Set(assignedStores.map((store) => store.id));
+
+    const storesToUnassign = storeIdsToRevoke.filter((id) =>
+      alreadyAssignedIds.has(id),
     );
 
-    if (storesToUnassign.length === 0) {
-      return;
+    if (
+      (storeIdsToRevoke.length > 0 && storesToUnassign.length === 0) ||
+      storesToUnassign.length === 0
+    ) {
+      return false;
     }
 
     await this.storeRepository.delete({
       user: { id: userId },
-      store: { id: In(storesToUnassign.flatMap((store) => store.id)) },
+      store: { id: In(storesToUnassign.flatMap((store) => store)) },
     });
+
+    return true;
   }
 
   /**
@@ -239,15 +257,10 @@ export class UserStoresService {
   }
 
   private async validatePayload({
-    userId,
     storeIds,
   }: {
-    userId: UUID;
     storeIds?: UUID[] | undefined;
   }): Promise<void> {
-    await Promise.all([
-      this.storeHelperService.checkIfManyExistOrThrow(storeIds),
-      this.userHelperService.checkIfExists({ id: userId }),
-    ]);
+    await this.storeHelperService.checkIfManyExistOrThrow(storeIds);
   }
 }

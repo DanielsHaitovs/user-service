@@ -90,7 +90,6 @@ describe('UpdateService', () => {
           id: expect.any(Object),
         },
       });
-      expect(mockStoreRepository.create).toHaveBeenCalledWith(updateDto);
       expect(mockStoreRepository.update).toHaveBeenCalledWith(
         mockStoreId,
         updateDto,

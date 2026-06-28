@@ -12,6 +12,7 @@ import {
   ApiProperty,
   ApiPropertyOptional,
   OmitType,
+  PartialType,
   PickType,
 } from '@nestjs/swagger';
 
@@ -495,15 +496,17 @@ export class UserResponseDto extends GetUserDto {
  * Inherits all fields from CreateUserDto as optional, plus additional system fields
  * that may be updated by administrators or system processes.
  */
-export class UpdateUserDto extends PickType(GetUserDto, [
-  'country',
-  'firstName',
-  'lastName',
-  'email',
-  'phone',
-  'dateOfBirth',
-  'isActive',
-] as const) {
+export class UpdateUserDto extends PartialType(
+  PickType(GetUserDto, [
+    'country',
+    'firstName',
+    'lastName',
+    'email',
+    'phone',
+    'dateOfBirth',
+    'isActive',
+  ] as const),
+) {
   constructor(
     country: COUNTRIES,
     firstName: string,

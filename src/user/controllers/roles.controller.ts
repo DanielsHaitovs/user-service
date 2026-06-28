@@ -1,4 +1,12 @@
+import {
+  FetchUserRolesPipe,
+  UserWithRoles,
+} from '@/common/pipes/userRoles.pipe';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import {
+  ClientMetadata,
+  GetClientMetadata,
+} from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
@@ -60,7 +68,7 @@ export class UserRolesController {
     protected readonly userRolePipelineService: UserRolePipelineService,
   ) {}
 
-  @Post()
+  @Post('user/:userId')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @Permissions({
@@ -92,17 +100,28 @@ export class UserRolesController {
   @ApiNotFoundResponse({
     description: 'User or one or more roles not found',
   })
+  @ApiParam({
+    name: 'userId',
+    type: String,
+    format: 'uuid',
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+  })
   async assignRole(
+    @Param('id', FetchUserRolesPipe) userRoles: UserWithRoles,
     @Body() assignDto: AssignRolesToUserDto,
     @CurrentUserId() assignedById: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
     await this.userRolePipelineService.assignRolesToUser({
       data: assignDto,
       assignedById,
+      userRoles,
+      metadata,
     });
   }
 
-  @Delete()
+  @Delete('user/:userId')
   @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions({
@@ -134,8 +153,25 @@ export class UserRolesController {
   @ApiNotFoundResponse({
     description: 'User or one or more roles not found',
   })
-  async remove(@Body() unassignDto: UnassignRolesFromUserDto): Promise<void> {
-    await this.userRolePipelineService.unassignRolesFromUser(unassignDto);
+  @ApiParam({
+    name: 'userId',
+    type: String,
+    format: 'uuid',
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+  })
+  async remove(
+    @Param('id', FetchUserRolesPipe) userRoles: UserWithRoles,
+    @Body() unassignDto: UnassignRolesFromUserDto,
+    @CurrentUserId() requestedById: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
+  ): Promise<void> {
+    await this.userRolePipelineService.unassignRolesFromUser({
+      data: unassignDto,
+      requestedById,
+      userRoles,
+      metadata,
+    });
   }
 
   @Get()

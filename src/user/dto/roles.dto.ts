@@ -2,7 +2,7 @@ import {
   PaginatedResponseDto,
   QueryRequestDto,
 } from '@/baseDto/pagination.dto';
-import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
+import { EXAMPLE_ROLE_ID, EXAMPLE_ROLE_NAME } from '@/commonConst/role.const';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
@@ -13,6 +13,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsOptional,
+  IsString,
   IsUUID,
   ValidateNested,
 } from 'class-validator';
@@ -71,16 +72,6 @@ export class GetUserRoleDto {
 
 export class AssignRolesToUserDto {
   @ApiProperty({
-    title: 'User ID',
-    description: 'User unique identifier - must be a valid UUID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    type: String,
-    format: 'uuid',
-  })
-  @IsUUID()
-  userId: UUID;
-
-  @ApiProperty({
     type: String,
     format: 'uuid',
     isArray: true,
@@ -96,8 +87,7 @@ export class AssignRolesToUserDto {
   @ArrayNotEmpty({ message: 'roleIds cannot be an empty array if provided' })
   roleIds: UUID[];
 
-  constructor(userId: UUID, roleIds: UUID[]) {
-    this.userId = userId;
+  constructor(roleIds: UUID[]) {
     this.roleIds = roleIds;
   }
 }
@@ -114,10 +104,23 @@ export class UserRolesQueryRequest extends QueryRequestDto {
   @IsUUID()
   userId: UUID;
 
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    title: 'Role names',
+    example: [EXAMPLE_ROLE_NAME],
+    required: false,
+  })
+  @ToArray()
+  @IsString({ each: true })
+  @IsOptional()
+  names?: string[];
+
   constructor(
     userId: UUID,
     page: number,
     limit: number,
+    names?: string[],
     sortField?: string,
     sortOrder?: 'ASC' | 'DESC',
     dateFrom?: Date,
@@ -126,6 +129,7 @@ export class UserRolesQueryRequest extends QueryRequestDto {
   ) {
     super(sortField, sortOrder, page, limit, dateFrom, dateTo, dateFilterParam);
     this.userId = userId;
+    this.names = names ?? [];
   }
 }
 

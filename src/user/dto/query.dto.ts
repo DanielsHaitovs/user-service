@@ -1,5 +1,5 @@
 import { QueryRequestDto } from '@/baseDto/pagination.dto';
-import { EXAMPLE_STORE_ID } from '@/commonConst/store.const';
+import { EXAMPLE_USER_ID } from '@/common/const/user.const';
 import { ToArray } from '@/commonDecorators/array.decorator';
 import { ToBoolean } from '@/commonDecorators/boolean.decorator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -14,7 +14,7 @@ export class UserQueryRequest extends QueryRequestDto {
     isArray: true,
     title: 'User IDs',
     description: 'User IDs - must be valid UUIDs of existing users',
-    example: [EXAMPLE_STORE_ID],
+    example: [EXAMPLE_USER_ID],
     required: true,
   })
   @ToArray()

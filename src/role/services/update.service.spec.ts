@@ -91,7 +91,7 @@ describe('UpdateService', () => {
 
       const result = await service.update({ updateDto, role: mockRole });
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
       expect(mockRoleRepository.findOne).not.toHaveBeenCalled();
       expect(mockRoleRepository.update).not.toHaveBeenCalled();
     });

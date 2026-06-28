@@ -1,0 +1,106 @@
+import { CacheService } from '@/baseServices/cache.service';
+import { EntityQueryService } from '@/baseServices/query.service';
+import { USER_STORES_QUERY_ALIAS } from '@/commonConst/store.const';
+import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
+import { GetRelatedStoreDto } from '@/storeDto/store.dto';
+import { GetUserDto } from '@/user/dto/user.dto';
+import { User } from '@/userEntities/user.entity';
+import { UserStores } from '@/userEntities/userStores.entity';
+import { Injectable, type PipeTransform } from '@nestjs/common';
+
+import { UUID } from 'crypto';
+
+export interface UserWithStores {
+  user: GetUserDto;
+  stores: GetRelatedStoreDto[];
+}
+
+@Injectable()
+export class FetchUserStoresPipe
+  implements PipeTransform<string, Promise<UserWithStores>>
+{
+  constructor(
+    private readonly queryService: EntityQueryService,
+    private readonly cacheService: CacheService,
+  ) {}
+
+  async transform(value: UUID): Promise<UserWithStores> {
+    const [user, stores] = await Promise.all([
+      this.getUser(value),
+      this.getUserStores(value),
+    ]);
+
+    return { user, stores };
+  }
+
+  private getUser(userId: UUID): Promise<GetUserDto> {
+    return this.cacheService.coalesce<GetUserDto>({
+      key: this.cacheService.getIdKeyPrefixByAlias({
+        id: userId,
+        alias: USER_QUERY_ALIAS,
+      }),
+      operation: async () => {
+        const query = this.queryService.initQuery<User>({
+          entity: User,
+          alias: USER_QUERY_ALIAS,
+        });
+
+        const user = await query
+          .where(`${USER_QUERY_ALIAS}.id = :userId`, { userId })
+          .getOneOrFail();
+
+        await this.cacheService.set<GetUserDto>({
+          key: this.cacheService.getIdKeyPrefixByAlias({
+            id: userId,
+            alias: USER_QUERY_ALIAS,
+          }),
+          value: user,
+        });
+
+        return user;
+      },
+    });
+  }
+
+  private getUserStores(userId: UUID): Promise<GetRelatedStoreDto[]> {
+    return this.cacheService.coalesce<GetRelatedStoreDto[]>({
+      key: this.cacheService.getIdKeyPrefixByAlias({
+        id: userId,
+        alias: USER_STORES_QUERY_ALIAS,
+      }),
+      operation: async () => {
+        const query = this.queryService
+          .initQuery<UserStores>({
+            entity: UserStores,
+            alias: USER_STORES_QUERY_ALIAS,
+          })
+          .leftJoinAndSelect(`${USER_STORES_QUERY_ALIAS}.store`, 'store')
+          .leftJoinAndSelect(`${USER_STORES_QUERY_ALIAS}.user`, 'user')
+          .where('user.id = :userId', { userId })
+          .select([
+            `${USER_STORES_QUERY_ALIAS}.id`,
+            'store.id',
+            'store.name',
+            'store.createdAt',
+            'store.updatedAt',
+          ]);
+
+        const userStores = await this.queryService.getAll<UserStores>({
+          query,
+        });
+
+        const stores = userStores.map((userStore) => userStore.store);
+
+        await this.cacheService.set<GetRelatedStoreDto[]>({
+          key: this.cacheService.getIdKeyPrefixByAlias({
+            id: userId,
+            alias: USER_STORES_QUERY_ALIAS,
+          }),
+          value: stores,
+        });
+
+        return stores;
+      },
+    });
+  }
+}

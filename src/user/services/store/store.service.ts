@@ -174,6 +174,7 @@ export class UserStoresService {
     }));
 
     await this.storeRepository.save(userStores);
+
     return true;
   }
 

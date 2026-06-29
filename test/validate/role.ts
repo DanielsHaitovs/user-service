@@ -6,16 +6,16 @@ export function validateRoleResponseDto({
   expected,
 }: {
   response: GetRoleDto | RoleResponseDto;
-  expected: Partial<GetRoleDto>;
+  expected?: Partial<GetRoleDto> | undefined;
 }): void {
   expect(response).toBeDefined();
   expect(response.id).toBeDefined();
 
-  if (expected.id != undefined) {
+  if (expected?.id != undefined) {
     expect(response.id).toBe(expected.id);
   }
 
-  if (expected.name != undefined) {
+  if (expected?.name != undefined) {
     expect(response.name).toBe(expected.name);
   }
 }

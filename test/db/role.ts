@@ -14,10 +14,13 @@ import type { DataSource } from 'typeorm';
  * @param overrides - Partial properties of the Role entity to explicitly test
  * @returns The fully committed database Role entity
  */
-export async function createTestRole(
-  dataSource: DataSource,
-  overrides: Partial<Roles> = {},
-): Promise<Roles> {
+export async function createTestRole({
+  dataSource,
+  overrides = {},
+}: {
+  dataSource: DataSource;
+  overrides: Partial<Roles>;
+}): Promise<Roles> {
   const roleRepository = dataSource.getRepository(Roles);
   const generatedName = `${faker.person.jobArea()} ${faker.person.jobType()}`;
   const defaultRoleData: Partial<Roles> = {
@@ -49,7 +52,7 @@ export async function createTestRoleWithPermissions({
   permissions: Partial<Permission>[];
 }): Promise<Roles> {
   const roleRepository = dataSource.getRepository(Roles);
-  const newRole = await createTestRole(dataSource, role);
+  const newRole = await createTestRole({ dataSource, overrides: role });
 
   const newPermissions = await createTestPermissions({
     dataSource,

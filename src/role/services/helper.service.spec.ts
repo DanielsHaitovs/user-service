@@ -105,7 +105,7 @@ describe('RoleHelperService', () => {
 
       await expect(service.checkIfManyExistOrThrow(inputIds)).rejects.toThrow(
         new UnprocessableEntityException(
-          `Failed to create role. The following role ids do not exist: ${mockId2}`,
+          `Failed to validate role. The following role ids do not exist: ${mockId2}`,
         ),
       );
     });

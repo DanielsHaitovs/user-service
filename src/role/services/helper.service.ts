@@ -36,7 +36,7 @@ export class RoleHelperService {
 
     if (existingRoles.length != ids.length) {
       throw new UnprocessableEntityException(
-        `Failed to create role. The following role ids do not exist: ${ids
+        `Failed to validate role. The following role ids do not exist: ${ids
           .filter((id) => !existingRoles.some((r) => r.id === id))
           .join(', ')}`,
       );

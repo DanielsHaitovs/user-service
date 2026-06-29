@@ -50,12 +50,16 @@ export class UserRolePipelineService {
       roles,
     } = userRoles;
 
-    await this.userRolesService.assignRolesToUser({
+    const result = await this.userRolesService.assignRolesToUser({
       data,
       userId,
       assignedRoles: roles,
       assignedById,
     });
+
+    if (!result) {
+      return;
+    }
 
     await this.cacheService.invalidateById({
       id: userId,
@@ -93,11 +97,15 @@ export class UserRolePipelineService {
       roles,
     } = userRoles;
 
-    await this.userRolesService.unassignRolesFromUser({
+    const result = await this.userRolesService.unassignRolesFromUser({
       userId,
       data,
       assignedRoles: roles,
     });
+
+    if (!result) {
+      return;
+    }
 
     await this.cacheService.invalidateById({
       id: userId,

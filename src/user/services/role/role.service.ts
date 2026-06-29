@@ -160,25 +160,34 @@ export class UserRolesService {
     assignedRoles: GetRelatedRoleDto[];
     data: AssignRolesToUserDto;
     assignedById: UUID;
-  }): Promise<void> {
-    await this.validatePayload({ roleIds: data.roleIds });
+  }): Promise<boolean> {
+    const { roleIds: incomingRoleIds } = data;
 
-    const missingRoleIds = data.roleIds.filter(
-      (roleId) =>
-        !assignedRoles.some((assignedRole) => assignedRole.id === roleId),
+    await this.validatePayload({ roleIds: incomingRoleIds });
+
+    const alreadyAssignedIds = new Set(assignedRoles.map((role) => role.id));
+
+    const newRoleIds = incomingRoleIds.filter(
+      (id) => !alreadyAssignedIds.has(id),
     );
 
-    if (missingRoleIds.length === 0) {
-      return;
+    if (incomingRoleIds.length > 0 && newRoleIds.length === 0) {
+      return false;
     }
 
-    const userRoles = missingRoleIds.map((roleId) => ({
+    if (newRoleIds.length === 0) {
+      return false;
+    }
+
+    const userRoles = newRoleIds.map((roleId) => ({
       user: { id: userId },
       role: { id: roleId },
       assignedBy: { id: assignedById },
     }));
 
     await this.roleRepository.save(userRoles);
+
+    return true;
   }
 
   /**
@@ -197,25 +206,33 @@ export class UserRolesService {
     userId: UUID;
     assignedRoles: GetRelatedRoleDto[];
     data: UnassignRolesFromUserDto;
-  }): Promise<void> {
-    await this.validatePayload({ roleIds: data.roleIds });
-
+  }): Promise<boolean> {
     if (assignedRoles.length === 0) {
-      return;
+      return false;
     }
 
-    const rolesToUnassign = assignedRoles.filter((assignedRole) =>
-      data.roleIds.includes(assignedRole.id),
+    const { roleIds: roleIdsToRevoke } = data;
+
+    await this.validatePayload({ roleIds: roleIdsToRevoke });
+
+    const alreadyAssignedIds = new Set(assignedRoles.map((role) => role.id));
+    const rolesToUnassign = roleIdsToRevoke.filter((id) =>
+      alreadyAssignedIds.has(id),
     );
 
-    if (rolesToUnassign.length === 0) {
-      return;
+    if (
+      (roleIdsToRevoke.length > 0 && rolesToUnassign.length === 0) ||
+      rolesToUnassign.length === 0
+    ) {
+      return false;
     }
 
     await this.roleRepository.delete({
       user: { id: userId },
-      role: { id: In(rolesToUnassign.flatMap((role) => role.id)) },
+      role: { id: In(rolesToUnassign.flatMap((role) => role)) },
     });
+
+    return true;
   }
 
   /**

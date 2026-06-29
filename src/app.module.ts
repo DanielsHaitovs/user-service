@@ -111,8 +111,6 @@ export const httpRequestDurationProvider = makeHistogramProvider({
           },
           alwaysEnabled: false,
         },
-        // poolSize: 50,
-        // extra: { max: 50, idleTimeoutMillis: 30000, statement_timeout: 0 },
         host: configService.databaseHost,
         port: configService.databasePort,
         username: configService.databaseUsername,
@@ -124,7 +122,6 @@ export const httpRequestDurationProvider = makeHistogramProvider({
         migrations: [`${__dirname}/migrations/*{.ts,.js}`],
         autoLoadEntities: true,
       }),
-      // 4. This injects your custom service and passes it to the useFactory above
       inject: [EnvConfigService],
     }),
     CacheModule.registerAsync({
@@ -134,7 +131,6 @@ export const httpRequestDurationProvider = makeHistogramProvider({
         const redisUrl = `redis://:${configService.redisPassword}@${configService.redisHost}:${configService.redisPort.toString()}`;
 
         return {
-          // Notice it is 'stores' (plural) and uses createKeyv!
           stores: [createKeyv(redisUrl)],
           ttl: 10000,
         };

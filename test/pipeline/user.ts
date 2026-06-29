@@ -61,7 +61,7 @@ export async function createTestUser({
     expected: createDto,
   });
 
-  expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+  expect(cacheSetSpy).toHaveBeenCalledTimes(2);
   expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
   cacheSetSpy.mockClear();

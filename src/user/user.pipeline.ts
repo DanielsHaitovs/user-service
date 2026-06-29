@@ -55,20 +55,46 @@ export class UserPipelineService {
     return await this.cacheService.coalesce<GetUserDto>({
       key: cacheKey,
       operation: async () => {
-        const store = await this.userService.getByIdOrThrow(id);
+        const user = await this.userService.getByIdOrThrow(id);
 
         await this.cacheService.set<GetUserDto>({
           key: cacheKey,
-          value: store,
+          value: user,
         });
 
-        return store;
+        return user;
       },
     });
   }
 
   async getByEmailOrThrow(email: string): Promise<GetUserDto> {
-    return await this.userService.getByEmailOrThrow(email);
+    const cached = await this.cacheService.getById<GetUserDto>({
+      id: email,
+      alias: USER_QUERY_ALIAS,
+    });
+
+    if (cached) {
+      return cached;
+    }
+
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: email,
+      alias: USER_QUERY_ALIAS,
+    });
+
+    return await this.cacheService.coalesce<GetUserDto>({
+      key: cacheKey,
+      operation: async () => {
+        const user = await this.userService.getByEmailOrThrow(email);
+
+        await this.cacheService.set<GetUserDto>({
+          key: cacheKey,
+          value: user,
+        });
+
+        return user;
+      },
+    });
   }
 
   async create({

@@ -195,13 +195,13 @@ export class CacheService {
     id,
     alias,
   }: {
-    id: UUID;
+    id: string;
     alias: alias;
   }): Promise<T | undefined> {
     return await this.get<T>(this.getIdKeyPrefixByAlias({ id, alias }));
   }
 
-  getIdKeyPrefixByAlias({ id, alias }: { id: UUID; alias: alias }): string {
+  getIdKeyPrefixByAlias({ id, alias }: { id: string; alias: alias }): string {
     switch (alias) {
       case USER_QUERY_ALIAS:
         return `id:${id}:${USER_QUERY_ALIAS}`;

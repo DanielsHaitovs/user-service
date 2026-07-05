@@ -33,7 +33,6 @@ export class DeleteService {
   }): Promise<boolean> {
     try {
       const systemUserId = this.systemIdentityService.getSystemUserId();
-      await this.helperService.checkIfExists({ id });
 
       if (id === systemUserId) {
         throw new UnprocessableEntityException(

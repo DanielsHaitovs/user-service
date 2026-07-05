@@ -84,6 +84,7 @@ export class CreateService {
         const userStores = await manager.save(
           UserStores,
           storeIds.map((storeId) => ({
+            user: { id: newUser.id } as User,
             store: { id: storeId } as Store,
             assignedBy: { id: createdById } as User,
           })),

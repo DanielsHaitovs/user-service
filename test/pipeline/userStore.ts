@@ -67,9 +67,12 @@ export async function getAssignedStoresForUser({
   pipelineService: UserStorePipelineService;
   userId: UUID;
   expected?: Partial<StoreResponseDto>[] | undefined;
-  cacheGetByIdSpy: jest.SpyInstance;
+  cacheGetByIdSpy?: jest.SpyInstance;
 }): Promise<GetRelatedStoreDto[]> {
-  cacheGetByIdSpy.mockClear();
+  if (cacheGetByIdSpy) {
+    cacheGetByIdSpy.mockClear();
+  }
+
   const userStores = await pipelineService.getAssignedStores(userId);
 
   expect(userStores).toBeDefined();
@@ -88,6 +91,10 @@ export async function getAssignedStoresForUser({
     });
   } else {
     expect(userStores.length).toBe(0);
+  }
+
+  if (!cacheGetByIdSpy) {
+    return userStores;
   }
 
   expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);

@@ -62,7 +62,7 @@ export class RoleHelperService {
 
     const roles = await this.queryService.getAll<Roles>({
       query,
-      cache: true,
+      cacheId: roleIds.join(','),
     });
 
     const permissionCodes = new Set<string>();

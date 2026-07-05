@@ -245,13 +245,13 @@ export class EntityQueryService {
 
   async getAll<T extends ObjectLiteral>({
     query,
-    cache,
+    cacheId,
   }: {
     query: SelectQueryBuilder<T>;
-    cache?: boolean | undefined;
+    cacheId: string;
   }): Promise<T[]> {
     const { alias } = query;
-    const cacheKey = `${alias}_all_${hashObject(query.getQueryAndParameters())}`;
+    const cacheKey = `${alias}_all_${cacheId}:${hashObject(query.getQueryAndParameters())}`;
 
     const cached = await this.cacheService.get<T[]>(cacheKey);
     if (cached) {
@@ -286,9 +286,7 @@ export class EntityQueryService {
           offset += batchSize;
         }
 
-        if (cache === true) {
-          await this.cacheService.set({ key: cacheKey, value: response });
-        }
+        await this.cacheService.set({ key: cacheKey, value: response });
 
         return response;
       },
@@ -392,16 +390,42 @@ export class EntityQueryService {
 
     const cacheKey = `${alias}_paginated_${hashObject(query.getQueryAndParameters())}`;
 
-    const cached = await this.cacheService.get<[T[], number]>(cacheKey);
+    const cached = await this.cacheService.get<
+      PaginatedResponseDto & { data: T[] }
+    >(cacheKey);
 
-    const [items, totalCount] = cached ?? (await query.getManyAndCount());
+    if (cached) {
+      return cached;
+    }
 
-    if (!cached && cache === true) {
-      await this.cacheService.set({
+    if (cache === true) {
+      return await this.cacheService.coalesce<
+        PaginatedResponseDto & { data: T[] }
+      >({
         key: cacheKey,
-        value: [items, totalCount],
+        operation: async () => {
+          const users = await query.getManyAndCount();
+
+          const [items, totalCount] = users;
+          const res = {
+            page: page / limit + 1,
+            limit,
+            total: totalCount,
+            totalPages: Math.ceil(totalCount / limit),
+            data: items,
+          } as PaginatedResponseDto & { data: T[] };
+
+          await this.cacheService.set<PaginatedResponseDto & { data: T[] }>({
+            key: cacheKey,
+            value: res,
+          });
+
+          return res;
+        },
       });
     }
+
+    const [items, totalCount] = await query.getManyAndCount();
 
     return {
       page: page / limit + 1,

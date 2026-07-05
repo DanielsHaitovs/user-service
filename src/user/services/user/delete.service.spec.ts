@@ -14,7 +14,6 @@ import { type DeleteResult, QueryFailedError } from 'typeorm';
 
 import { DeleteService } from './delete.service'; // Adjust import path
 
-// 🎯 Mock the external generic database return transformer
 jest.mock('@/base/helper/delete', () => ({
   deletedResults: jest.fn(),
 }));
@@ -124,9 +123,6 @@ describe('DeleteService', () => {
 
       expect(result).toBe(true);
       expect(mockSystemIdentityService.getSystemUserId).toHaveBeenCalled();
-      expect(mockHelperService.checkIfExists).toHaveBeenCalledWith({
-        id: mockUserId,
-      });
       expect(mockRoleService.getAssignedRoles).toHaveBeenCalledWith(mockUserId);
       expect(mockStoreService.getAssignedStores).toHaveBeenCalledWith(
         mockUserId,

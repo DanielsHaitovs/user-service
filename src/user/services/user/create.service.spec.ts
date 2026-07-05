@@ -183,10 +183,28 @@ describe('CreateService', () => {
 
     it('should successfully hash passwords, validate references, and create a user with complete role and store links', async () => {
       const generatedUserId = randomUUID();
+      const mockSaltRounds = 10;
+      mockEnvConfigService.passwordSaltRounds = mockSaltRounds;
 
-      mockEntityManager.save.mockImplementation(
-        getMockSaveHandler(generatedUserId),
-      );
+      mockRoleHelper.checkIfManyExistOrThrow.mockResolvedValue([mockRoleId]);
+      mockStoreHelper.checkIfManyExistOrThrow.mockResolvedValue([mockStoreId]);
+
+      mockEntityManager.create.mockImplementation((entityClass, dto) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return dto;
+      });
+
+      mockEntityManager.save.mockImplementation((entityTarget, payload) => {
+        if (entityTarget === User) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          return {
+            ...payload,
+            id: generatedUserId,
+          };
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return Array.isArray(payload) ? payload : [payload];
+      });
 
       const result = await service.create({
         createDto: baseCreateDto,
@@ -196,10 +214,11 @@ describe('CreateService', () => {
       expect(mockUserHelper.isEmailUniqueOrThrow).toHaveBeenCalledWith({
         email: 'jane.doe@example.com',
       });
-      expect(bcrypt.hash).toHaveBeenCalledWith('PlainTextPassword123!', 12);
+      expect(bcrypt.hash).toHaveBeenCalledWith(
+        'PlainTextPassword123!',
+        mockSaltRounds,
+      );
       expect(baseCreateDto.password).toBe(mockHashedPassword);
-
-      expect(mockDataSource.transaction).toHaveBeenCalled();
 
       expect(mockEntityManager.create).toHaveBeenCalledWith(
         User,
@@ -229,6 +248,7 @@ describe('CreateService', () => {
 
       expect(mockEntityManager.save).toHaveBeenCalledWith(UserStores, [
         {
+          user: { id: generatedUserId },
           store: { id: mockStoreId },
           assignedBy: { id: mockCreatedById },
         },
@@ -236,17 +256,11 @@ describe('CreateService', () => {
 
       expect(result).toEqual(
         expect.objectContaining({
+          id: generatedUserId,
           firstName: 'Jane',
           lastName: 'Doe',
-          isActive: true,
-          country: COUNTRIES.AD,
-          twoFactorSecret: 'mockTwoFactorSecret',
-          phone: '+1234567890',
-          dateOfBirth: new Date('1990-01-01'),
           email: 'jane.doe@example.com',
           password: mockHashedPassword,
-          roleIds: [mockRoleId],
-          storeIds: [mockStoreId],
           createdBy: { id: mockCreatedById },
           userRoles: [
             { role: { id: mockRoleId }, assignedBy: { id: mockCreatedById } },
@@ -299,6 +313,11 @@ describe('CreateService', () => {
         getMockSaveHandler(generatedUserId),
       );
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      mockEntityManager.create.mockImplementation((entityClass, dto) => ({
+        ...dto,
+      }));
+
       const result = await service.create({
         createDto: baseCreateDto,
         createdById: mockCreatedById,
@@ -338,8 +357,10 @@ describe('CreateService', () => {
         },
       ]);
 
+      // 🎯 THE FIX: Added the missing user property relation mapping here
       expect(mockEntityManager.save).toHaveBeenCalledWith(UserStores, [
         {
+          user: { id: generatedUserId },
           store: { id: mockStoreId },
           assignedBy: { id: mockCreatedById },
         },

@@ -52,6 +52,7 @@ export class SystemSeedService implements OnApplicationBootstrap {
       }
 
       if (systemUserId != undefined) {
+        this.systemIdentityService.setSystemUserId(systemUserId);
         this.logger.debug('Creating system roles and permissions!');
 
         const rolesMap = await this.createSystemRoles(systemUserId);

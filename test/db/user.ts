@@ -2,6 +2,7 @@ import { COUNTRIES } from '@/commonConst/countries.const';
 import { User } from '@/userEntities/user.entity';
 import { faker } from '@faker-js/faker';
 
+import { randomUUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
 /**
@@ -18,7 +19,7 @@ export async function createTestUser(dataSource: DataSource): Promise<User> {
   const defaultUserData: Partial<User> = {
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
-    email: faker.internet.email(),
+    email: `${randomUUID()}@example.com`,
     password: faker.internet.password(),
     twoFactorSecret: faker.internet.password(),
     country: COUNTRIES.US,

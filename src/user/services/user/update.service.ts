@@ -1,13 +1,12 @@
 /* eslint-disable sonarjs/todo-tag */
 import { updatedResults } from '@/base/helper/update';
 import { SystemIdentityService } from '@/system/identity.service';
-import { UpdateUserDto } from '@/userDto/user.dto';
+import { GetUserDto, UpdateUserDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { UUID } from 'crypto';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -28,15 +27,13 @@ export class UpdateService {
    * @throws NotFoundException if the user with the specified ID does not exist.
    */
   async update({
-    id,
+    user,
     data,
   }: {
-    id: UUID;
+    user: GetUserDto;
     data: UpdateUserDto;
   }): Promise<boolean> {
-    await this.userHelperService.checkIfExists({ id });
-
-    if (id === this.systemIdentityService.getSystemUserId()) {
+    if (user.id === this.systemIdentityService.getSystemUserId()) {
       throw new UnauthorizedException(
         `You cannot update the system identity user.`,
       );
@@ -45,11 +42,11 @@ export class UpdateService {
     if (data.email != undefined) {
       await this.userHelperService.isEmailUniqueOrThrow({
         email: data.email,
-        id,
+        id: user.id,
       });
     }
 
-    const updated = await this.userRepository.update(id, data);
+    const updated = await this.userRepository.update(user.id, data);
 
     return updatedResults(updated);
   }

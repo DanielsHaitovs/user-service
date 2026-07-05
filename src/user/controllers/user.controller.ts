@@ -19,7 +19,7 @@ import {
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
-import { CurrentUser } from '@/commonDecorators/user.decorator';
+import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
   CREATE_USER_ENDPOINT_PERMISSION,
   DELETE_USER_ENDPOINT_PERMISSION,
@@ -62,6 +62,8 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
+
+import { FetchUserPipe } from '../../common/pipes/user.pipe';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -199,7 +201,7 @@ export class UserController {
     example: EXAMPLE_USER_ID,
   })
   async findById(@Param('id', ParseUUIDPipe) id: UUID): Promise<GetUserDto> {
-    return await this.pipelineService.getByIdOrThrow(id);
+    return await this.pipelineService.getByIdOrThrow({ id });
   }
 
   @Get('email/:email')
@@ -250,7 +252,7 @@ export class UserController {
     example: EXAMPLE_USER_EMAIL,
   })
   async findByEmail(@Param('email') email: string): Promise<GetUserDto> {
-    return await this.pipelineService.getByEmailOrThrow(email);
+    return await this.pipelineService.getByEmailOrThrow({ email });
   }
 
   @Get()
@@ -348,10 +350,17 @@ export class UserController {
     format: 'uuid',
   })
   async update(
-    @Param('id', ParseUUIDPipe) id: UUID,
+    @Param('id', FetchUserPipe) user: GetUserDto,
     @Body() data: UpdateUserDto,
+    @CurrentUserId() requestedById: UUID,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<boolean> {
-    return await this.pipelineService.update({ id, data });
+    return await this.pipelineService.update({
+      user,
+      data,
+      requestedById,
+      metadata,
+    });
   }
 
   @Delete(':id')
@@ -407,8 +416,9 @@ export class UserController {
     format: 'uuid',
   })
   async delete(
-    @Param('id', ParseUUIDPipe) id: UUID,
     @CurrentUser() requestedByUser: JwtPayload,
+    @Param('id', FetchUserPipe) user: GetUserDto,
+    @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
     const {
       canReadRoles,
@@ -417,6 +427,7 @@ export class UserController {
       canReadStore,
       canReadUserStore,
       canUnassignUserFromStore,
+      id,
     } = extractAccess(requestedByUser);
 
     const canRemoveFromRelatedRoles =
@@ -424,7 +435,9 @@ export class UserController {
     const canRemoveFromRelatedStores =
       canReadStore && canReadUserStore && canUnassignUserFromStore;
     await this.pipelineService.delete({
-      id,
+      user,
+      requestedById: id,
+      metadata,
       canRemoveFromRelatedRoles,
       canRemoveFromRelatedStores,
     });

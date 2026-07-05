@@ -163,7 +163,7 @@ export class UserRolesService {
   }): Promise<boolean> {
     const { roleIds: incomingRoleIds } = data;
 
-    await this.validatePayload({ roleIds: incomingRoleIds });
+    await this.roleHelperService.checkIfManyExistOrThrow(incomingRoleIds);
 
     const alreadyAssignedIds = new Set(assignedRoles.map((role) => role.id));
 
@@ -213,7 +213,7 @@ export class UserRolesService {
 
     const { roleIds: roleIdsToRevoke } = data;
 
-    await this.validatePayload({ roleIds: roleIdsToRevoke });
+    await this.roleHelperService.checkIfManyExistOrThrow(roleIdsToRevoke);
 
     const alreadyAssignedIds = new Set(assignedRoles.map((role) => role.id));
     const rolesToUnassign = roleIdsToRevoke.filter((id) =>
@@ -257,24 +257,9 @@ export class UserRolesService {
 
     const userRoles = await this.queryService.getAll<UserRoles>({
       query,
+      cacheId: userId,
     });
 
     return userRoles.map((userRole) => userRole.role);
-  }
-
-  /**
-   * Validates the existence of a user and the specified roles.
-   *
-   * @param userId - The unique identifier of the user (UUID).
-   * @param roleIds - An array of unique identifiers (UUIDs) representing the roles to be validated.
-   * @returns A promise that resolves when the validation is successful.
-   * @throws An UnprocessableEntityException if the user does not exist or if any of the specified roles do not exist.
-   */
-  private async validatePayload({
-    roleIds,
-  }: {
-    roleIds?: UUID[] | undefined;
-  }): Promise<void> {
-    await this.roleHelperService.checkIfManyExistOrThrow(roleIds);
   }
 }

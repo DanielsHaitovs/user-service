@@ -48,8 +48,6 @@ export function validateRoleWithPermissionsResponseDto({
   expect(responsePermissions).toBeDefined();
 
   if (responsePermissions.length !== expectedPermissions.length) {
-    console.log(response);
-    console.log(responsePermissions);
     throw new Error(
       `Expected ${expectedPermissions.length.toString()} permissions, but found ${responsePermissions.length.toString()} permissions in the response.`,
     );

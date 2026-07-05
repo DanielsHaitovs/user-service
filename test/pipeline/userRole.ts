@@ -32,8 +32,16 @@ export async function assignTestRoleToUser({
   cacheSetSpy: jest.SpyInstance;
   cacheGetByIdSpy: jest.SpyInstance;
   cacheInvalidateByIdSpy: jest.SpyInstance;
-  auditLogSpy: jest.SpyInstance;
+  auditLogSpy?: jest.SpyInstance;
 }): Promise<void> {
+  cacheSetSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+
+  if (auditLogSpy != undefined) {
+    auditLogSpy.mockClear();
+  }
+
   await pipelineService.assignRolesToUser({
     data,
     userRoles,
@@ -46,13 +54,16 @@ export async function assignTestRoleToUser({
 
   expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
   expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-  expect(auditLogSpy).toHaveBeenCalledTimes(1);
   expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
 
   cacheSetSpy.mockClear();
   cacheInvalidateByIdSpy.mockClear();
   cacheGetByIdSpy.mockClear();
-  auditLogSpy.mockClear();
+
+  if (auditLogSpy != undefined) {
+    expect(auditLogSpy).toHaveBeenCalledTimes(1);
+    auditLogSpy.mockClear();
+  }
 }
 
 export async function getAssignedRolesForUser({
@@ -60,13 +71,22 @@ export async function getAssignedRolesForUser({
   userId,
   expected,
   cacheGetByIdSpy,
+  cacheSetSpy,
 }: {
   pipelineService: UserRolePipelineService;
   userId: UUID;
   expected?: Partial<GetRoleDto>[] | undefined;
-  cacheGetByIdSpy: jest.SpyInstance;
+  cacheGetByIdSpy?: jest.SpyInstance;
+  cacheSetSpy?: jest.SpyInstance;
 }): Promise<GetRelatedRoleDto[]> {
-  cacheGetByIdSpy.mockClear();
+  if (cacheGetByIdSpy) {
+    cacheGetByIdSpy.mockClear();
+  }
+
+  if (cacheSetSpy) {
+    cacheSetSpy.mockClear();
+  }
+
   const userRoles = await pipelineService.getAssignedRoles(userId);
 
   expect(userRoles).toBeDefined();
@@ -87,8 +107,15 @@ export async function getAssignedRolesForUser({
     expect(userRoles.length).toBe(0);
   }
 
-  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
-  cacheGetByIdSpy.mockClear();
+  if (cacheGetByIdSpy != undefined) {
+    expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+    cacheGetByIdSpy.mockClear();
+  }
+
+  if (cacheSetSpy != undefined) {
+    expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+    cacheSetSpy.mockClear();
+  }
 
   return userRoles;
 }

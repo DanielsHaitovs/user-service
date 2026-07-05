@@ -1,5 +1,6 @@
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { SYSTEM_USER_EMAIL } from '@/commonConst/user.const';
+import { EnvConfigService } from '@/config/env/env.config.service';
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import {
   FastifyAdapter,
@@ -15,6 +16,7 @@ export interface BootstrappedApp {
   moduleFixture: TestingModule;
   dataSource: DataSource;
   systemUserId: UUID;
+  envConfigService: EnvConfigService;
 }
 
 export async function bootstrapTestApp(): Promise<BootstrappedApp> {
@@ -47,6 +49,7 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   await app.getHttpAdapter().getInstance().ready();
 
   const dataSource = app.get(DataSource);
+  const envConfigService = app.get(EnvConfigService);
 
   // if (dataSource.isInitialized) {
   //   await dataSource.synchronize(true);
@@ -59,5 +62,11 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
     where: { email: SYSTEM_USER_EMAIL },
   });
 
-  return { app, moduleFixture, dataSource, systemUserId: systemUser.id };
+  return {
+    app,
+    moduleFixture,
+    dataSource,
+    systemUserId: systemUser.id,
+    envConfigService,
+  };
 }

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-misused-spread */
 import { updatedResults } from '@/base/helper/update';
 import { SystemIdentityService } from '@/system/identity.service';
-import type { UpdateUserDto } from '@/userDto/user.dto';
+import type { GetUserDto, UpdateUserDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { UserHelperService } from '@/userServices/helper.service';
 import { UpdateService } from '@/userServices/update.service';
@@ -11,7 +12,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import type { UpdateResult } from 'typeorm';
 
-// 🎯 Mock the external pure functional helper to ensure deterministic boolean tracking
 jest.mock('@/base/helper/update', () => ({
   updatedResults: jest.fn(),
 }));
@@ -24,7 +24,6 @@ describe('UpdateService', () => {
   };
 
   let mockUserHelperService: {
-    checkIfExists: jest.Mock;
     isEmailUniqueOrThrow: jest.Mock;
   };
 
@@ -34,13 +33,18 @@ describe('UpdateService', () => {
 
   const mockUserId = randomUUID();
   const mockSystemUserId = randomUUID();
-  const mockEmail = 'updated.user@example.com';
 
-  // Strongly type our fake TypeORM result structure to satisfy linting limits
+  const mockUserDto: GetUserDto = {
+    id: mockUserId,
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john.doe@example.com',
+  } as GetUserDto;
+
   const mockUpdateResult: UpdateResult = {
     raw: [],
-    generatedMaps: [],
     affected: 1,
+    generatedMaps: [],
   };
 
   beforeEach(async () => {
@@ -49,7 +53,6 @@ describe('UpdateService', () => {
     };
 
     mockUserHelperService = {
-      checkIfExists: jest.fn().mockResolvedValue(true),
       isEmailUniqueOrThrow: jest.fn().mockResolvedValue(true),
     };
 
@@ -77,7 +80,6 @@ describe('UpdateService', () => {
 
     service = module.get<UpdateService>(UpdateService);
 
-    // Reset external module mock history
     (updatedResults as jest.Mock).mockReset();
   });
 
@@ -86,64 +88,53 @@ describe('UpdateService', () => {
   });
 
   describe('update', () => {
-    let updateDto: UpdateUserDto;
-
-    beforeEach(() => {
-      updateDto = {
-        firstName: 'John',
-        lastName: 'Doe',
-      };
-    });
-
-    it('should successfully update a user record when email modification is skipped', async () => {
+    it('should successfully update user profile details and bypass email validation if email is omitted', async () => {
+      const updateData: UpdateUserDto = { firstName: 'Johnny' };
       (updatedResults as jest.Mock).mockReturnValue(true);
 
       const result = await service.update({
-        id: mockUserId,
-        data: updateDto,
+        user: mockUserDto,
+        data: updateData,
       });
 
       expect(result).toBe(true);
-      expect(mockUserHelperService.checkIfExists).toHaveBeenCalledWith({
-        id: mockUserId,
-      });
       expect(mockSystemIdentityService.getSystemUserId).toHaveBeenCalled();
-
-      // Verification that the email uniqueness boundary was correctly skipped
       expect(mockUserHelperService.isEmailUniqueOrThrow).not.toHaveBeenCalled();
-
       expect(mockUserRepository.update).toHaveBeenCalledWith(
         mockUserId,
-        updateDto,
+        updateData,
       );
       expect(updatedResults).toHaveBeenCalledWith(mockUpdateResult);
     });
 
-    it('should trigger email uniqueness validation routines if data payload includes an email field', async () => {
+    it('should execute the email availability check if a new email is explicitly supplied in the payload', async () => {
+      const updateData: UpdateUserDto = { email: 'new.email@example.com' };
       (updatedResults as jest.Mock).mockReturnValue(true);
-      updateDto.email = mockEmail;
 
       const result = await service.update({
-        id: mockUserId,
-        data: updateDto,
+        user: mockUserDto,
+        data: updateData,
       });
 
       expect(result).toBe(true);
       expect(mockUserHelperService.isEmailUniqueOrThrow).toHaveBeenCalledWith({
-        email: mockEmail,
+        email: 'new.email@example.com',
         id: mockUserId,
       });
       expect(mockUserRepository.update).toHaveBeenCalledWith(
         mockUserId,
-        updateDto,
+        updateData,
       );
     });
 
-    it('should throw an UnauthorizedException if the update target matches the active system identity user ID', async () => {
+    it('should throw an UnauthorizedException if the user payload maps to the protected system root user identity', async () => {
+      const systemUserPayload = { ...mockUserDto, id: mockSystemUserId };
+      const updateData: UpdateUserDto = { firstName: 'Malicious Change' };
+
       await expect(
         service.update({
-          id: mockSystemUserId, // Passing system identity UUID directly
-          data: updateDto,
+          user: systemUserPayload,
+          data: updateData,
         }),
       ).rejects.toThrow(
         new UnauthorizedException(
@@ -151,33 +142,26 @@ describe('UpdateService', () => {
         ),
       );
 
-      // Ensure transaction short-circuited before calling downstream databases
       expect(mockUserHelperService.isEmailUniqueOrThrow).not.toHaveBeenCalled();
       expect(mockUserRepository.update).not.toHaveBeenCalled();
     });
 
-    it('should halt processing and propagate errors if user helper verification rejects', async () => {
-      mockUserHelperService.checkIfExists.mockRejectedValue(
-        new Error('UserNotFound'),
+    it('should bubble up exception errors if the email availability check throws a validation failure', async () => {
+      const updateData: UpdateUserDto = { email: 'taken@example.com' };
+      const uniqueCheckConflictError = new Error(
+        'Email address is already in use.',
       );
 
-      await expect(
-        service.update({ id: mockUserId, data: updateDto }),
-      ).rejects.toThrow('UserNotFound');
-
-      expect(mockSystemIdentityService.getSystemUserId).not.toHaveBeenCalled();
-      expect(mockUserRepository.update).not.toHaveBeenCalled();
-    });
-
-    it('should halt processing and propagate conflicts if email unique checks fail', async () => {
-      updateDto.email = mockEmail;
       mockUserHelperService.isEmailUniqueOrThrow.mockRejectedValue(
-        new Error('EmailConflictException'),
+        uniqueCheckConflictError,
       );
 
       await expect(
-        service.update({ id: mockUserId, data: updateDto }),
-      ).rejects.toThrow('EmailConflictException');
+        service.update({
+          user: mockUserDto,
+          data: updateData,
+        }),
+      ).rejects.toThrow('Email address is already in use.');
 
       expect(mockUserRepository.update).not.toHaveBeenCalled();
     });

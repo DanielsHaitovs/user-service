@@ -87,6 +87,7 @@ export class FetchUserRolesPipe
 
         const userRoles = await this.queryService.getAll<UserRoles>({
           query,
+          cacheId: userId,
         });
 
         const roles = userRoles.map((userRole) => userRole.role);

@@ -87,6 +87,7 @@ export class FetchUserStoresPipe
 
         const userStores = await this.queryService.getAll<UserStores>({
           query,
+          cacheId: userId,
         });
 
         const stores = userStores.map((userStore) => userStore.store);

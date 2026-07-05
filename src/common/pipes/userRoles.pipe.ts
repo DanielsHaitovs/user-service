@@ -33,12 +33,23 @@ export class FetchUserRolesPipe
     return { user, roles };
   }
 
-  private getUser(userId: UUID): Promise<GetUserDto> {
+  private async getUser(userId: UUID): Promise<GetUserDto> {
+    const cached = await this.cacheService.getById<GetUserDto>({
+      id: userId,
+      alias: USER_QUERY_ALIAS,
+    });
+
+    if (cached != undefined) {
+      return cached;
+    }
+
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: userId,
+      alias: USER_QUERY_ALIAS,
+    });
+
     return this.cacheService.coalesce<GetUserDto>({
-      key: this.cacheService.getIdKeyPrefixByAlias({
-        id: userId,
-        alias: USER_QUERY_ALIAS,
-      }),
+      key: cacheKey,
       operation: async () => {
         const query = this.queryService.initQuery<User>({
           entity: User,
@@ -62,12 +73,23 @@ export class FetchUserRolesPipe
     });
   }
 
-  private getUserRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
+  private async getUserRoles(userId: UUID): Promise<GetRelatedRoleDto[]> {
+    const cached = await this.cacheService.getById<GetRelatedRoleDto[]>({
+      id: userId,
+      alias: USER_ROLE_QUERY_ALIAS,
+    });
+
+    if (cached != undefined) {
+      return cached;
+    }
+
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: userId,
+      alias: USER_ROLE_QUERY_ALIAS,
+    });
+
     return this.cacheService.coalesce<GetRelatedRoleDto[]>({
-      key: this.cacheService.getIdKeyPrefixByAlias({
-        id: userId,
-        alias: USER_ROLE_QUERY_ALIAS,
-      }),
+      key: cacheKey,
       operation: async () => {
         const query = this.queryService
           .initQuery<UserRoles>({
@@ -87,7 +109,6 @@ export class FetchUserRolesPipe
 
         const userRoles = await this.queryService.getAll<UserRoles>({
           query,
-          cacheId: userId,
         });
 
         const roles = userRoles.map((userRole) => userRole.role);

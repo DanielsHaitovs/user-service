@@ -54,9 +54,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   ],
   exports: [
     UserPipelineService,
+    UserRolePipelineService,
+    UserStorePipelineService,
     UserHelperService,
-    UserRolesService,
-    UserStoresService,
   ],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class

@@ -63,6 +63,7 @@ import {
 
 import { UUID } from 'crypto';
 
+import { FetchFullUserPipe, FullUser } from '../../common/pipes/full-user.pipe';
 import { FetchUserPipe } from '../../common/pipes/user.pipe';
 
 /**
@@ -417,7 +418,7 @@ export class UserController {
   })
   async delete(
     @CurrentUser() requestedByUser: JwtPayload,
-    @Param('id', FetchUserPipe) user: GetUserDto,
+    @Param('id', FetchFullUserPipe) data: FullUser,
     @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
     const {
@@ -434,8 +435,9 @@ export class UserController {
       canReadRoles && canReadUserRoles && canUnassignUserFromRoles;
     const canRemoveFromRelatedStores =
       canReadStore && canReadUserStore && canUnassignUserFromStore;
+
     await this.pipelineService.delete({
-      user,
+      data,
       requestedById: id,
       metadata,
       canRemoveFromRelatedRoles,

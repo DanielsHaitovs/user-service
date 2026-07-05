@@ -1,9 +1,9 @@
 import { deletedResults } from '@/base/helper/delete';
+import type { FullUser } from '@/common/pipes/full-user.pipe';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { SystemIdentityService } from '@/system/identity.service';
 import { User } from '@/userEntities/user.entity';
 import { UserRolesService } from '@/userRoleServices/role.service';
-import { UserHelperService } from '@/userServices/helper.service';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -14,6 +14,7 @@ import { type DeleteResult, QueryFailedError } from 'typeorm';
 
 import { DeleteService } from './delete.service'; // Adjust import path
 
+// 🎯 Mock the external generic database return transformer
 jest.mock('@/base/helper/delete', () => ({
   deletedResults: jest.fn(),
 }));
@@ -25,17 +26,11 @@ describe('DeleteService', () => {
     delete: jest.Mock;
   };
 
-  let mockHelperService: {
-    checkIfExists: jest.Mock;
-  };
-
   let mockRoleService: {
-    getAssignedRoles: jest.Mock;
     unassignRolesFromUser: jest.Mock;
   };
 
   let mockStoreService: {
-    getAssignedStores: jest.Mock;
     unassignStoresFromUser: jest.Mock;
   };
 
@@ -53,22 +48,30 @@ describe('DeleteService', () => {
     affected: 1,
   };
 
+  const createMockFullUserData = (
+    overrides?: Partial<FullUser['user']> & { roles?: any[]; stores?: any[] },
+  ): FullUser => ({
+    user: {
+      id: mockUserId,
+      firstName: 'Jane',
+      lastName: 'Doe',
+      email: 'jane.doe@example.com',
+      ...overrides,
+    } as any,
+    roles: overrides?.roles ?? [],
+    stores: overrides?.stores ?? [],
+  });
+
   beforeEach(async () => {
     mockUserRepository = {
       delete: jest.fn().mockResolvedValue(mockDeleteResult),
     };
 
-    mockHelperService = {
-      checkIfExists: jest.fn().mockResolvedValue(true),
-    };
-
     mockRoleService = {
-      getAssignedRoles: jest.fn().mockResolvedValue([]),
       unassignRolesFromUser: jest.fn().mockResolvedValue(undefined),
     };
 
     mockStoreService = {
-      getAssignedStores: jest.fn().mockResolvedValue([]),
       unassignStoresFromUser: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -82,10 +85,6 @@ describe('DeleteService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
-        },
-        {
-          provide: UserHelperService,
-          useValue: mockHelperService,
         },
         {
           provide: UserRolesService,
@@ -112,21 +111,20 @@ describe('DeleteService', () => {
   });
 
   describe('delete', () => {
-    it('should successfully delete a user when they have no active role or store assignments', async () => {
+    it('should successfully delete a user directly when they have no active role or store assignments', async () => {
       (deletedResults as jest.Mock).mockReturnValue(true);
+      const mockData = createMockFullUserData();
 
       const result = await service.delete({
-        id: mockUserId,
+        data: mockData, // 🎯 FIX: Wrapped inside the expected 'data' object
         canRemoveFromRelatedRoles: false,
         canRemoveFromRelatedStores: false,
       });
 
       expect(result).toBe(true);
       expect(mockSystemIdentityService.getSystemUserId).toHaveBeenCalled();
-      expect(mockRoleService.getAssignedRoles).toHaveBeenCalledWith(mockUserId);
-      expect(mockStoreService.getAssignedStores).toHaveBeenCalledWith(
-        mockUserId,
-      );
+      expect(mockRoleService.unassignRolesFromUser).not.toHaveBeenCalled();
+      expect(mockStoreService.unassignStoresFromUser).not.toHaveBeenCalled();
       expect(mockUserRepository.delete).toHaveBeenCalledWith(mockUserId);
       expect(deletedResults).toHaveBeenCalledWith(mockDeleteResult);
     });
@@ -134,21 +132,23 @@ describe('DeleteService', () => {
     it('should perform relational data purges and delete user if roles/stores exist and cascading permissions are explicitly allowed', async () => {
       (deletedResults as jest.Mock).mockReturnValue(true);
 
-      const mockRolesArray = [{ id: mockRoleId }];
-      const mockStoresArray = [{ id: mockStoreId }];
+      const mockRolesArray = [{ id: mockRoleId, name: 'Admin' }];
+      const mockStoresArray = [{ id: mockStoreId, name: 'Warehouse A' }];
 
-      mockRoleService.getAssignedRoles.mockResolvedValue(mockRolesArray);
-      mockStoreService.getAssignedStores.mockResolvedValue(mockStoresArray);
+      // 🎯 FIX: Pass the populated data array structures down directly through the mock DTO
+      const mockData = createMockFullUserData({
+        roles: mockRolesArray,
+        stores: mockStoresArray,
+      });
 
       const result = await service.delete({
-        id: mockUserId,
+        data: mockData,
         canRemoveFromRelatedRoles: true,
         canRemoveFromRelatedStores: true,
       });
 
       expect(result).toBe(true);
 
-      // 🎯 THE FIX: Verify structural signature match against your service updates
       expect(mockRoleService.unassignRolesFromUser).toHaveBeenCalledWith({
         userId: mockUserId,
         data: { roleIds: [mockRoleId] },
@@ -165,9 +165,11 @@ describe('DeleteService', () => {
     });
 
     it('should throw an UnprocessableEntityException if user attempts to delete the protected system identity root user ID', async () => {
+      const mockData = createMockFullUserData({ id: mockSystemUserId });
+
       await expect(
         service.delete({
-          id: mockSystemUserId,
+          data: mockData,
           canRemoveFromRelatedRoles: true,
           canRemoveFromRelatedStores: true,
         }),
@@ -179,11 +181,13 @@ describe('DeleteService', () => {
     });
 
     it('should halt deletion and throw an exception if the user is attached to roles and cascade flags are denied', async () => {
-      mockRoleService.getAssignedRoles.mockResolvedValue([{ id: mockRoleId }]);
+      const mockData = createMockFullUserData({
+        roles: [{ id: mockRoleId, name: 'Manager' }],
+      });
 
       await expect(
         service.delete({
-          id: mockUserId,
+          data: mockData,
           canRemoveFromRelatedRoles: false, // Disallow cascading role splits
           canRemoveFromRelatedStores: true,
         }),
@@ -198,13 +202,13 @@ describe('DeleteService', () => {
     });
 
     it('should halt deletion and throw an exception if the user is attached to stores and cascade flags are denied', async () => {
-      mockStoreService.getAssignedStores.mockResolvedValue([
-        { id: mockStoreId },
-      ]);
+      const mockData = createMockFullUserData({
+        stores: [{ id: mockStoreId, name: 'Retail Store' }],
+      });
 
       await expect(
         service.delete({
-          id: mockUserId,
+          data: mockData,
           canRemoveFromRelatedRoles: true,
           canRemoveFromRelatedStores: false, // Disallow cascading store splits
         }),
@@ -219,6 +223,8 @@ describe('DeleteService', () => {
     });
 
     it('should catch foreign key exceptions from the PostgreSQL engine and wrap them inside clean user-facing validation errors', async () => {
+      const mockData = createMockFullUserData();
+
       const driverError = new Error('violates foreign key constraint');
       Object.assign(driverError, {
         code: pgErrorStatusCodes.FOREIGN_KEY_VIOLATION,
@@ -238,7 +244,7 @@ describe('DeleteService', () => {
 
       await expect(
         service.delete({
-          id: mockUserId,
+          data: mockData,
           canRemoveFromRelatedRoles: true,
           canRemoveFromRelatedStores: true,
         }),
@@ -250,13 +256,14 @@ describe('DeleteService', () => {
     });
 
     it('should pass unhandled generic database runtime failures up the execution thread without transformation wrappers', async () => {
+      const mockData = createMockFullUserData();
       mockUserRepository.delete.mockRejectedValue(
         new Error('NetworkTimeoutException'),
       );
 
       await expect(
         service.delete({
-          id: mockUserId,
+          data: mockData,
           canRemoveFromRelatedRoles: true,
           canRemoveFromRelatedStores: true,
         }),

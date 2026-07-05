@@ -25,21 +25,24 @@ import { randomUUID, type UUID } from 'crypto';
 export async function createTestUser({
   pipelineService,
   overrides = {},
+  cache,
   createdById,
-  cacheSetSpy,
-  cacheInvalidateByTagsSpy,
   auditLogSpy,
 }: {
   pipelineService: UserPipelineService;
   overrides?: Partial<CreateUserDto>;
   createdById: UUID;
-  cacheSetSpy: jest.SpyInstance;
-  cacheInvalidateByTagsSpy: jest.SpyInstance;
+  cache: {
+    cacheSetSpy: jest.SpyInstance;
+    cacheInvalidateByTagsSpy: jest.SpyInstance;
+  };
   auditLogSpy: jest.SpyInstance;
 }): Promise<UserResponseDto> {
+  const { cacheSetSpy, cacheInvalidateByTagsSpy } = cache;
+
   cacheSetSpy.mockClear();
-  auditLogSpy.mockClear();
   cacheInvalidateByTagsSpy.mockClear();
+  auditLogSpy.mockClear();
 
   const defaultUserData: CreateUserDto = {
     isActive: true,

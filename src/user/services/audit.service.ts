@@ -10,6 +10,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { UUID } from 'crypto';
 
+import { GetUserRoleDto } from '../dto/roles.dto';
+import { GetUserStoreDto } from '../dto/stores.dto';
+
 export interface AuditLogPayload {
   createdAt: Date;
   userId: UUID;
@@ -17,10 +20,18 @@ export interface AuditLogPayload {
   details: string;
   targetUserId: UUID;
   oldState: Partial<
-    UserResponseDto | GetRelatedRoleDto[] | GetRelatedStoreDto[]
+    | UserResponseDto
+    | GetRelatedRoleDto[]
+    | GetUserRoleDto[]
+    | GetRelatedStoreDto[]
+    | GetUserStoreDto[]
   > | null;
   newState: Partial<
-    UserResponseDto | GetRelatedRoleDto[] | GetRelatedStoreDto[]
+    | UserResponseDto
+    | GetRelatedRoleDto[]
+    | GetUserRoleDto[]
+    | GetRelatedStoreDto[]
+    | GetUserStoreDto[]
   > | null;
   ipAddress?: string;
   userAgent?: string;

@@ -1,7 +1,10 @@
 import { CacheService } from '@/baseServices/cache.service';
 import { UserAction } from '@/common/enum/action.enum';
 import { UserWithRoles } from '@/common/pipes/userRoles.pipe';
-import { USER_ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
+import {
+  USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
+} from '@/commonConst/role.const';
 import { ClientMetadata } from '@/commonDecorators/meta.decorator';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { AuditProducerService } from '@/user/services/audit.service';
@@ -31,7 +34,37 @@ export class UserRolePipelineService {
   }
 
   async getPermissions(userId: UUID): Promise<string[]> {
-    return await this.userRolesService.getPermissions(userId);
+    const roles = await this.getAssignedRoles(userId);
+
+    const roleIds = roles.map((role) => role.id);
+
+    const cached = await this.cacheService.getById<string[]>({
+      id: userId,
+      alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+    });
+
+    if (cached) {
+      return cached;
+    }
+
+    const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
+      id: userId,
+      alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+    });
+
+    return await this.cacheService.coalesce<string[]>({
+      key: cacheKey,
+      operation: async () => {
+        const permissions = await this.userRolesService.getPermissions(roleIds);
+
+        await this.cacheService.set<string[]>({
+          key: cacheKey,
+          value: permissions,
+        });
+
+        return permissions;
+      },
+    });
   }
 
   async assignRolesToUser({
@@ -145,14 +178,14 @@ export class UserRolePipelineService {
     return await this.cacheService.coalesce<GetRelatedRoleDto[]>({
       key: cacheKey,
       operation: async () => {
-        const stores = await this.userRolesService.getAssignedRoles(userId);
+        const roles = await this.userRolesService.getAssignedRoles(userId);
 
         await this.cacheService.set<GetRelatedRoleDto[]>({
           key: cacheKey,
-          value: stores,
+          value: roles,
         });
 
-        return stores;
+        return roles;
       },
     });
   }

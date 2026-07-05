@@ -1,9 +1,11 @@
 import { deletedResults } from '@/base/helper/delete';
+import { FullUser } from '@/common/pipes/full-user.pipe';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
+import { GetRelatedRoleDto } from '@/roleDto/role.dto';
+import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import { SystemIdentityService } from '@/system/identity.service';
 import { User } from '@/userEntities/user.entity';
 import { UserRolesService } from '@/userRoleServices/role.service';
-import { UserHelperService } from '@/userServices/helper.service';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -16,21 +18,26 @@ export class DeleteService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly helperService: UserHelperService,
     private readonly roleService: UserRolesService,
     private readonly storeService: UserStoresService,
     private readonly systemIdentityService: SystemIdentityService,
   ) {}
 
   async delete({
-    id,
+    data,
     canRemoveFromRelatedRoles,
     canRemoveFromRelatedStores,
   }: {
-    id: UUID;
+    data: FullUser;
     canRemoveFromRelatedRoles: boolean;
     canRemoveFromRelatedStores: boolean;
   }): Promise<boolean> {
+    const {
+      user: { id },
+      roles,
+      stores,
+    } = data;
+
     try {
       const systemUserId = this.systemIdentityService.getSystemUserId();
 
@@ -41,8 +48,16 @@ export class DeleteService {
       }
 
       await Promise.all([
-        this.removeUserFromRelatedRoles({ id, canRemoveFromRelatedRoles }),
-        this.removeUserFromRelatedStores({ id, canRemoveFromRelatedStores }),
+        this.removeUserFromRelatedRoles({
+          id,
+          canRemoveFromRelatedRoles,
+          roles,
+        }),
+        this.removeUserFromRelatedStores({
+          id,
+          canRemoveFromRelatedStores,
+          stores,
+        }),
       ]);
 
       const deleted = await this.userRepository.delete(id);
@@ -65,49 +80,49 @@ export class DeleteService {
 
   private async removeUserFromRelatedRoles({
     id,
+    roles,
     canRemoveFromRelatedRoles,
   }: {
     id: UUID;
+    roles: GetRelatedRoleDto[];
     canRemoveFromRelatedRoles: boolean;
   }): Promise<void> {
-    const userRoles = await this.roleService.getAssignedRoles(id);
+    if (roles.length === 0) return;
 
-    if (userRoles.length > 0) {
-      if (!canRemoveFromRelatedRoles) {
-        throw new UnprocessableEntityException(
-          'User cannot be deleted because they are still assigned to roles. Please unassign the user from their roles before deletion.',
-        );
-      }
-
-      await this.roleService.unassignRolesFromUser({
-        userId: id,
-        data: { roleIds: userRoles.map((role) => role.id) },
-        assignedRoles: userRoles,
-      });
+    if (!canRemoveFromRelatedRoles) {
+      throw new UnprocessableEntityException(
+        'User cannot be deleted because they are still assigned to roles. Please unassign the user from their roles before deletion.',
+      );
     }
+
+    await this.roleService.unassignRolesFromUser({
+      userId: id,
+      data: { roleIds: roles.map((role) => role.id) },
+      assignedRoles: roles,
+    });
   }
 
   private async removeUserFromRelatedStores({
     id,
+    stores,
     canRemoveFromRelatedStores,
   }: {
     id: UUID;
+    stores: GetRelatedStoreDto[];
     canRemoveFromRelatedStores: boolean;
   }): Promise<void> {
-    const userStores = await this.storeService.getAssignedStores(id);
+    if (stores.length === 0) return;
 
-    if (userStores.length > 0) {
-      if (!canRemoveFromRelatedStores) {
-        throw new UnprocessableEntityException(
-          'User cannot be deleted because they are still assigned to stores. Please unassign the user from their stores before deletion.',
-        );
-      }
-
-      await this.storeService.unassignStoresFromUser({
-        userId: id,
-        data: { storeIds: userStores.map((store) => store.id) },
-        assignedStores: userStores,
-      });
+    if (!canRemoveFromRelatedStores) {
+      throw new UnprocessableEntityException(
+        'User cannot be deleted because they are still assigned to stores. Please unassign the user from their stores before deletion.',
+      );
     }
+
+    await this.storeService.unassignStoresFromUser({
+      userId: id,
+      data: { storeIds: stores.map((store) => store.id) },
+      assignedStores: stores,
+    });
   }
 }

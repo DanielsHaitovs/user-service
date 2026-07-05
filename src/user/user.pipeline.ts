@@ -19,6 +19,8 @@ import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
 
+import { FullUser } from '../common/pipes/full-user.pipe';
+
 @Injectable()
 export class UserPipelineService {
   constructor(
@@ -108,11 +110,13 @@ export class UserPipelineService {
       createdById,
     });
 
-    await Promise.all([
+    const { createdAt } = user;
+
+    const promises: Promise<void>[] = [
       this.invalidateUserCache({}),
       this.setUserCache(user),
       this.audiService.sendLog({
-        createdAt: new Date(),
+        createdAt,
         userId: createdById,
         action: UserAction.CREATE,
         details: `User ${user.email} created`,
@@ -122,7 +126,41 @@ export class UserPipelineService {
         ipAddress: metadata.ipAddress,
         userAgent: metadata.userAgent,
       }),
-    ]);
+    ];
+
+    if (user.userRoles != undefined && user.userRoles.length > 0) {
+      promises.push(
+        this.audiService.sendRoleLog({
+          createdAt,
+          userId: createdById,
+          action: UserAction.ASSIGN_ROLE,
+          oldState: null,
+          details: `User ${user.email} created with roles`,
+          newState: user.userRoles,
+          targetUserId: user.id,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
+        }),
+      );
+    }
+
+    if (user.userStores != undefined && user.userStores.length > 0) {
+      promises.push(
+        this.audiService.sendStoreLog({
+          createdAt,
+          userId: createdById,
+          action: UserAction.ASSIGN_STORE,
+          oldState: null,
+          details: `User ${user.email} created with stores`,
+          newState: user.userStores,
+          targetUserId: user.id,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
+        }),
+      );
+    }
+
+    await Promise.all(promises);
 
     return user;
   }
@@ -162,23 +200,25 @@ export class UserPipelineService {
   }
 
   async delete({
-    user,
+    data,
     canRemoveFromRelatedRoles,
     canRemoveFromRelatedStores,
     requestedById,
     metadata,
   }: {
-    user: GetUserDto;
+    data: FullUser;
     canRemoveFromRelatedRoles: boolean;
     canRemoveFromRelatedStores: boolean;
     requestedById: UUID;
     metadata: ClientMetadata;
   }): Promise<boolean> {
     const deleted = await this.deleteService.delete({
-      id: user.id,
+      data,
       canRemoveFromRelatedRoles,
       canRemoveFromRelatedStores,
     });
+
+    const { user } = data;
 
     if (deleted) {
       await Promise.all([

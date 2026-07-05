@@ -114,9 +114,11 @@ describe('UserPipelineService (Integration)', () => {
     testUser = await createTestUser({
       pipelineService,
       createdById: systemUserId,
-      cacheSetSpy,
+      cache: {
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+      },
       auditLogSpy,
-      cacheInvalidateByTagsSpy,
     });
 
     createUserMock = {
@@ -503,9 +505,11 @@ describe('UserPipelineService (Integration)', () => {
       const conflictUser = await createTestUser({
         pipelineService,
         createdById: systemUserId,
-        cacheSetSpy,
+        cache: {
+          cacheSetSpy,
+          cacheInvalidateByTagsSpy,
+        },
         auditLogSpy,
-        cacheInvalidateByTagsSpy,
       });
 
       updateUserDto.email = conflictUser.email;
@@ -535,9 +539,11 @@ describe('UserPipelineService (Integration)', () => {
       const conflictUser = await createTestUser({
         pipelineService,
         createdById: systemUserId,
-        cacheSetSpy,
+        cache: {
+          cacheSetSpy,
+          cacheInvalidateByTagsSpy,
+        },
         auditLogSpy,
-        cacheInvalidateByTagsSpy,
       });
 
       updateUserDto.email = conflictUser.email;
@@ -567,7 +573,7 @@ describe('UserPipelineService (Integration)', () => {
   describe('Delete User', () => {
     it('should delete a user with access only to user, invalidate cache and send audit log', async () => {
       const deleted = await pipelineService.delete({
-        user: testUser,
+        data: { user: testUser, roles: [], stores: [] },
         requestedById: systemUserId,
         metadata: {
           ipAddress: faker.internet.ip(),
@@ -597,7 +603,7 @@ describe('UserPipelineService (Integration)', () => {
     });
     it('should delete a user with root access, invalidate cache and send audit log', async () => {
       const deleted = await pipelineService.delete({
-        user: testUser,
+        data: { user: testUser, roles: [], stores: [] },
         requestedById: systemUserId,
         metadata: {
           ipAddress: faker.internet.ip(),
@@ -629,7 +635,7 @@ describe('UserPipelineService (Integration)', () => {
       testUser.id = randomUUID();
 
       const deleted = await pipelineService.delete({
-        user: testUser,
+        data: { user: testUser, roles: [], stores: [] },
         requestedById: systemUserId,
         metadata: {
           ipAddress: faker.internet.ip(),
@@ -661,7 +667,7 @@ describe('UserPipelineService (Integration)', () => {
       cacheSetSpy.mockClear();
 
       const deleted = await pipelineService.delete({
-        user: testUser,
+        data: { user: testUser, roles: [testRole], stores: [] },
         requestedById: systemUserId,
         metadata: {
           ipAddress: faker.internet.ip(),
@@ -706,7 +712,7 @@ describe('UserPipelineService (Integration)', () => {
 
       await expect(
         pipelineService.delete({
-          user: testUser,
+          data: { user: testUser, roles: [testRole], stores: [] },
           requestedById: systemUserId,
           metadata: {
             ipAddress: faker.internet.ip(),
@@ -752,7 +758,7 @@ describe('UserPipelineService (Integration)', () => {
       cacheSetSpy.mockClear();
 
       const deleted = await pipelineService.delete({
-        user: testUser,
+        data: { user: testUser, roles: [], stores: [testStore] },
         requestedById: systemUserId,
         metadata: {
           ipAddress: faker.internet.ip(),
@@ -797,7 +803,7 @@ describe('UserPipelineService (Integration)', () => {
 
       await expect(
         pipelineService.delete({
-          user: testUser,
+          data: { user: testUser, roles: [], stores: [testStore] },
           requestedById: systemUserId,
           metadata: {
             ipAddress: faker.internet.ip(),

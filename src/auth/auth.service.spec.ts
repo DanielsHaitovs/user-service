@@ -1,13 +1,12 @@
+/* eslint-disable sonarjs/no-hardcoded-passwords */
 import type { AuthenticateDto } from '@/auth/auth.dto';
-import { AuthService } from '@/auth/auth.service';
+import { AuthService } from '@/auth/auth.service'; // Adjust import path based on layout
 import { AuthCacheService } from '@/auth/cache.service';
-import { COUNTRIES } from '@/commonConst/countries.const';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { Environment } from '@/config/env/env.validation';
-import type { User } from '@/userEntities/user.entity';
-import { UserRolesService } from '@/userRoleServices/role.service';
+import { UserRolePipelineService } from '@/user/role.pipeline';
+import { UserStorePipelineService } from '@/user/store.pipeline';
 import { UserHelperService } from '@/userServices/helper.service';
-import { faker } from '@faker-js/faker';
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -15,6 +14,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 
+// 🎯 Mock the external bcrypt library dependency
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
 }));
@@ -35,46 +35,33 @@ describe('AuthService', () => {
     getPermissions: jest.Mock;
   };
 
+  let mockUserStoreService: {
+    getAssignedStores: jest.Mock;
+  };
+
   let mockUserHelperService: {
     getByEmail: jest.Mock;
   };
 
-  let mockCacheService: {
+  let mockAuthCacheService: {
     set: jest.Mock;
   };
 
   const mockUserId = randomUUID();
-  const mockEmail = 'auth.test@example.com';
-  const mockToken = 'mock-jwt-string-token';
-  const mockPermissions = ['READ_USERS', 'WRITE_USERS'];
+  const mockStoreId = randomUUID();
+  const mockToken = 'mocked_jwt_token_string';
 
-  // Type safe plain user template to build tests onto cleanly
-  const createMockUser = (overrides: Partial<User> = {}): User => {
-    return Object.assign(
-      {
-        id: mockUserId,
-        email: mockEmail,
-        password: randomUUID(),
-        isActive: true,
-        isEmailVerified: true,
-        country: COUNTRIES.US,
-        firstName: 'Jane',
-        lastName: 'Doe',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        phone: faker.phone.number(),
-        dateOfBirth: faker.date.past({ years: 30 }),
-        emailVerificationToken: randomUUID(),
-        passwordResetToken: randomUUID(),
-        passwordResetExpires: new Date(Date.now() + 3600000),
-        isTwoFactorEnabled: false,
-        twoFactorSecret: randomUUID(),
-        userRoles: [],
-        userStores: [],
-        createdBy: randomUUID(),
-      },
-      overrides,
-    );
+  const mockUserRecord = {
+    id: mockUserId,
+    email: 'john.doe@example.com',
+    password: '$2b$10$mockedhashedpassword',
+    isActive: true,
+    isEmailVerified: true,
+  };
+
+  const authPayloadDto: AuthenticateDto = {
+    email: 'john.doe@example.com',
+    password: 'Password123!',
   };
 
   beforeEach(async () => {
@@ -88,14 +75,18 @@ describe('AuthService', () => {
     };
 
     mockUserRoleService = {
-      getPermissions: jest.fn().mockResolvedValue(mockPermissions),
+      getPermissions: jest.fn().mockResolvedValue(['READ_PRIVILEGE']),
+    };
+
+    mockUserStoreService = {
+      getAssignedStores: jest.fn().mockResolvedValue([{ id: mockStoreId }]),
     };
 
     mockUserHelperService = {
-      getByEmail: jest.fn(),
+      getByEmail: jest.fn().mockResolvedValue(mockUserRecord),
     };
 
-    mockCacheService = {
+    mockAuthCacheService = {
       set: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -104,9 +95,10 @@ describe('AuthService', () => {
         AuthService,
         { provide: EnvConfigService, useValue: mockEnvConfigService },
         { provide: JwtService, useValue: mockJwtService },
-        { provide: UserRolesService, useValue: mockUserRoleService },
+        { provide: UserRolePipelineService, useValue: mockUserRoleService },
+        { provide: UserStorePipelineService, useValue: mockUserStoreService },
         { provide: UserHelperService, useValue: mockUserHelperService },
-        { provide: AuthCacheService, useValue: mockCacheService },
+        { provide: AuthCacheService, useValue: mockAuthCacheService },
       ],
     }).compile();
 
@@ -120,115 +112,122 @@ describe('AuthService', () => {
   });
 
   describe('signIn', () => {
-    let authDto: AuthenticateDto;
-
-    beforeEach(() => {
-      authDto = {
-        email: mockEmail,
-        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
-        password: 'PlainTextPassword123!',
-      };
-    });
-
-    it('should successfully authenticate, issue a token, and cache credentials in Production', async () => {
-      const activeUser = createMockUser();
-      mockUserHelperService.getByEmail.mockResolvedValue(activeUser);
+    it('should authenticate successfully, issue tokens, and write payload logs to the cache', async () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.signIn(authDto);
+      const result = await service.signIn(authPayloadDto);
 
       expect(result).toEqual({ token: mockToken });
       expect(mockUserHelperService.getByEmail).toHaveBeenCalledWith({
-        email: mockEmail,
+        email: authPayloadDto.email,
       });
       expect(bcrypt.compare).toHaveBeenCalledWith(
-        authDto.password,
-        activeUser.password,
+        authPayloadDto.password,
+        mockUserRecord.password,
       );
+
       expect(mockUserRoleService.getPermissions).toHaveBeenCalledWith(
         mockUserId,
       );
-      expect(mockJwtService.signAsync).toHaveBeenCalledWith({
+      expect(mockUserStoreService.getAssignedStores).toHaveBeenCalledWith(
+        mockUserId,
+      );
+
+      const expectedJwtPayload = {
         id: mockUserId,
-        email: mockEmail,
-        permissions: mockPermissions,
-      });
-      expect(mockCacheService.set).toHaveBeenCalledWith({
-        payload: {
-          id: mockUserId,
-          email: mockEmail,
-          permissions: mockPermissions,
-        },
+        email: authPayloadDto.email,
+        permissions: ['READ_PRIVILEGE'],
+        stores: [mockStoreId],
+      };
+
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(expectedJwtPayload);
+      expect(mockAuthCacheService.set).toHaveBeenCalledWith({
+        payload: expectedJwtPayload,
         token: mockToken,
       });
     });
 
-    it('should bypass active and verified strict checks when requireAuth is disabled in Local environment', async () => {
-      // Configuration values altered to hit the specific config gate shortcut path
-      mockEnvConfigService.requireAuth = false;
-      mockEnvConfigService.nodeEnv = Environment.Development;
-
-      // User is explicitly inactive and unverified, but should still be allowed through by the gate
-      const constrainedUser = createMockUser({
-        isActive: false,
-        isEmailVerified: false,
-      });
-      mockUserHelperService.getByEmail.mockResolvedValue(constrainedUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
-      const result = await service.signIn(authDto);
-
-      expect(result).toEqual({ token: mockToken });
-
-      // 🎯 THE FIX: Direct assertion to prove the validation limits were bypassed
-      expect(mockUserRoleService.getPermissions).toHaveBeenCalledWith(
-        mockUserId,
-      );
-    });
-
-    it('should throw an UnauthorizedException if the password comparison check returns false', async () => {
-      const activeUser = createMockUser();
-      mockUserHelperService.getByEmail.mockResolvedValue(activeUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false); // Mismatch path triggered
-
-      await expect(service.signIn(authDto)).rejects.toThrow(
-        new UnauthorizedException(),
-      );
-
-      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
-      expect(mockCacheService.set).not.toHaveBeenCalled();
-    });
-
-    it('should throw "Invalid credentials" if the email lookup resolves to null or undefined', async () => {
+    it('should throw a strict UnauthorizedException if the user email layout cannot be found', async () => {
       mockUserHelperService.getByEmail.mockResolvedValue(null);
 
-      await expect(service.signIn(authDto)).rejects.toThrow(
+      await expect(service.signIn(authPayloadDto)).rejects.toThrow(
         new UnauthorizedException('Invalid credentials'),
       );
 
       expect(bcrypt.compare).not.toHaveBeenCalled();
+      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
     });
 
-    it('should throw "User account is inactive" if status is false and safety gates are active', async () => {
-      const inactiveUser = createMockUser({ isActive: false });
-      mockUserHelperService.getByEmail.mockResolvedValue(inactiveUser);
+    it('should throw an empty context UnauthorizedException if passwords do not match', async () => {
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.signIn(authDto)).rejects.toThrow(
+      await expect(service.signIn(authPayloadDto)).rejects.toThrow(
+        new UnauthorizedException(),
+      );
+
+      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
+      expect(mockAuthCacheService.set).not.toHaveBeenCalled();
+    });
+
+    it('should throw an UnauthorizedException if user is flagged as inactive', async () => {
+      mockUserHelperService.getByEmail.mockResolvedValue({
+        ...mockUserRecord,
+        isActive: false,
+      });
+
+      await expect(service.signIn(authPayloadDto)).rejects.toThrow(
         new UnauthorizedException('User account is inactive'),
       );
 
       expect(bcrypt.compare).not.toHaveBeenCalled();
     });
 
-    it('should throw "Email is not verified" if verification flag is false and safety gates are active', async () => {
-      const unverifiedUser = createMockUser({ isEmailVerified: false });
-      mockUserHelperService.getByEmail.mockResolvedValue(unverifiedUser);
+    it('should throw an UnauthorizedException if user email verification remains incomplete', async () => {
+      mockUserHelperService.getByEmail.mockResolvedValue({
+        ...mockUserRecord,
+        isEmailVerified: false,
+      });
 
-      await expect(service.signIn(authDto)).rejects.toThrow(
+      await expect(service.signIn(authPayloadDto)).rejects.toThrow(
         new UnauthorizedException('Email is not verified'),
       );
 
       expect(bcrypt.compare).not.toHaveBeenCalled();
+    });
+
+    it('should bypass profile status filters if auth requirements are disabled outside of production environments', async () => {
+      // Setup the configuration boundary bypass state
+      mockEnvConfigService.requireAuth = false;
+      mockEnvConfigService.nodeEnv = Environment.Development;
+
+      // Provide an unverified, inactive user payload that would normally crash
+      mockUserHelperService.getByEmail.mockResolvedValue({
+        ...mockUserRecord,
+        isActive: false,
+        isEmailVerified: false,
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.signIn(authPayloadDto);
+
+      expect(result).toEqual({ token: mockToken });
+      expect(bcrypt.compare).toHaveBeenCalled();
+      expect(mockJwtService.signAsync).toHaveBeenCalled();
+    });
+
+    it('should enforce status check boundaries even if requireAuth is false, provided nodeEnv is set to Production', async () => {
+      // requireAuth is disabled, BUT Node environment remains set to Production
+      mockEnvConfigService.requireAuth = false;
+      mockEnvConfigService.nodeEnv = Environment.Production;
+
+      mockUserHelperService.getByEmail.mockResolvedValue({
+        ...mockUserRecord,
+        isActive: false, // Will catch this indicator block
+      });
+
+      await expect(service.signIn(authPayloadDto)).rejects.toThrow(
+        new UnauthorizedException('User account is inactive'),
+      );
     });
   });
 });

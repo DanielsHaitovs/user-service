@@ -31,6 +31,7 @@ describe('UserRolesService', () => {
     where: jest.Mock;
     dateGreaterThan: jest.Mock;
     dateLessThan: jest.Mock;
+    whereIn: jest.Mock; // 🎯 Added missing spy wrapper
     sort: jest.Mock;
     paginate: jest.Mock;
     paginatedResult: jest.Mock;
@@ -56,7 +57,7 @@ describe('UserRolesService', () => {
     };
 
     mockRoleRepository = {
-      save: jest.fn(),
+      save: jest.fn().mockResolvedValue(undefined),
       delete: jest
         .fn()
         .mockResolvedValue({ raw: [], affected: 1 } as DeleteResult),
@@ -74,6 +75,7 @@ describe('UserRolesService', () => {
       where: jest.fn(),
       dateGreaterThan: jest.fn(),
       dateLessThan: jest.fn(),
+      whereIn: jest.fn(),
       sort: jest.fn(),
       paginate: jest.fn(),
       paginatedResult: jest.fn(),
@@ -108,9 +110,10 @@ describe('UserRolesService', () => {
   });
 
   describe('getRoles', () => {
-    it('should invoke complete query service composition including dynamic execution filters', async () => {
+    it('should invoke complete query service composition including dynamic filter structures', async () => {
       const fullRequest: UserRolesQueryRequest = {
         userId: mockUserId,
+        names: ['Admin', 'Manager'],
         page: 1,
         limit: 10,
         sortField: 'createdAt',
@@ -163,6 +166,14 @@ describe('UserRolesService', () => {
         date: fullRequest.dateTo,
       });
 
+      // 🎯 Verify name search filter strategy array check matches
+      expect(mockEntityQueryService.whereIn).toHaveBeenCalledWith({
+        query: mockQueryInstance,
+        field: 'role.name',
+        condition: 'AND',
+        values: ['Admin', 'Manager'],
+      });
+
       expect(mockQueryInstance.select).toHaveBeenCalledWith([
         `${USER_ROLE_QUERY_ALIAS}.id`,
         `${USER_ROLE_QUERY_ALIAS}.createdAt`,
@@ -173,7 +184,7 @@ describe('UserRolesService', () => {
       ]);
     });
 
-    it('should cleanly skip execution blocks for date constraints when parameter context is absent', async () => {
+    it('should cleanly skip execution blocks for dates and name lists when context arrays are absent', async () => {
       const leanRequest: UserRolesQueryRequest = {
         userId: mockUserId,
         page: 2,
@@ -186,40 +197,37 @@ describe('UserRolesService', () => {
 
       expect(mockEntityQueryService.dateGreaterThan).not.toHaveBeenCalled();
       expect(mockEntityQueryService.dateLessThan).not.toHaveBeenCalled();
+      expect(mockEntityQueryService.whereIn).not.toHaveBeenCalled();
     });
   });
 
   describe('getPermissions', () => {
-    it('should return empty collection arrays immediately if user holds no assigned roles', async () => {
-      mockEntityQueryService.getAll.mockResolvedValue([]);
-
-      const result = await service.getPermissions(mockUserId);
+    it('should return empty collection arrays immediately if input roleIds list is empty', async () => {
+      const result = await service.getPermissions([]);
 
       expect(result).toEqual([]);
       expect(mockRoleHelperService.getAllPermissions).not.toHaveBeenCalled();
     });
 
-    it('should assemble target assigned role lists and return compiled permission string keys', async () => {
-      const mockAssignedRoleRecords = [
-        { role: { id: mockRoleId, name: 'Manager' } },
-      ];
-      mockEntityQueryService.getAll.mockResolvedValue(mockAssignedRoleRecords);
+    it('should query helper layer directly using explicit role ids array', async () => {
+      // 🎯 FIX: Pass an array of role ids to match the service signature path
+      const targetRoleIds = [mockRoleId];
       mockRoleHelperService.getAllPermissions.mockResolvedValue([
-        'READ_DASHBOARD',
-        'WRITE_DASHBOARD',
+        'READ_USER',
+        'WRITE_USER',
       ]);
 
-      const result = await service.getPermissions(mockUserId);
+      const result = await service.getPermissions(targetRoleIds);
 
-      expect(result).toEqual(['READ_DASHBOARD', 'WRITE_DASHBOARD']);
-      expect(mockRoleHelperService.getAllPermissions).toHaveBeenCalledWith([
-        mockRoleId,
-      ]);
+      expect(result).toEqual(['READ_USER', 'WRITE_USER']);
+      expect(mockRoleHelperService.getAllPermissions).toHaveBeenCalledWith(
+        targetRoleIds,
+      );
     });
   });
 
   describe('assignRolesToUser', () => {
-    it('should break out early if payload targets roles that are already fully assigned via input parameters', async () => {
+    it('should break out early returning false if incoming payload changes overlap fully with existing lists', async () => {
       const preAssignedRoles: GetRelatedRoleDto[] = [
         {
           id: mockRoleId,
@@ -229,20 +237,33 @@ describe('UserRolesService', () => {
         },
       ];
 
-      await service.assignRolesToUser({
+      const result = await service.assignRolesToUser({
         userId: mockUserId,
         assignedRoles: preAssignedRoles,
         data: { roleIds: [mockRoleId] },
         assignedById: mockAssignedById,
       });
 
+      expect(result).toBe(false);
       expect(
         mockRoleHelperService.checkIfManyExistOrThrow,
       ).toHaveBeenCalledWith([mockRoleId]);
       expect(mockRoleRepository.save).not.toHaveBeenCalled();
     });
 
-    it('should isolate differential unassigned items against the injected array and trigger repository storage updates', async () => {
+    it('should break out early returning false if incoming roleIds array is entirely empty', async () => {
+      const result = await service.assignRolesToUser({
+        userId: mockUserId,
+        assignedRoles: [],
+        data: { roleIds: [] },
+        assignedById: mockAssignedById,
+      });
+
+      expect(result).toBe(false);
+      expect(mockRoleRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should isolate differential items and update repository tables context entries', async () => {
       const newRoleId = randomUUID();
       const preAssignedRoles: GetRelatedRoleDto[] = [
         {
@@ -253,13 +274,14 @@ describe('UserRolesService', () => {
         },
       ];
 
-      await service.assignRolesToUser({
+      const result = await service.assignRolesToUser({
         userId: mockUserId,
         assignedRoles: preAssignedRoles,
         data: { roleIds: [mockRoleId, newRoleId] },
         assignedById: mockAssignedById,
       });
 
+      expect(result).toBe(true);
       expect(mockRoleRepository.save).toHaveBeenCalledWith([
         {
           user: { id: mockUserId },
@@ -272,16 +294,17 @@ describe('UserRolesService', () => {
 
   describe('unassignRolesFromUser', () => {
     it('should stop modification routines early if the provided pre-assigned role array is completely empty', async () => {
-      await service.unassignRolesFromUser({
+      const result = await service.unassignRolesFromUser({
         userId: mockUserId,
         assignedRoles: [],
         data: { roleIds: [mockRoleId] },
       });
 
+      expect(result).toBe(false);
       expect(mockRoleRepository.delete).not.toHaveBeenCalled();
     });
 
-    it('should bypass data mutation layers entirely if intersection evaluation handles zero code overlaps', async () => {
+    it('should bypass data mutation layers entirely if intersection evaluation yields zero overlaps', async () => {
       const alternativeRoleId = randomUUID();
       const preAssignedRoles: GetRelatedRoleDto[] = [
         {
@@ -292,12 +315,13 @@ describe('UserRolesService', () => {
         },
       ];
 
-      await service.unassignRolesFromUser({
+      const result = await service.unassignRolesFromUser({
         userId: mockUserId,
         assignedRoles: preAssignedRoles,
         data: { roleIds: [alternativeRoleId] },
       });
 
+      expect(result).toBe(false);
       expect(mockRoleRepository.delete).not.toHaveBeenCalled();
     });
 
@@ -311,12 +335,13 @@ describe('UserRolesService', () => {
         },
       ];
 
-      await service.unassignRolesFromUser({
+      const result = await service.unassignRolesFromUser({
         userId: mockUserId,
         assignedRoles: preAssignedRoles,
         data: { roleIds: [mockRoleId] },
       });
 
+      expect(result).toBe(true);
       expect(mockRoleRepository.delete).toHaveBeenCalledWith({
         user: { id: mockUserId },
         role: { id: In([mockRoleId]) },

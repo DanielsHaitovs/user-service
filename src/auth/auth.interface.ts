@@ -5,6 +5,7 @@ export interface JwtPayload {
   id: UUID;
   email: string;
   permissions: string[];
+  stores: UUID[];
 }
 
 export interface AuthenticatedRequest extends FastifyRequest {

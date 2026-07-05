@@ -3,20 +3,23 @@ import { JwtPayload } from '@/auth/auth.interface';
 import { AuthCacheService } from '@/auth/cache.service';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { Environment } from '@/config/env/env.validation';
+import { UserRolePipelineService } from '@/user/role.pipeline';
 import { User } from '@/userEntities/user.entity';
-import { UserRolesService } from '@/userRoleServices/role.service';
 import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import * as bcrypt from 'bcrypt';
 
+import { UserStorePipelineService } from '../user/store.pipeline';
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly envConfigService: EnvConfigService,
     private readonly jwtService: JwtService,
-    private readonly userRoleService: UserRolesService,
+    private readonly userRoleService: UserRolePipelineService,
+    private readonly userStoreService: UserStorePipelineService,
     private readonly userHelperService: UserHelperService,
     private readonly cacheService: AuthCacheService,
   ) {}
@@ -24,20 +27,26 @@ export class AuthService {
   async signIn(data: AuthenticateDto): Promise<AuthenticateResponseDto> {
     const { email, password } = data;
 
-    const user = await this.validateUserByEmail({ email });
+    const { id, password: hashedPassword } = await this.validateUserByEmail({
+      email,
+    });
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, hashedPassword);
 
     if (!isMatch) {
       throw new UnauthorizedException();
     }
 
-    const permissions = await this.userRoleService.getPermissions(user.id);
+    const [permissions, stores] = await Promise.all([
+      this.userRoleService.getPermissions(id),
+      this.userStoreService.getAssignedStores(id),
+    ]);
 
     const payload: JwtPayload = {
-      id: user.id,
+      id,
       email,
       permissions,
+      stores: stores.map((store) => store.id),
     };
 
     const token = await this.jwtService.signAsync(payload);

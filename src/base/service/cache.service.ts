@@ -1,6 +1,7 @@
 import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
 import {
   ROLE_QUERY_ALIAS,
+  USER_ROLE_PERMISSIONS_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/commonConst/role.const';
 import {
@@ -26,6 +27,7 @@ type alias =
   | typeof ROLE_QUERY_ALIAS
   | typeof PERMISSION_QUERY_ALIAS
   | `${typeof ROLE_QUERY_ALIAS}_${typeof PERMISSION_QUERY_ALIAS}`
+  | typeof USER_ROLE_PERMISSIONS_QUERY_ALIAS
   | typeof USER_ROLE_QUERY_ALIAS
   | typeof USER_STORES_QUERY_ALIAS;
 
@@ -154,57 +156,57 @@ export class CacheService {
     }
   }
 
-  async invalidateByPartialKeyPattern(pattern: string): Promise<void> {
-    try {
-      const cutIndex = pattern.indexOf('_all_') + 5;
+  // async invalidateByPartialKeyPattern(pattern: string): Promise<void> {
+  //   try {
+  //     const cutIndex = pattern.indexOf('_all_') + 5;
 
-      const prefix = pattern.slice(0, cutIndex);
-      const cacheId = pattern.slice(cutIndex, -1);
+  //     const prefix = pattern.slice(0, cutIndex);
+  //     const cacheId = pattern.slice(cutIndex, -1);
 
-      const keyv: Keyv | undefined = this.cacheManager.stores[0];
+  //     const keyv: Keyv | undefined = this.cacheManager.stores[0];
 
-      if (!keyv) {
-        return;
-      }
+  //     if (!keyv) {
+  //       return;
+  //     }
 
-      const store = keyv.opts.store as KeyvRedis<unknown> | undefined;
-      const redisClient = store?.client as RedisClientType | undefined;
+  //     const store = keyv.opts.store as KeyvRedis<unknown> | undefined;
+  //     const redisClient = store?.client as RedisClientType | undefined;
 
-      if (!redisClient) {
-        return;
-      }
+  //     if (!redisClient) {
+  //       return;
+  //     }
 
-      const keysToDelete: string[] = [];
-      const keysMatchPattern: string[] = [];
+  //     const keysToDelete: string[] = [];
+  //     const keysMatchPattern: string[] = [];
 
-      for await (const result of redisClient.scanIterator({
-        MATCH: `${pattern}*`,
-        COUNT: 100,
-      })) {
-        if (Array.isArray(result)) {
-          keysMatchPattern.push(...result);
-        } else if (typeof result === 'string') {
-          keysMatchPattern.push(result);
-        }
-      }
+  //     for await (const result of redisClient.scanIterator({
+  //       MATCH: `${pattern}*`,
+  //       COUNT: 100,
+  //     })) {
+  //       if (Array.isArray(result)) {
+  //         keysMatchPattern.push(...result);
+  //       } else if (typeof result === 'string') {
+  //         keysMatchPattern.push(result);
+  //       }
+  //     }
 
-      for (const key of keysMatchPattern) {
-        if (key.startsWith(prefix) && key.includes(cacheId)) {
-          keysToDelete.push(key);
-        }
-      }
+  //     for (const key of keysMatchPattern) {
+  //       if (key.startsWith(prefix) && key.includes(cacheId)) {
+  //         keysToDelete.push(key);
+  //       }
+  //     }
 
-      if (keysToDelete.length > 0) {
-        await redisClient.sendCommand(['UNLINK', ...keysToDelete]);
-      }
-    } catch (e) {
-      const error = e as Error;
+  //     if (keysToDelete.length > 0) {
+  //       await redisClient.sendCommand(['UNLINK', ...keysToDelete]);
+  //     }
+  //   } catch (e) {
+  //     const error = e as Error;
 
-      this.logService.error(
-        `Failed to invalidate cache for pattern [${pattern}]): ${error.message}`,
-      );
-    }
-  }
+  //     this.logService.error(
+  //       `Failed to invalidate cache for pattern [${pattern}]): ${error.message}`,
+  //     );
+  //   }
+  // }
 
   async invalidateByTags({
     tag,
@@ -212,10 +214,7 @@ export class CacheService {
   }: {
     tag: {
       purge?: boolean | undefined;
-      all?: {
-        purge?: boolean | undefined;
-        cacheId?: string | undefined;
-      };
+      all?: boolean | undefined;
       paginated?: boolean | undefined;
     };
     alias: alias;
@@ -225,13 +224,9 @@ export class CacheService {
       return;
     }
 
-    if (tag.all != undefined && tag.all.purge === true) {
+    if (tag.all != undefined && tag.all) {
       await this.invalidateByKeyPattern(`${alias}_all_*`);
       return;
-    } else if (tag.all?.cacheId != undefined) {
-      await this.invalidateByPartialKeyPattern(
-        `${alias}_all_${tag.all.cacheId}:*`,
-      );
     }
 
     if (tag.paginated != undefined && tag.paginated) {
@@ -273,6 +268,8 @@ export class CacheService {
         return `id:${id}:${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`;
       case USER_ROLE_QUERY_ALIAS:
         return `id:${id}:${USER_ROLE_QUERY_ALIAS}`;
+      case USER_ROLE_PERMISSIONS_QUERY_ALIAS:
+        return `id:${id}:${USER_ROLE_PERMISSIONS_QUERY_ALIAS}`;
       case USER_STORES_QUERY_ALIAS:
         return `id:${id}:${USER_STORES_QUERY_ALIAS}`;
       default:
@@ -296,6 +293,8 @@ export class CacheService {
         return `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}_all_`;
       case USER_ROLE_QUERY_ALIAS:
         return `${USER_ROLE_QUERY_ALIAS}_all_`;
+      case USER_ROLE_PERMISSIONS_QUERY_ALIAS:
+        return `${USER_ROLE_PERMISSIONS_QUERY_ALIAS}_all_`;
       case USER_STORES_QUERY_ALIAS:
         return `${USER_STORES_QUERY_ALIAS}_all_`;
       default:
@@ -319,6 +318,8 @@ export class CacheService {
         return `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}_paginated_`;
       case USER_ROLE_QUERY_ALIAS:
         return `${USER_ROLE_QUERY_ALIAS}_paginated_`;
+      case USER_ROLE_PERMISSIONS_QUERY_ALIAS:
+        return `${USER_ROLE_PERMISSIONS_QUERY_ALIAS}_paginated_`;
       case USER_STORES_QUERY_ALIAS:
         return `${USER_STORES_QUERY_ALIAS}_paginated_`;
       default:

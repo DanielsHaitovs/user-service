@@ -129,14 +129,10 @@ export class UserRolesService {
    * @returns A promise that resolves to an array of strings representing the permission codes associated with the user's roles.
    * @throws An EntityNotFoundError if the user does not exist or if no roles are found for the user.
    */
-  async getPermissions(userId: UUID): Promise<string[]> {
-    const userRoles = await this.getAssignedRoles(userId);
-
-    if (userRoles.length === 0) {
+  async getPermissions(roleIds: UUID[]): Promise<string[]> {
+    if (roleIds.length === 0) {
       return [];
     }
-
-    const roleIds = userRoles.map((userRole) => userRole.id);
 
     return await this.roleHelperService.getAllPermissions(roleIds);
   }
@@ -257,7 +253,6 @@ export class UserRolesService {
 
     const userRoles = await this.queryService.getAll<UserRoles>({
       query,
-      cacheId: userId,
     });
 
     return userRoles.map((userRole) => userRole.role);

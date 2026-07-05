@@ -57,6 +57,8 @@ export const DELETE_ROLE = 'role:delete' as string;
  */
 export const USER_ROLE_QUERY_ALIAS = 'userRoles';
 
+export const USER_ROLE_PERMISSIONS_QUERY_ALIAS = 'userRolePermissions';
+
 export const READ_USER_ROLE = 'user-role:read' as string;
 
 export const ASSIGN_USER_ROLE = 'user-role:assign' as string;

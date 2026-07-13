@@ -46,7 +46,7 @@ describe('AuthCacheService', () => {
     };
 
     mockEnvConfigService = {
-      jwtExpiration: 3600, // 1 hour in seconds
+      jwtExpiration: 3600,
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -84,7 +84,7 @@ describe('AuthCacheService', () => {
       expect(mockCacheManager.set).toHaveBeenCalledWith(
         mockCacheKey,
         mockPayload,
-        3600 * 1000, // jwtExpiration * 1000
+        3600 * 1000,
       );
     });
   });
@@ -101,7 +101,7 @@ describe('AuthCacheService', () => {
     });
 
     it('should fall back to verifyAsync, update the cache store, and return the decoded payload on a cache miss', async () => {
-      mockCacheManager.get.mockResolvedValue(null); // Cache miss simulation
+      mockCacheManager.get.mockResolvedValue(null);
       mockJwtService.verifyAsync.mockResolvedValue(mockPayload);
 
       const result = await service.get(mockToken);
@@ -110,7 +110,6 @@ describe('AuthCacheService', () => {
       expect(mockCacheManager.get).toHaveBeenCalledWith(mockCacheKey);
       expect(mockJwtService.verifyAsync).toHaveBeenCalledWith(mockToken);
 
-      // Asserts that the cache manager was updated dynamically during execution
       expect(mockCacheManager.set).toHaveBeenCalledWith(
         mockCacheKey,
         mockPayload,

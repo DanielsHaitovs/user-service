@@ -7,6 +7,7 @@ import {
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
 } from '@/commonConst/store.const';
+import { Idempotent } from '@/commonDecorators/idempotent.decorator';
 import {
   ClientMetadata,
   GetClientMetadata,
@@ -14,7 +15,7 @@ import {
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
-import { FetchStorePipe } from '@/commonPipes/store.pipe';
+import { FetchedStore, FetchStorePipe } from '@/commonPipes/store.pipe';
 import { StorePipelineService } from '@/store/store.pipeline';
 import { StoreQueryRequest } from '@/storeDto/query.dto';
 import {
@@ -120,6 +121,7 @@ export class StoreController {
     description:
       'Internal Server Error - An unexpected error occurred while creating the store',
   })
+  @Idempotent()
   async create(
     @Body()
     createDto: CreateStoreDto,
@@ -361,8 +363,9 @@ export class StoreController {
     description: 'Store successfully updated',
     type: Boolean,
   })
+  @Idempotent()
   async update(
-    @Param('id', FetchStorePipe) store: GetStoreDto,
+    @Param('id', FetchStorePipe) store: FetchedStore,
     @Body() updateDto: UpdateStoreDto,
     @GetClientMetadata() metadata: ClientMetadata,
     @CurrentUserId() requestedByUserId: UUID,
@@ -400,8 +403,9 @@ export class StoreController {
   @ApiNotFoundResponse({
     description: 'Store with the specified ID was not found',
   })
+  @Idempotent()
   async delete(
-    @Param('id', FetchStorePipe) store: GetStoreDto,
+    @Param('id', FetchStorePipe) store: FetchedStore,
     @CurrentUser() requestedByUser: JwtPayload,
     @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {

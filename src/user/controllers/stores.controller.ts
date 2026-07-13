@@ -3,6 +3,7 @@ import {
   UserWithStores,
 } from '@/common/pipes/userStores.pipe';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import { Idempotent } from '@/commonDecorators/idempotent.decorator';
 import {
   ClientMetadata,
   GetClientMetadata,
@@ -66,14 +67,14 @@ export class UserStoresController {
     protected readonly userStorePipelineService: UserStorePipelineService,
   ) {}
 
-  @Post('user/:userId')
+  @Post('user/:id')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @Permissions({
     required: ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
   @ApiParam({
-    name: 'userId',
+    name: 'id',
     type: String,
     format: 'uuid',
     description: 'User unique identifier - must be a valid UUID',
@@ -104,6 +105,7 @@ export class UserStoresController {
   @ApiOkResponse({
     description: 'Stores successfully assigned to the user',
   })
+  @Idempotent()
   async assign(
     @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() assignDto: AssignStoresToUserDto,
@@ -118,14 +120,14 @@ export class UserStoresController {
     });
   }
 
-  @Delete('user/:userId')
+  @Delete('user/:id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions({
     required: UNASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
   @ApiParam({
-    name: 'userId',
+    name: 'id',
     type: String,
     format: 'uuid',
     description: 'User unique identifier - must be a valid UUID',
@@ -156,6 +158,7 @@ export class UserStoresController {
   @ApiOkResponse({
     description: 'Stores successfully unassigned from the user',
   })
+  @Idempotent()
   async unassign(
     @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() unassignDto: UnassignStoresFromUserDto,
@@ -196,7 +199,7 @@ export class UserStoresController {
     description: 'Returns a list of user stores matching the provided user ID',
     type: UserStoresListResponseDto,
   })
-  async findStoresByUserId(
+  async findStores(
     @Query() query: UserStoresQueryRequest,
   ): Promise<UserStoresListResponseDto> {
     return await this.userStorePipelineService.getStores(query);

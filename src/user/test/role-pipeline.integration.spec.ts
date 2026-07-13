@@ -1,4 +1,3 @@
-import { CacheService } from '@/baseServices/cache.service';
 import type { UserWithRoles } from '@/common/pipes/userRoles.pipe';
 import type { Roles } from '@/roleEntities/role.entity';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
@@ -10,7 +9,7 @@ import {
   getAssignedRolesForUser,
 } from '@/test/pipeline/userRole';
 import { validateRoleResponseDto } from '@/test/validate/role';
-import { UserRolePipelineService } from '@/user/role.pipeline';
+import type { UserRolePipelineService } from '@/user/role.pipeline';
 import { AuditProducerService } from '@/user/services/audit.service';
 import type { User } from '@/userEntities/user.entity';
 import { faker } from '@faker-js/faker';
@@ -21,7 +20,7 @@ import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
 describe('UserRolePipelineService (Integration)', () => {
-  let pipelineService: UserRolePipelineService;
+  let userRolePipelineService: UserRolePipelineService;
   let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
@@ -34,29 +33,28 @@ describe('UserRolePipelineService (Integration)', () => {
   let userWithRoles: UserWithRoles;
 
   beforeAll(async () => {
-    ({ dataSource, moduleFixture, systemUserId } = await bootstrapTestApp());
+    ({
+      dataSource,
+      moduleFixture,
+      systemUserId,
+      userRolePipelineService,
+      cacheGetByIdSpy,
+      cacheSetSpy,
+      cacheInvalidateByIdSpy,
+    } = await bootstrapTestApp());
 
-    pipelineService = moduleFixture.get<UserRolePipelineService>(
-      UserRolePipelineService,
-    );
     auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendRoleLog');
-    cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
-    cacheGetByIdSpy = jest.spyOn(CacheService.prototype, 'getById');
-    cacheInvalidateByIdSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateById',
-    );
   });
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    testUser = await createTestUser(dataSource);
+    testUser = await createTestUser({ dataSource });
     testRole = await createTestRole({
       dataSource,
       overrides: { createdBy: { id: systemUserId } as User },
     });
     userWithRoles = {
-      user: await createTestUser(dataSource),
+      user: await createTestUser({ dataSource }),
       roles: [
         await createTestRole({
           dataSource,
@@ -65,7 +63,7 @@ describe('UserRolePipelineService (Integration)', () => {
       ],
     };
     await assignTestRoleToUser({
-      pipelineService,
+      userRolePipelineService,
       data: {
         roleIds: userWithRoles.roles.map((role) => role.id),
       },
@@ -83,13 +81,13 @@ describe('UserRolePipelineService (Integration)', () => {
   });
 
   it('should be defined', () => {
-    expect(pipelineService).toBeDefined();
+    expect(userRolePipelineService).toBeDefined();
     expect(dataSource).toBeDefined();
   });
 
   describe('Assign Role to user', () => {
     it('should assign a role to a user', async () => {
-      await pipelineService.assignRolesToUser({
+      await userRolePipelineService.assignRolesToUser({
         data: { roleIds: [testRole.id] },
         userRoles: { user: testUser, roles: [] },
         assignedById: systemUserId,
@@ -104,7 +102,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [testRole],
@@ -116,7 +114,7 @@ describe('UserRolePipelineService (Integration)', () => {
         overrides: { createdBy: { id: systemUserId } as User },
       });
 
-      await pipelineService.assignRolesToUser({
+      await userRolePipelineService.assignRolesToUser({
         data: { roleIds: [testRole.id, role.id] },
         userRoles: { user: testUser, roles: [] },
         assignedById: systemUserId,
@@ -131,7 +129,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [testRole, role],
@@ -144,7 +142,7 @@ describe('UserRolePipelineService (Integration)', () => {
       } = userWithRoles;
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: userWithRoles.roles,
@@ -155,7 +153,7 @@ describe('UserRolePipelineService (Integration)', () => {
         overrides: { createdBy: { id: systemUserId } as User },
       });
 
-      await pipelineService.assignRolesToUser({
+      await userRolePipelineService.assignRolesToUser({
         data: { roleIds: [role.id] },
         userRoles: userWithRoles,
         assignedById: systemUserId,
@@ -172,7 +170,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: roles,
@@ -184,7 +182,7 @@ describe('UserRolePipelineService (Integration)', () => {
         roles,
       } = userWithRoles;
 
-      await pipelineService.assignRolesToUser({
+      await userRolePipelineService.assignRolesToUser({
         data: { roleIds: roles.map((role) => role.id) },
         userRoles: userWithRoles,
         assignedById: systemUserId,
@@ -199,7 +197,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: roles,
@@ -207,7 +205,7 @@ describe('UserRolePipelineService (Integration)', () => {
     });
     it('should throw error if the roleIds array is empty', async () => {
       await expect(
-        pipelineService.assignRolesToUser({
+        userRolePipelineService.assignRolesToUser({
           data: { roleIds: [] },
           userRoles: { user: testUser, roles: [] },
           assignedById: systemUserId,
@@ -225,7 +223,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [],
@@ -235,7 +233,7 @@ describe('UserRolePipelineService (Integration)', () => {
       const nonExistentRoleId = randomUUID();
 
       await expect(
-        pipelineService.assignRolesToUser({
+        userRolePipelineService.assignRolesToUser({
           data: { roleIds: [testRole.id, nonExistentRoleId] },
           userRoles: { user: testUser, roles: [] },
           assignedById: systemUserId,
@@ -255,7 +253,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [],
@@ -270,7 +268,7 @@ describe('UserRolePipelineService (Integration)', () => {
         roles,
       } = userWithRoles;
 
-      await pipelineService.unassignRolesFromUser({
+      await userRolePipelineService.unassignRolesFromUser({
         data: { roleIds: roles.map((role) => role.id) },
         userRoles: userWithRoles,
         requestedById: systemUserId,
@@ -285,7 +283,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: [],
@@ -298,7 +296,7 @@ describe('UserRolePipelineService (Integration)', () => {
       } = userWithRoles;
 
       await assignTestRoleToUser({
-        pipelineService,
+        userRolePipelineService,
         data: { roleIds: [testRole.id] },
         userRoles: { user: userWithRoles.user, roles },
         assignedById: systemUserId,
@@ -310,7 +308,7 @@ describe('UserRolePipelineService (Integration)', () => {
 
       roles.push(testRole);
 
-      await pipelineService.unassignRolesFromUser({
+      await userRolePipelineService.unassignRolesFromUser({
         data: { roleIds: roles.map((role) => role.id) },
         userRoles: { user: userWithRoles.user, roles },
         requestedById: systemUserId,
@@ -325,7 +323,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: [],
@@ -338,7 +336,7 @@ describe('UserRolePipelineService (Integration)', () => {
       } = userWithRoles;
 
       await assignTestRoleToUser({
-        pipelineService,
+        userRolePipelineService,
         data: { roleIds: [testRole.id] },
         userRoles: { user: userWithRoles.user, roles },
         assignedById: systemUserId,
@@ -348,7 +346,7 @@ describe('UserRolePipelineService (Integration)', () => {
         auditLogSpy,
       });
 
-      await pipelineService.unassignRolesFromUser({
+      await userRolePipelineService.unassignRolesFromUser({
         data: { roleIds: roles.map((role) => role.id) },
         userRoles: { user: userWithRoles.user, roles },
         requestedById: systemUserId,
@@ -363,7 +361,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: [testRole],
@@ -376,7 +374,7 @@ describe('UserRolePipelineService (Integration)', () => {
         roles,
       } = userWithRoles;
 
-      await pipelineService.unassignRolesFromUser({
+      await userRolePipelineService.unassignRolesFromUser({
         data: { roleIds: [testRole.id] },
         userRoles: userWithRoles,
         requestedById: systemUserId,
@@ -391,7 +389,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: roles,
@@ -405,7 +403,7 @@ describe('UserRolePipelineService (Integration)', () => {
       } = userWithRoles;
 
       await expect(
-        pipelineService.unassignRolesFromUser({
+        userRolePipelineService.unassignRolesFromUser({
           data: { roleIds: [] },
           userRoles: userWithRoles,
           requestedById: systemUserId,
@@ -423,7 +421,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: roles,
@@ -437,7 +435,7 @@ describe('UserRolePipelineService (Integration)', () => {
       } = userWithRoles;
 
       await expect(
-        pipelineService.unassignRolesFromUser({
+        userRolePipelineService.unassignRolesFromUser({
           data: { roleIds: [nonExistentRoleId] },
           userRoles: userWithRoles,
           requestedById: systemUserId,
@@ -457,7 +455,7 @@ describe('UserRolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedRolesForUser({
-        pipelineService,
+        userRolePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: roles,
@@ -472,7 +470,7 @@ describe('UserRolePipelineService (Integration)', () => {
         roles,
       } = userWithRoles;
 
-      const userRoles = await pipelineService.getAssignedRoles(userId);
+      const userRoles = await userRolePipelineService.getAssignedRoles(userId);
 
       expect(userRoles).toBeDefined();
       expect(userRoles.length).toBe(1);
@@ -495,7 +493,9 @@ describe('UserRolePipelineService (Integration)', () => {
         roleId: testRole.id,
       });
 
-      const userRoles = await pipelineService.getAssignedRoles(testUser.id);
+      const userRoles = await userRolePipelineService.getAssignedRoles(
+        testUser.id,
+      );
 
       expect(userRoles).toBeDefined();
       expect(userRoles.length).toBe(1);
@@ -512,7 +512,9 @@ describe('UserRolePipelineService (Integration)', () => {
     });
 
     it('should get roles of a user that is not assigned to any role and cache it', async () => {
-      const userRoles = await pipelineService.getAssignedRoles(testUser.id);
+      const userRoles = await userRolePipelineService.getAssignedRoles(
+        testUser.id,
+      );
 
       expect(userRoles).toBeDefined();
       expect(userRoles.length).toBe(0);

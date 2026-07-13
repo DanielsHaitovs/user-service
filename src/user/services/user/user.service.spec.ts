@@ -2,12 +2,11 @@ import { EntityQueryService } from '@/baseServices/query.service';
 import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import type { UserQueryRequest } from '@/userDto/query.dto';
 import { User } from '@/userEntities/user.entity';
+import { UserService } from '@/userServices/user.service';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { randomUUID } from 'crypto';
-
-import { UserService } from './user.service'; // Adjust import path
 
 describe('UserService', () => {
   let service: UserService;
@@ -108,7 +107,6 @@ describe('UserService', () => {
         alias: USER_QUERY_ALIAS,
       });
 
-      // Assert whereIn constraints
       expect(mockEntityQueryService.whereIn).toHaveBeenCalledWith({
         query: mockQueryInstance,
         field: 'id',
@@ -128,7 +126,6 @@ describe('UserService', () => {
         values: [mockEmail],
       });
 
-      // Assert static where matchers
       expect(mockEntityQueryService.where).toHaveBeenCalledWith({
         query: mockQueryInstance,
         field: 'isActive',
@@ -136,7 +133,6 @@ describe('UserService', () => {
         value: true,
       });
 
-      // Assert chronological query parameters
       expect(mockEntityQueryService.dateGreaterThan).toHaveBeenCalledWith({
         query: mockQueryInstance,
         field: 'createdAt',
@@ -150,7 +146,6 @@ describe('UserService', () => {
         date: fullQueryRequest.dateTo,
       });
 
-      // Assert structuring logic blocks
       expect(mockEntityQueryService.sort).toHaveBeenCalledWith({
         query: mockQueryInstance,
         sort: { sortField: 'firstName', sortOrder: 'ASC' },
@@ -180,7 +175,6 @@ describe('UserService', () => {
       expect(mockEntityQueryService.sort).toHaveBeenCalled();
       expect(mockEntityQueryService.paginate).toHaveBeenCalled();
 
-      // Ensure optional blocks never executed
       expect(mockEntityQueryService.dateGreaterThan).not.toHaveBeenCalled();
       expect(mockEntityQueryService.dateLessThan).not.toHaveBeenCalled();
     });

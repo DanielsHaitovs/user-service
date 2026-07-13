@@ -1,4 +1,5 @@
 import { EXAMPLE_ROLE_ID } from '@/commonConst/role.const';
+import { Idempotent } from '@/commonDecorators/idempotent.decorator';
 import {
   ClientMetadata,
   GetClientMetadata,
@@ -6,7 +7,10 @@ import {
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
-import { FetchRolePermissionsPipe } from '@/commonPipes/rolePermissions.pipe';
+import {
+  FetchedRole,
+  FetchRolePermissionsPipe,
+} from '@/commonPipes/rolePermissions.pipe';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { PermissionsToRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
 import {
@@ -96,10 +100,11 @@ export class RolePermissionsController {
       },
     },
   })
+  @Idempotent()
   async assign(
     @Body()
     assignPayload: PermissionsToRoleDto,
-    @Param('roleId', FetchRolePermissionsPipe) role: RoleResponseDto,
+    @Param('roleId', FetchRolePermissionsPipe) role: FetchedRole,
     @CurrentUserId() requestedByUserId: UUID,
     @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
@@ -157,10 +162,11 @@ export class RolePermissionsController {
       },
     },
   })
+  @Idempotent()
   async unAssign(
     @Body()
     unassignPayload: PermissionsToRoleDto,
-    @Param('roleId', FetchRolePermissionsPipe) role: RoleResponseDto,
+    @Param('roleId', FetchRolePermissionsPipe) role: FetchedRole,
     @CurrentUserId() requestedByUserId: UUID,
     @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {

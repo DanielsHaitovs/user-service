@@ -1,6 +1,6 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords */
 import type { AuthenticateDto } from '@/auth/auth.dto';
-import { AuthService } from '@/auth/auth.service'; // Adjust import path based on layout
+import { AuthService } from '@/auth/auth.service';
 import { AuthCacheService } from '@/auth/cache.service';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { Environment } from '@/config/env/env.validation';
@@ -14,7 +14,6 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 
-// 🎯 Mock the external bcrypt library dependency
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
 }));
@@ -196,11 +195,9 @@ describe('AuthService', () => {
     });
 
     it('should bypass profile status filters if auth requirements are disabled outside of production environments', async () => {
-      // Setup the configuration boundary bypass state
       mockEnvConfigService.requireAuth = false;
       mockEnvConfigService.nodeEnv = Environment.Development;
 
-      // Provide an unverified, inactive user payload that would normally crash
       mockUserHelperService.getByEmail.mockResolvedValue({
         ...mockUserRecord,
         isActive: false,
@@ -216,13 +213,12 @@ describe('AuthService', () => {
     });
 
     it('should enforce status check boundaries even if requireAuth is false, provided nodeEnv is set to Production', async () => {
-      // requireAuth is disabled, BUT Node environment remains set to Production
       mockEnvConfigService.requireAuth = false;
       mockEnvConfigService.nodeEnv = Environment.Production;
 
       mockUserHelperService.getByEmail.mockResolvedValue({
         ...mockUserRecord,
-        isActive: false, // Will catch this indicator block
+        isActive: false,
       });
 
       await expect(service.signIn(authPayloadDto)).rejects.toThrow(

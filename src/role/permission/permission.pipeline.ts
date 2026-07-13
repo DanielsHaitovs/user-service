@@ -36,7 +36,7 @@ export class PermissionPipelineService {
         await this.cacheService.set<GetPermissionDto>({
           key: cacheKey,
           value: permission,
-          ttl: 3600 * 24 * 7, // Cache for 7 days
+          ttl: 3600 * 24 * 7,
         });
 
         return permission;

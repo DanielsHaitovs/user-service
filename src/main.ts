@@ -18,9 +18,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { Logger } from 'nestjs-pino';
 
-// import { Logger, PinoLogger } from 'nestjs-pino';
-// import pino from 'pino';
-
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
@@ -94,9 +91,7 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(port, '0.0.0.0');
 
-  // const logger = new Logger({ context: 'Bootstrap' });
   const logger = app.get(Logger);
-  // const pinoLogger = app.get(PinoLogger); // 🎯 Grab the inner provider
 
   if (
     envConfig.nodeEnv === Environment.Development ||

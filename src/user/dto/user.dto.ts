@@ -505,6 +505,7 @@ export class UpdateUserDto extends PartialType(
     'phone',
     'dateOfBirth',
     'isActive',
+    'isEmailVerified',
   ] as const),
 ) {
   constructor(
@@ -515,8 +516,18 @@ export class UpdateUserDto extends PartialType(
     phone: string,
     dateOfBirth: Date,
     isActive: boolean,
+    isEmailVerified: boolean,
   ) {
-    super(country, firstName, lastName, email, phone, dateOfBirth, isActive);
+    super(
+      country,
+      firstName,
+      lastName,
+      email,
+      phone,
+      dateOfBirth,
+      isActive,
+      isEmailVerified,
+    );
     this.country = country;
     this.firstName = firstName;
     this.lastName = lastName;
@@ -524,6 +535,7 @@ export class UpdateUserDto extends PartialType(
     this.phone = phone;
     this.dateOfBirth = dateOfBirth;
     this.isActive = isActive;
+    this.isEmailVerified = isEmailVerified;
   }
 }
 

@@ -8,6 +8,7 @@ import {
   UNASSIGN_USER_ROLE,
 } from '@/commonConst/role.const';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import { Idempotent } from '@/commonDecorators/idempotent.decorator';
 import {
   ClientMetadata,
   GetClientMetadata,
@@ -15,7 +16,7 @@ import {
 import { Permissions } from '@/commonDecorators/permission.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
-import { FetchRolePipe } from '@/commonPipes/role.pipe';
+import { FetchedRole, FetchRolePipe } from '@/commonPipes/role.pipe';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { RolesQueryRequest } from '@/roleDto/query.dto';
 import {
@@ -23,6 +24,7 @@ import {
   GetRoleDto,
   RoleListResponseDto,
   RoleResponseDto,
+  UpdateRoleDto,
 } from '@/roleDto/role.dto';
 import {
   CREATE_ROLE_ENDPOINT_PERMISSION,
@@ -122,6 +124,7 @@ export class RoleController {
   @ApiConflictResponse({
     description: 'Conflict - A role with the same name already exists',
   })
+  @Idempotent()
   async create(
     @Body()
     createDto: CreateRoleDto,
@@ -263,12 +266,14 @@ export class RoleController {
   @ApiParam({
     name: 'id',
     type: String,
+    format: 'uuid',
     description: 'Role id to update',
     example: EXAMPLE_USER_ID,
   })
+  @Idempotent()
   async updateName(
-    @Param('id', FetchRolePipe) role: GetRoleDto,
-    @Body() updateDto: CreateRoleDto,
+    @Param('id', FetchRolePipe) role: FetchedRole,
+    @Body() updateDto: UpdateRoleDto,
     @CurrentUserId() requestedByUserId: UUID,
     @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<boolean> {
@@ -280,7 +285,7 @@ export class RoleController {
     });
   }
 
-  @Delete(':id')
+  @Delete('id/:id')
   @Version('1')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Permissions({
@@ -313,8 +318,9 @@ export class RoleController {
     description: 'Role successfully deleted',
     type: Boolean,
   })
+  @Idempotent()
   async delete(
-    @Param('id', ParseUUIDPipe) id: UUID,
+    @Param('id', FetchRolePipe) role: FetchedRole,
     @CurrentUser() requestedByUser: JwtPayload,
     @GetClientMetadata() metadata: ClientMetadata,
   ): Promise<void> {
@@ -327,7 +333,7 @@ export class RoleController {
     const canDeleteAssignedRole = canReadUserRoles && canUnassignUserFromRoles;
 
     await this.pipelineService.delete({
-      id,
+      role,
       canDeleteAssignedRole,
       requestedByUserId,
       metadata,

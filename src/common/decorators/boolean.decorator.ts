@@ -3,7 +3,6 @@ import { Transform, type TransformFnParams } from 'class-transformer';
 export function ToBoolean(): PropertyDecorator {
   return Transform(
     ({ obj, key }: TransformFnParams) => {
-      // Force source to be a safe record — NOT unknown, NOT any
       const source: Record<string, unknown> =
         obj != undefined && typeof obj === 'object'
           ? (obj as Record<string, unknown>)

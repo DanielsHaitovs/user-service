@@ -258,7 +258,6 @@ describe('UserStoresService', () => {
         assignedById: mockAssignedById,
       });
 
-      // Asserts mapping pattern tracks the raw data list input based on your service's map array code
       expect(mockStoreRepository.save).toHaveBeenCalledWith([
         {
           user: { id: mockUserId },

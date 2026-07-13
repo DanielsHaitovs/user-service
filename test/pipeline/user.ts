@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-misused-spread */
 import { COUNTRIES } from '@/commonConst/countries.const';
+import type { RolePipelineService } from '@/role/role.pipeline';
+import type { RoleResponseDto } from '@/roleDto/role.dto';
+import type { StorePipelineService } from '@/store/store.pipeline';
+import type { StoreResponseDto } from '@/storeDto/store.dto';
 import { validateUserResponseDto } from '@/test/validate/user';
+import type { UserRolePipelineService } from '@/user/role.pipeline';
+import type { UserStorePipelineService } from '@/user/store.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
 import type { UserQueryRequest } from '@/userDto/query.dto';
 import type {
@@ -23,26 +29,29 @@ import { randomUUID, type UUID } from 'crypto';
  * @returns The fully committed database Role entity
  */
 export async function createTestUser({
-  pipelineService,
+  userPipelineService,
   overrides = {},
   cache,
   createdById,
   auditLogSpy,
 }: {
-  pipelineService: UserPipelineService;
+  userPipelineService: UserPipelineService;
   overrides?: Partial<CreateUserDto>;
   createdById: UUID;
-  cache: {
+  cache?: {
     cacheSetSpy: jest.SpyInstance;
     cacheInvalidateByTagsSpy: jest.SpyInstance;
   };
-  auditLogSpy: jest.SpyInstance;
+  auditLogSpy?: jest.SpyInstance;
 }): Promise<UserResponseDto> {
-  const { cacheSetSpy, cacheInvalidateByTagsSpy } = cache;
+  if (cache != undefined) {
+    cache.cacheSetSpy.mockClear();
+    cache.cacheInvalidateByTagsSpy.mockClear();
+  }
 
-  cacheSetSpy.mockClear();
-  cacheInvalidateByTagsSpy.mockClear();
-  auditLogSpy.mockClear();
+  if (auditLogSpy != undefined) {
+    auditLogSpy.mockClear();
+  }
 
   const defaultUserData: CreateUserDto = {
     isActive: true,
@@ -63,7 +72,7 @@ export async function createTestUser({
     ...overrides,
   };
 
-  const finalUserData = await pipelineService.create({
+  const finalUserData = await userPipelineService.create({
     createDto,
     createdById,
     metadata: {
@@ -77,24 +86,28 @@ export async function createTestUser({
     expected: createDto,
   });
 
-  expect(cacheSetSpy).toHaveBeenCalledTimes(2);
-  expect(auditLogSpy).toHaveBeenCalledTimes(1);
-  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+  if (cache != undefined) {
+    expect(cache.cacheSetSpy).toHaveBeenCalledTimes(2);
+    expect(cache.cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
+    cache.cacheSetSpy.mockClear();
+    cache.cacheInvalidateByTagsSpy.mockClear();
+  }
 
-  auditLogSpy.mockClear();
-  cacheSetSpy.mockClear();
-  cacheInvalidateByTagsSpy.mockClear();
+  if (auditLogSpy != undefined) {
+    expect(auditLogSpy).toHaveBeenCalledTimes(1);
+    auditLogSpy.mockClear();
+  }
 
   return finalUserData;
 }
 
 export async function getTestUserById({
-  pipelineService,
+  userPipelineService,
   id,
   expected = {},
   cache,
 }: {
-  pipelineService: UserPipelineService;
+  userPipelineService: UserPipelineService;
   id: UUID;
   expected?: Partial<UserResponseDto>;
   cache: {
@@ -108,7 +121,7 @@ export async function getTestUserById({
   cacheSetSpy.mockClear();
   cacheGetByIdSpy.mockClear();
 
-  const response = await pipelineService.getByIdOrThrow({ id });
+  const response = await userPipelineService.getByIdOrThrow({ id });
 
   validateUserResponseDto({
     response,
@@ -130,12 +143,12 @@ export async function getTestUserById({
 }
 
 export async function getTestUserByEmail({
-  pipelineService,
+  userPipelineService,
   email,
   expected = {},
   cache,
 }: {
-  pipelineService: UserPipelineService;
+  userPipelineService: UserPipelineService;
   email: string;
   expected?: Partial<UserResponseDto>;
   cache: {
@@ -149,7 +162,7 @@ export async function getTestUserByEmail({
   cacheSetSpy.mockClear();
   cacheGetByIdSpy.mockClear();
 
-  const response = await pipelineService.getByEmailOrThrow({ email });
+  const response = await userPipelineService.getByEmailOrThrow({ email });
 
   validateUserResponseDto({
     response,
@@ -171,7 +184,7 @@ export async function getTestUserByEmail({
 }
 
 export async function updateTestUser({
-  pipelineService,
+  userPipelineService,
   user,
   updateDto = {},
   requestedById,
@@ -179,7 +192,7 @@ export async function updateTestUser({
   auditLogSpy,
   expected,
 }: {
-  pipelineService: UserPipelineService;
+  userPipelineService: UserPipelineService;
   user: GetUserDto;
   updateDto?: UpdateUserDto;
   requestedById: UUID;
@@ -187,7 +200,7 @@ export async function updateTestUser({
   auditLogSpy: jest.SpyInstance;
   expected?: boolean;
 }): Promise<boolean> {
-  const updated = await pipelineService.update({
+  const updated = await userPipelineService.update({
     user,
     data: updateDto,
     requestedById,
@@ -218,12 +231,12 @@ export async function updateTestUser({
 }
 
 export async function getManyUserBy({
-  pipelineService,
+  userPipelineService,
   query,
   expected,
   cache,
 }: {
-  pipelineService: UserPipelineService;
+  userPipelineService: UserPipelineService;
   query: UserQueryRequest;
   expected?: UserListResponseDto;
   cache: {
@@ -237,7 +250,7 @@ export async function getManyUserBy({
   cacheSetSpy.mockClear();
   cacheGetSpy.mockClear();
 
-  const response = await pipelineService.getMany(query);
+  const response = await userPipelineService.getMany(query);
 
   expect(response).toBeDefined();
 
@@ -269,4 +282,104 @@ export async function getManyUserBy({
   cacheGetSpy.mockClear();
 
   return response;
+}
+
+export async function initTestUser({
+  userPipelineService,
+  rolePipelineService,
+  userRolePipelineService,
+  storePipelineService,
+  userStorePipelineService,
+  systemPermissions,
+  systemUserId,
+  overrides = {},
+}: {
+  userPipelineService: UserPipelineService;
+  rolePipelineService: RolePipelineService;
+  userRolePipelineService: UserRolePipelineService;
+  storePipelineService: StorePipelineService;
+  userStorePipelineService: UserStorePipelineService;
+  systemPermissions: string[];
+  systemUserId: UUID;
+  overrides?: Partial<CreateUserDto>;
+}): Promise<{
+  user: UserResponseDto;
+  role: RoleResponseDto;
+  store: StoreResponseDto;
+}> {
+  const user = await createTestUser({
+    userPipelineService,
+    overrides,
+    createdById: systemUserId,
+  });
+
+  const [role, store] = await Promise.all([
+    rolePipelineService.create({
+      createDto: {
+        name: `Test Role ${user.id}`,
+        permissions: systemPermissions,
+      },
+      createdById: systemUserId,
+      metadata: {
+        ipAddress: faker.internet.ip(),
+        userAgent: faker.internet.userAgent(),
+      },
+    }),
+    storePipelineService.create({
+      createDto: {
+        name: `Test Store ${user.id}`,
+        code: `TEST_STORE_${user.id}`,
+        viewCode: `TEST_STORE_VIEW_${user.id}`,
+      },
+      createdById: systemUserId,
+      metadata: {
+        ipAddress: faker.internet.ip(),
+        userAgent: faker.internet.userAgent(),
+      },
+    }),
+    userPipelineService.update({
+      user,
+      data: {
+        isEmailVerified: true,
+      },
+      requestedById: systemUserId,
+      metadata: {
+        ipAddress: faker.internet.ip(),
+        userAgent: faker.internet.userAgent(),
+      },
+    }),
+  ]);
+
+  await Promise.all([
+    userRolePipelineService.assignRolesToUser({
+      userRoles: {
+        user,
+        roles: [],
+      },
+      data: {
+        roleIds: [role.id],
+      },
+      assignedById: systemUserId,
+      metadata: {
+        ipAddress: faker.internet.ip(),
+        userAgent: faker.internet.userAgent(),
+      },
+    }),
+    userStorePipelineService.assignStoresToUser({
+      userStores: {
+        user,
+        stores: [],
+      },
+      data: {
+        storeIds: [store.id],
+      },
+      assignedById: systemUserId,
+      metadata: {
+        ipAddress: faker.internet.ip(),
+        userAgent: faker.internet.userAgent(),
+      },
+    }),
+  ]);
+
+  return { user, role, store };
 }

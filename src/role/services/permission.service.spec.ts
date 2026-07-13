@@ -125,8 +125,9 @@ describe('RolePermissionService', () => {
       });
 
       mockPermissionHelper.checkIfManyExistOrThrow.mockResolvedValue([
-        newPermissionId,
+        { id: newPermissionId, code: 'TEST_ALL' },
       ]);
+
       mockRoleRepository.save.mockResolvedValue({});
 
       await service.assignPermissionsToRole({

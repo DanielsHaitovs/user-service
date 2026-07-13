@@ -4,6 +4,7 @@ import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { SystemIdentityService } from '@/system/identity.service';
 import { User } from '@/userEntities/user.entity';
 import { UserRolesService } from '@/userRoleServices/role.service';
+import { DeleteService } from '@/userServices/delete.service';
 import { UserStoresService } from '@/userStoreServices/store.service';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -12,9 +13,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { type DeleteResult, QueryFailedError } from 'typeorm';
 
-import { DeleteService } from './delete.service'; // Adjust import path
-
-// 🎯 Mock the external generic database return transformer
 jest.mock('@/base/helper/delete', () => ({
   deletedResults: jest.fn(),
 }));
@@ -116,7 +114,7 @@ describe('DeleteService', () => {
       const mockData = createMockFullUserData();
 
       const result = await service.delete({
-        data: mockData, // 🎯 FIX: Wrapped inside the expected 'data' object
+        data: mockData,
         canRemoveFromRelatedRoles: false,
         canRemoveFromRelatedStores: false,
       });
@@ -135,7 +133,6 @@ describe('DeleteService', () => {
       const mockRolesArray = [{ id: mockRoleId, name: 'Admin' }];
       const mockStoresArray = [{ id: mockStoreId, name: 'Warehouse A' }];
 
-      // 🎯 FIX: Pass the populated data array structures down directly through the mock DTO
       const mockData = createMockFullUserData({
         roles: mockRolesArray,
         stores: mockStoresArray,
@@ -188,7 +185,7 @@ describe('DeleteService', () => {
       await expect(
         service.delete({
           data: mockData,
-          canRemoveFromRelatedRoles: false, // Disallow cascading role splits
+          canRemoveFromRelatedRoles: false,
           canRemoveFromRelatedStores: true,
         }),
       ).rejects.toThrow(
@@ -210,7 +207,7 @@ describe('DeleteService', () => {
         service.delete({
           data: mockData,
           canRemoveFromRelatedRoles: true,
-          canRemoveFromRelatedStores: false, // Disallow cascading store splits
+          canRemoveFromRelatedStores: false,
         }),
       ).rejects.toThrow(
         new UnprocessableEntityException(

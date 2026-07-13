@@ -1,7 +1,7 @@
 import { AuthenticatedRequest } from '@/auth/auth.interface';
 import { AuthCacheService } from '@/auth/cache.service';
 import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
-import { extractBearerFromHeader } from '@/utils/headers.utils';
+import { extractBearerFromHeader } from '@/utils/headers.util';
 import {
   CanActivate,
   ExecutionContext,

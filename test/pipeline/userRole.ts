@@ -16,7 +16,7 @@ import type { UUID } from 'crypto';
  * @returns The fully committed database Role entity
  */
 export async function assignTestRoleToUser({
-  pipelineService,
+  userRolePipelineService,
   data,
   userRoles,
   assignedById,
@@ -25,7 +25,7 @@ export async function assignTestRoleToUser({
   cacheGetByIdSpy,
   auditLogSpy,
 }: {
-  pipelineService: UserRolePipelineService;
+  userRolePipelineService: UserRolePipelineService;
   data: AssignRolesToUserDto;
   userRoles: UserWithRoles;
   assignedById: UUID;
@@ -42,7 +42,7 @@ export async function assignTestRoleToUser({
     auditLogSpy.mockClear();
   }
 
-  await pipelineService.assignRolesToUser({
+  await userRolePipelineService.assignRolesToUser({
     data,
     userRoles,
     assignedById,
@@ -67,13 +67,13 @@ export async function assignTestRoleToUser({
 }
 
 export async function getAssignedRolesForUser({
-  pipelineService,
+  userRolePipelineService,
   userId,
   expected,
   cacheGetByIdSpy,
   cacheSetSpy,
 }: {
-  pipelineService: UserRolePipelineService;
+  userRolePipelineService: UserRolePipelineService;
   userId: UUID;
   expected?: Partial<GetRoleDto>[] | undefined;
   cacheGetByIdSpy?: jest.SpyInstance;
@@ -87,7 +87,7 @@ export async function getAssignedRolesForUser({
     cacheSetSpy.mockClear();
   }
 
-  const userRoles = await pipelineService.getAssignedRoles(userId);
+  const userRoles = await userRolePipelineService.getAssignedRoles(userId);
 
   expect(userRoles).toBeDefined();
 

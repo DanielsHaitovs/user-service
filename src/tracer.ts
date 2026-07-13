@@ -32,6 +32,5 @@ process.on('SIGTERM', () => {
     .finally(() => process.exit(0));
 });
 
-// 5. Start the engine!
 sdk.start();
 logger.log('OpenTelemetry SDK initialized successfully');

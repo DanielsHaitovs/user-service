@@ -119,11 +119,6 @@ function wrapInjectedServices(
             depthMap.set(traceId, depth + 1);
 
             try {
-              // if (depth === 0) {
-              //   logger.log(
-              //     `[Trace: ${traceId}] !! Skipped tracing ${className} -> ${String(key)}`,
-              //   );
-              // }
               return (original as (...a: unknown[]) => unknown).apply(
                 target,
                 args,

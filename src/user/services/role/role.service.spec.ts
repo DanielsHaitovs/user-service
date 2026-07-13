@@ -31,7 +31,7 @@ describe('UserRolesService', () => {
     where: jest.Mock;
     dateGreaterThan: jest.Mock;
     dateLessThan: jest.Mock;
-    whereIn: jest.Mock; // 🎯 Added missing spy wrapper
+    whereIn: jest.Mock;
     sort: jest.Mock;
     paginate: jest.Mock;
     paginatedResult: jest.Mock;
@@ -166,7 +166,6 @@ describe('UserRolesService', () => {
         date: fullRequest.dateTo,
       });
 
-      // 🎯 Verify name search filter strategy array check matches
       expect(mockEntityQueryService.whereIn).toHaveBeenCalledWith({
         query: mockQueryInstance,
         field: 'role.name',
@@ -210,7 +209,6 @@ describe('UserRolesService', () => {
     });
 
     it('should query helper layer directly using explicit role ids array', async () => {
-      // 🎯 FIX: Pass an array of role ids to match the service signature path
       const targetRoleIds = [mockRoleId];
       mockRoleHelperService.getAllPermissions.mockResolvedValue([
         'READ_USER',

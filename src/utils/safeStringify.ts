@@ -8,15 +8,15 @@ export function safeStringify(value: unknown): string {
     const cache = new WeakSet<object>();
 
     const replacer = (_: string, v: unknown): unknown => {
+      if (Array.isArray(v)) {
+        return handleArray(v);
+      }
+
       if (typeof v === 'object' && v !== null) {
         if (cache.has(v)) return '[Circular]';
         cache.add(v);
 
         return handleObject(v);
-      }
-
-      if (Array.isArray(v)) {
-        return handleArray(v);
       }
 
       if (typeof v === 'bigint') return v.toString();

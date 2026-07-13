@@ -156,58 +156,6 @@ export class CacheService {
     }
   }
 
-  // async invalidateByPartialKeyPattern(pattern: string): Promise<void> {
-  //   try {
-  //     const cutIndex = pattern.indexOf('_all_') + 5;
-
-  //     const prefix = pattern.slice(0, cutIndex);
-  //     const cacheId = pattern.slice(cutIndex, -1);
-
-  //     const keyv: Keyv | undefined = this.cacheManager.stores[0];
-
-  //     if (!keyv) {
-  //       return;
-  //     }
-
-  //     const store = keyv.opts.store as KeyvRedis<unknown> | undefined;
-  //     const redisClient = store?.client as RedisClientType | undefined;
-
-  //     if (!redisClient) {
-  //       return;
-  //     }
-
-  //     const keysToDelete: string[] = [];
-  //     const keysMatchPattern: string[] = [];
-
-  //     for await (const result of redisClient.scanIterator({
-  //       MATCH: `${pattern}*`,
-  //       COUNT: 100,
-  //     })) {
-  //       if (Array.isArray(result)) {
-  //         keysMatchPattern.push(...result);
-  //       } else if (typeof result === 'string') {
-  //         keysMatchPattern.push(result);
-  //       }
-  //     }
-
-  //     for (const key of keysMatchPattern) {
-  //       if (key.startsWith(prefix) && key.includes(cacheId)) {
-  //         keysToDelete.push(key);
-  //       }
-  //     }
-
-  //     if (keysToDelete.length > 0) {
-  //       await redisClient.sendCommand(['UNLINK', ...keysToDelete]);
-  //     }
-  //   } catch (e) {
-  //     const error = e as Error;
-
-  //     this.logService.error(
-  //       `Failed to invalidate cache for pattern [${pattern}]): ${error.message}`,
-  //     );
-  //   }
-  // }
-
   async invalidateByTags({
     tag,
     alias,

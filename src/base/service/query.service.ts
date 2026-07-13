@@ -275,55 +275,6 @@ export class EntityQueryService {
 
     return response;
   }
-  // async getAll<T extends ObjectLiteral>({
-  //   query,
-  //   cacheId,
-  // }: {
-  //   query: SelectQueryBuilder<T>;
-  //   cacheId: string;
-  // }): Promise<T[]> {
-  //   const { alias } = query;
-  //   const cacheKey = `${alias}_all_${cacheId}:${hashObject(query.getQueryAndParameters())}`;
-
-  //   const cached = await this.cacheService.get<T[]>(cacheKey);
-  //   if (cached) {
-  //     return cached;
-  //   }
-
-  //   const batchQuery = query.clone();
-
-  //   return this.cacheService.coalesce({
-  //     key: cacheKey,
-  //     operation: async () => {
-  //       const response = new Array<T>();
-  //       const batchSize = 100;
-  //       let offset = 0;
-
-  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  //       while (true) {
-  //         batchQuery.skip(offset).take(batchSize);
-
-  //         const result = await batchQuery.getMany();
-
-  //         if (isEmpty(result)) {
-  //           break;
-  //         }
-
-  //         response.push(...result);
-
-  //         if (result.length < batchSize) {
-  //           break;
-  //         }
-
-  //         offset += batchSize;
-  //       }
-
-  //       await this.cacheService.set({ key: cacheKey, value: response });
-
-  //       return response;
-  //     },
-  //   });
-  // }
 
   /**
    * Applies sorting to query results by the specified field.

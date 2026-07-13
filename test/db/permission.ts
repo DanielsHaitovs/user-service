@@ -1,7 +1,7 @@
 import { Permission } from '@/permissionEntities/permissions.entity';
 
 import { randomUUID } from 'crypto';
-import type { DataSource } from 'typeorm';
+import { type DataSource, In } from 'typeorm';
 
 /**
  * Test Utility Factory to seed a Role directly into the test database context.
@@ -59,4 +59,23 @@ export async function createTestPermissions({
   });
 
   return result;
+}
+
+export async function getPermissionsByCodes({
+  dataSource,
+  codes,
+}: {
+  dataSource: DataSource;
+  codes: string[];
+}): Promise<Permission[]> {
+  const permissionRepository = dataSource.getRepository(Permission);
+
+  const permissions = await permissionRepository.find({
+    where: { code: In(codes) },
+  });
+
+  expect(permissions).toBeDefined();
+  expect(permissions).toHaveLength(codes.length);
+
+  return permissions;
 }

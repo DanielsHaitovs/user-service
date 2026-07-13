@@ -1,7 +1,20 @@
+import { CacheService } from '@/baseServices/cache.service';
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
-import { SYSTEM_USER_EMAIL } from '@/commonConst/user.const';
+import { COUNTRIES } from '@/commonConst/countries.const';
 import { EnvConfigService } from '@/config/env/env.config.service';
-import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { Environment } from '@/config/env/env.validation';
+import { PermissionPipelineService } from '@/permission/permission.pipeline';
+import { RolePipelineService } from '@/role/role.pipeline';
+import { StorePipelineService } from '@/store/store.pipeline';
+import { SystemIdentityService } from '@/system/identity.service';
+import { UserRolePipelineService } from '@/user/role.pipeline';
+import { UserStorePipelineService } from '@/user/store.pipeline';
+import { UserPipelineService } from '@/user/user.pipeline';
+import {
+  type INestApplication,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import {
   FastifyAdapter,
   type NestFastifyApplication,
@@ -16,13 +29,26 @@ export interface BootstrappedApp {
   moduleFixture: TestingModule;
   dataSource: DataSource;
   systemUserId: UUID;
+  systemPermissions: string[];
   envConfigService: EnvConfigService;
+  rolePipelineService: RolePipelineService;
+  permissionPipelineService: PermissionPipelineService;
+  storePipelineService: StorePipelineService;
+  userRolePipelineService: UserRolePipelineService;
+  userStorePipelineService: UserStorePipelineService;
+  userPipelineService: UserPipelineService;
+  cacheGetByIdSpy: jest.SpyInstance;
+  cacheSetSpy: jest.SpyInstance;
+  cacheGetSpy: jest.SpyInstance;
+  cacheInvalidateByIdSpy: jest.SpyInstance;
+  cacheInvalidateByTagsSpy: jest.SpyInstance;
+  countries: typeof COUNTRIES;
 }
 
 export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   process.env.USER_DATABASE_HOST = 'localhost';
   process.env.JWT_SECRET = 'your_jwt_secret';
-  process.env.NODE_ENV = 'test';
+  process.env.NODE_ENV = Environment.Test;
   process.env.REDIS_HOST = 'localhost';
 
   const { AppModule } = await import('../src/app.module');
@@ -34,6 +60,10 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   const app = moduleFixture.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter(),
   );
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -50,23 +80,60 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
 
   const dataSource = app.get(DataSource);
   const envConfigService = app.get(EnvConfigService);
+  const systemService = app.get(SystemIdentityService);
 
   // if (dataSource.isInitialized) {
   //   await dataSource.synchronize(true);
   // }
 
-  const { User } = await import('../src/user/entities/user.entity');
-  const userRepository = dataSource.getRepository(User);
+  const systemUserId = systemService.getSystemUserId();
+  const systemPermissions = systemService.getPermissionsForSystemRoles();
 
-  const systemUser = await userRepository.findOneOrFail({
-    where: { email: SYSTEM_USER_EMAIL },
-  });
+  const rolePipelineService =
+    moduleFixture.get<RolePipelineService>(RolePipelineService);
+  const permissionPipelineService =
+    moduleFixture.get<PermissionPipelineService>(PermissionPipelineService);
+  const storePipelineService =
+    moduleFixture.get<StorePipelineService>(StorePipelineService);
+  const userRolePipelineService = moduleFixture.get<UserRolePipelineService>(
+    UserRolePipelineService,
+  );
+  const userStorePipelineService = moduleFixture.get<UserStorePipelineService>(
+    UserStorePipelineService,
+  );
+  const userPipelineService =
+    moduleFixture.get<UserPipelineService>(UserPipelineService);
+
+  const cacheGetByIdSpy = jest.spyOn(CacheService.prototype, 'getById');
+  const cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
+  const cacheGetSpy = jest.spyOn(CacheService.prototype, 'get');
+  const cacheInvalidateByIdSpy = jest.spyOn(
+    CacheService.prototype,
+    'invalidateById',
+  );
+  const cacheInvalidateByTagsSpy = jest.spyOn(
+    CacheService.prototype,
+    'invalidateByTags',
+  );
 
   return {
     app,
     moduleFixture,
     dataSource,
-    systemUserId: systemUser.id,
+    systemUserId,
+    systemPermissions,
     envConfigService,
+    rolePipelineService,
+    permissionPipelineService,
+    storePipelineService,
+    userRolePipelineService,
+    userStorePipelineService,
+    userPipelineService,
+    cacheGetByIdSpy,
+    cacheSetSpy,
+    cacheGetSpy,
+    cacheInvalidateByIdSpy,
+    cacheInvalidateByTagsSpy,
+    countries: COUNTRIES,
   };
 }

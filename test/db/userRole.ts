@@ -36,3 +36,29 @@ export async function assignRoleToUser({
 
   return await userRoleRepository.save(userRole);
 }
+
+export async function unAssignRoleFromUser({
+  dataSource,
+  userId,
+  userRoles,
+}: {
+  dataSource: DataSource;
+  userRoles: UserRoles[];
+  userId: UUID;
+}): Promise<void> {
+  const userRepository = dataSource.getRepository(User);
+  const roleRepository = dataSource.getRepository(Roles);
+  const userRoleRepository = dataSource.getRepository(UserRoles);
+
+  const user = await userRepository.findOneByOrFail({ id: userId });
+
+  if (userRoles.length === 0 || userRoles[0]?.role === undefined) {
+    return;
+  }
+
+  const roleId = userRoles[0].role.id;
+
+  const role = await roleRepository.findOneByOrFail({ id: roleId });
+
+  await userRoleRepository.delete({ user, role });
+}

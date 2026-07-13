@@ -6,7 +6,9 @@ import { MetricsController } from '@/base/metrics.controller';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { EnvConfigModule } from '@/config/env/env.module';
 import { Environment } from '@/config/env/env.validation';
+import { IdempotencyInterceptor } from '@/interceptors/idempotency.interceptor';
 import { MetricsInterceptor } from '@/interceptors/metrics.interceptor';
+import { ResourceLockInterceptor } from '@/interceptors/resource-lock.interceptor';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
@@ -15,7 +17,13 @@ import { UserModule } from '@/user/user.module';
 import { createKeyv } from '@keyv/redis';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  Inject,
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  OnApplicationShutdown,
+} from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -25,6 +33,7 @@ import {
   PrometheusModule,
 } from '@willsoto/nestjs-prometheus';
 
+import Redis from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 
@@ -157,13 +166,40 @@ export const httpRequestDurationProvider = makeHistogramProvider({
   providers: [
     httpRequestDurationProvider,
     {
+      provide: 'REDIS_CLIENT',
+      useFactory: (config: EnvConfigService) => {
+        return new Redis({
+          host: config.redisHost,
+          port: config.redisPort,
+          password: config.redisPassword,
+        });
+      },
+      inject: [EnvConfigService],
+    },
+    {
       provide: APP_INTERCEPTOR,
       useClass: MetricsInterceptor,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: IdempotencyInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResourceLockInterceptor,
+    },
   ],
+  exports: ['REDIS_CLIENT'],
 })
-export class AppModule implements NestModule {
+export class AppModule implements NestModule, OnApplicationShutdown {
+  constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis) {}
+
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(TraceMiddleware).exclude('metrics').forRoutes('*');
+  }
+
+  // 🎯 4. This method triggers automatically whenever NestJS initiates an app.close() event
+  async onApplicationShutdown(): Promise<void> {
+    await this.redisClient.quit();
   }
 }

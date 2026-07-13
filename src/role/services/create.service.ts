@@ -1,3 +1,4 @@
+import { GetPermissionDto } from '@/permissionDto/permission.dto';
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { PermissionHelperService } from '@/permissionServices/helper.service';
 import { CreateRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
@@ -36,7 +37,7 @@ export class CreateService {
   }): Promise<RoleResponseDto> {
     const { permissions, ...roleDto } = createDto;
 
-    const permissionIds = await this.validatePayload({
+    const permissionToAssign = await this.validatePayload({
       name: roleDto.name,
       permissions,
     });
@@ -47,11 +48,7 @@ export class CreateService {
       id: createdById,
     } as User;
 
-    newRole.permissions = permissionIds.map((id) => {
-      return {
-        id,
-      } as Permission;
-    });
+    newRole.permissions = permissionToAssign as Permission[];
 
     return await this.roleRepository.save(newRole);
   }
@@ -62,15 +59,15 @@ export class CreateService {
   }: {
     name: string;
     permissions?: string[] | undefined;
-  }): Promise<UUID[]> {
-    const [permissionIds] = await Promise.all([
+  }): Promise<GetPermissionDto[]> {
+    const [permissionToAssign] = await Promise.all([
       permissions != undefined && permissions.length > 0
         ? this.permissionHelper.checkIfManyExistOrThrow(permissions)
         : [],
       this.isUniqueNameOrThrow(name),
     ]);
 
-    return permissionIds;
+    return permissionToAssign;
   }
 
   /**

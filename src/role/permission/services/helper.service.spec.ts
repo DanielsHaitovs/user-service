@@ -54,10 +54,7 @@ describe('PermissionHelperService', () => {
 
       const result = await service.checkIfManyExistOrThrow(mockCodes);
 
-      expect(result).toEqual([
-        mockPermissionsArray[0]?.id,
-        mockPermissionsArray[1]?.id,
-      ]);
+      expect(result).toEqual(mockPermissionsArray);
       expect(mockRepository.find).toHaveBeenCalledWith({
         where: { code: In(mockCodes) },
       });

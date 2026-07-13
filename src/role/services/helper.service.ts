@@ -58,7 +58,7 @@ export class RoleHelperService {
         'permission',
       )
       .where(`${ROLE_QUERY_ALIAS}.id IN (:...roleIds)`, { roleIds })
-      .select([`${ROLE_QUERY_ALIAS}.id`, 'permission.code']);
+      .select([`${ROLE_QUERY_ALIAS}.id`, 'permission.id', 'permission.code']);
 
     const roles = await this.queryService.getAll<Roles>({
       query,

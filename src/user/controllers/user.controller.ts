@@ -1,5 +1,7 @@
 import { JwtPayload } from '@/auth/auth.interface';
 import { extractAccess } from '@/base/helper/permissions';
+import { FetchFullUserPipe, FullUser } from '@/common/pipes/full-user.pipe';
+import { FetchedUser, FetchUserPipe } from '@/common/pipes/user.pipe';
 import {
   ASSIGN_USER_ROLE,
   READ_ROLE,
@@ -13,6 +15,7 @@ import {
   UNASSIGN_USER_STORE,
 } from '@/commonConst/store.const';
 import { EXAMPLE_USER_EMAIL, EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import { Idempotent } from '@/commonDecorators/idempotent.decorator';
 import {
   ClientMetadata,
   GetClientMetadata,
@@ -62,9 +65,6 @@ import {
 } from '@nestjs/swagger';
 
 import { UUID } from 'crypto';
-
-import { FetchFullUserPipe, FullUser } from '../../common/pipes/full-user.pipe';
-import { FetchUserPipe } from '../../common/pipes/user.pipe';
 
 /**
  * REST API controller for comprehensive user management operations.
@@ -125,6 +125,7 @@ export class UserController {
     description: 'User successfully created',
     type: UserResponseDto,
   })
+  @Idempotent()
   async create(
     @Body() createDto: CreateUserDto,
     @CurrentUser() requestedByUser: JwtPayload,
@@ -350,8 +351,9 @@ export class UserController {
     example: EXAMPLE_USER_ID,
     format: 'uuid',
   })
+  @Idempotent()
   async update(
-    @Param('id', FetchUserPipe) user: GetUserDto,
+    @Param('id', FetchUserPipe) user: FetchedUser,
     @Body() data: UpdateUserDto,
     @CurrentUserId() requestedById: UUID,
     @GetClientMetadata() metadata: ClientMetadata,
@@ -381,7 +383,7 @@ export class UserController {
   @ApiOperation({
     summary: 'Delete a user',
     description:
-      'Deletes a user by their unique identifier. Also handles unassignment from related roles and stores based on permissions.',
+      'Deletes a user by their unique identifier. Also handles unassign from related roles and stores based on permissions.',
   })
   @ApiBadRequestResponse({
     description: 'Invalid user ID format',
@@ -416,6 +418,7 @@ export class UserController {
     example: EXAMPLE_USER_ID,
     format: 'uuid',
   })
+  @Idempotent()
   async delete(
     @CurrentUser() requestedByUser: JwtPayload,
     @Param('id', FetchFullUserPipe) data: FullUser,

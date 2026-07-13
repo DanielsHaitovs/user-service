@@ -8,6 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UUID } from 'crypto';
 import { Repository } from 'typeorm';
 
+export type FetchedStore = GetStoreDto;
+
 @Injectable()
 export class FetchStorePipe
   implements PipeTransform<string, Promise<GetStoreDto>>

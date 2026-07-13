@@ -1,4 +1,5 @@
 import { EnvConfigService } from '@/config/env/env.config.service';
+import { Environment } from '@/config/env/env.validation';
 import { Roles } from '@/roleEntities/role.entity';
 import { RoleHelperService } from '@/roleServices/helper.service';
 import { Store } from '@/storeEntities/store.entity';
@@ -46,9 +47,14 @@ export class CreateService {
   }): Promise<UserResponseDto> {
     await this.userHelper.isEmailUniqueOrThrow({ email: createDto.email });
 
+    const passwordSaltRounds =
+      this.envConfigService.nodeEnv === Environment.Test
+        ? 1
+        : this.envConfigService.passwordSaltRounds;
+
     createDto.password = await bcrypt.hash(
       createDto.password,
-      this.envConfigService.passwordSaltRounds,
+      passwordSaltRounds,
     );
 
     return await this.dataSource.transaction(async (manager) => {

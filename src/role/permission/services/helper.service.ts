@@ -1,8 +1,8 @@
+import { GetPermissionDto } from '@/permissionDto/permission.dto';
 import { Permission } from '@/permissionEntities/permissions.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { UUID } from 'crypto';
 import { In, Repository } from 'typeorm';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class PermissionHelperService {
    * @returns The IDs of the existing permissions with the given codes.
    * @throws UnprocessableEntityException if any of the provided permission codes do not exist.
    */
-  async checkIfManyExistOrThrow(codes?: string[]): Promise<UUID[]> {
+  async checkIfManyExistOrThrow(codes?: string[]): Promise<GetPermissionDto[]> {
     if (codes == undefined || codes.length === 0) {
       throw new UnprocessableEntityException('No permission codes provided.');
     }
@@ -37,6 +37,6 @@ export class PermissionHelperService {
       );
     }
 
-    return existingPermissions.map((p) => p.id);
+    return existingPermissions;
   }
 }

@@ -6,9 +6,6 @@
 import { COUNTRIES } from '@/commonConst/countries.const';
 import { INPUT_BAD_REQUEST_MSG } from '@/commonConst/system.const';
 
-// Standard email address for the system user.
-// This email is used in tests and API documentation to represent the system user.
-// It should not be used for real user accounts to avoid conflicts.
 export const SYSTEM_USER_EMAIL = 'system@mecService.com' as string;
 
 /**
@@ -201,18 +198,6 @@ export const USER_API_OK_RESPONSE_MSG = 'User retrieved successfully';
 
 export const USER_UPDATE_API_OK_LIST = {
   permissions: [UPDATE_USER, READ_USER],
-  // body: {
-  //   type: UpdateUserDto,
-  //   description: 'User update data (partial)',
-  // },
-  // badRequestMessages: {
-  //   examples: USER_GENERIC_BAD_REQUEST_MSG,
-  // },
-  // okOperation: {
-  //   description: 'User updated successfully',
-  //   type: UserResponseDto,
-  //   isArray: false,
-  // },
   conflictMessage: {
     description: 'Email already exists (when updating email)',
   },

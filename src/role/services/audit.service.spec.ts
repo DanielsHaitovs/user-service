@@ -40,7 +40,6 @@ describe('AuditProducerService', () => {
 
     service = module.get<AuditProducerService>(AuditProducerService);
 
-    // Reset external module mock state between runs
     (getTraceId as jest.Mock).mockReset();
   });
 
@@ -54,7 +53,7 @@ describe('AuditProducerService', () => {
     beforeEach(() => {
       basePayload = {
         userId: mockUserId,
-        action: 'CREATE' as RoleAction, // Protection type cast for enum variations
+        action: 'CREATE' as RoleAction,
         details: 'Security role updated with additional permissions.',
         targetRoleId: mockTargetRoleId,
         oldState: undefined,
@@ -100,7 +99,6 @@ describe('AuditProducerService', () => {
         .spyOn(service['logger'], 'error')
         .mockImplementation();
 
-      // Assert fire-and-forget promise completes cleanly rather than exploding up the stack
       await expect(service.sendLog(basePayload)).resolves.not.toThrow();
 
       expect(loggerSpy).toHaveBeenCalledWith(

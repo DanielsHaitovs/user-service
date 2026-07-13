@@ -8,9 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UUID } from 'crypto';
 import { Repository } from 'typeorm';
 
+export type FetchedUser = GetUserDto;
+
 @Injectable()
 export class FetchUserPipe
-  implements PipeTransform<string, Promise<GetUserDto>>
+  implements PipeTransform<string, Promise<FetchedUser>>
 {
   constructor(
     @InjectRepository(User)
@@ -18,7 +20,7 @@ export class FetchUserPipe
     private readonly cacheService: CacheService,
   ) {}
 
-  async transform(value: UUID): Promise<GetUserDto> {
+  async transform(value: UUID): Promise<FetchedUser> {
     const cachedRole = await this.cacheService.getById<GetUserDto>({
       id: value,
       alias: USER_QUERY_ALIAS,

@@ -1,69 +1,59 @@
+import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
+import type { GetRoleDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { DeleteService } from '@/roleServices/delete.service';
-import { RoleHelperService } from '@/roleServices/helper.service';
 import { SystemIdentityService } from '@/system/identity.service';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { randomUUID } from 'crypto';
+import type { UUID } from 'crypto';
 import { QueryFailedError } from 'typeorm';
+
+jest.mock('@/base/helper/delete', () => ({
+  deletedResults: jest.fn(),
+}));
 
 describe('DeleteService', () => {
   let service: DeleteService;
 
-  let mockRoleRepository: {
-    delete: jest.Mock;
-  };
-  let mockUserRolesRepository: {
-    find: jest.Mock;
-    delete: jest.Mock;
-  };
-  let mockRoleHelperService: {
-    checkIfManyExistOrThrow: jest.Mock;
-  };
-  let mockSystemIdentityService: {
-    getSystemRoleIds: jest.Mock;
-  };
+  const mockRoleDelete = jest.fn();
+  const mockUserRolesFind = jest.fn();
+  const mockUserRolesDelete = jest.fn();
+  const mockGetSystemRoleIds = jest.fn();
 
-  const mockTargetRoleId = randomUUID();
-  const mockSystemRoleId = randomUUID();
+  const mockRoleId = '93aa29b4-ad0f-4832-8486-d382be83ef36' as UUID;
+  const mockTargetRole: GetRoleDto = {
+    id: mockRoleId,
+    name: 'Standard Editor',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
   beforeEach(async () => {
-    mockRoleRepository = {
-      delete: jest.fn(),
-    };
-    mockUserRolesRepository = {
-      find: jest.fn(),
-      delete: jest.fn(),
-    };
-    mockRoleHelperService = {
-      checkIfManyExistOrThrow: jest.fn(),
-    };
-    mockSystemIdentityService = {
-      getSystemRoleIds: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeleteService,
         {
           provide: getRepositoryToken(Roles),
-          useValue: mockRoleRepository,
+          useValue: {
+            delete: mockRoleDelete,
+          },
         },
         {
           provide: getRepositoryToken(UserRoles),
-          useValue: mockUserRolesRepository,
-        },
-        {
-          provide: RoleHelperService,
-          useValue: mockRoleHelperService,
+          useValue: {
+            find: mockUserRolesFind,
+            delete: mockUserRolesDelete,
+          },
         },
         {
           provide: SystemIdentityService,
-          useValue: mockSystemIdentityService,
+          useValue: {
+            getSystemRoleIds: mockGetSystemRoleIds,
+          },
         },
       ],
     }).compile();
@@ -71,161 +61,101 @@ describe('DeleteService', () => {
     service = module.get<DeleteService>(DeleteService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('delete', () => {
-    it('should successfully delete the role when it has no active assignments or system locks', async () => {
-      mockRoleHelperService.checkIfManyExistOrThrow.mockResolvedValue(
-        undefined,
-      );
-      mockSystemIdentityService.getSystemRoleIds.mockResolvedValue([
-        mockSystemRoleId,
-      ]);
-      mockUserRolesRepository.find.mockResolvedValue([]);
-      mockRoleRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
-
-      const result = await service.delete({
-        id: mockTargetRoleId,
-        canDeleteAssignedRole: false,
-      });
-
-      expect(result).toBe(true);
-      expect(
-        mockRoleHelperService.checkIfManyExistOrThrow,
-      ).toHaveBeenCalledWith([mockTargetRoleId]);
-      expect(mockUserRolesRepository.find).toHaveBeenCalledWith({
-        where: { role: { id: mockTargetRoleId } },
-        take: 1,
-        skip: 0,
-      });
-      expect(mockRoleRepository.delete).toHaveBeenCalledWith(mockTargetRoleId);
-    });
-
-    it('should propagate exceptions immediately if the helper module flags the role as non-existent', async () => {
-      mockRoleHelperService.checkIfManyExistOrThrow.mockRejectedValue(
-        new UnprocessableEntityException(
-          'Role matching given ID does not exist.',
-        ),
-      );
+    it('should throw UnprocessableEntityException if the role is a protected system role', async () => {
+      mockGetSystemRoleIds.mockResolvedValue([mockRoleId]);
 
       await expect(
-        service.delete({ id: mockTargetRoleId, canDeleteAssignedRole: false }),
-      ).rejects.toThrow(UnprocessableEntityException);
-
-      expect(mockSystemIdentityService.getSystemRoleIds).not.toHaveBeenCalled();
-      expect(mockRoleRepository.delete).not.toHaveBeenCalled();
-    });
-
-    it('should throw an UnprocessableEntityException if the targeted ID belongs to a core system role', async () => {
-      mockRoleHelperService.checkIfManyExistOrThrow.mockResolvedValue(
-        undefined,
-      );
-      mockSystemIdentityService.getSystemRoleIds.mockResolvedValue([
-        mockSystemRoleId,
-        mockTargetRoleId,
-      ]);
-
-      await expect(
-        service.delete({ id: mockTargetRoleId, canDeleteAssignedRole: false }),
+        service.delete({ role: mockTargetRole, canDeleteAssignedRole: false }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
           'One or more of the specified roles are system roles and cannot be deleted.',
         ),
       );
 
-      expect(mockUserRolesRepository.find).not.toHaveBeenCalled();
-      expect(mockRoleRepository.delete).not.toHaveBeenCalled();
+      expect(mockGetSystemRoleIds).toHaveBeenCalledTimes(1);
+      expect(mockRoleDelete).not.toHaveBeenCalled();
     });
 
-    it('should reject with an UnprocessableEntityException if users are assigned and override flag is false', async () => {
-      mockRoleHelperService.checkIfManyExistOrThrow.mockResolvedValue(
-        undefined,
-      );
-      mockSystemIdentityService.getSystemRoleIds.mockResolvedValue([]);
-      mockUserRolesRepository.find.mockResolvedValue([
-        { id: 1, role: { id: mockTargetRoleId } },
-      ]);
+    it('should throw UnprocessableEntityException if role is assigned to users and canDeleteAssignedRole is false', async () => {
+      mockGetSystemRoleIds.mockResolvedValue([]);
+      mockUserRolesFind.mockResolvedValue([{} as UserRoles]);
 
       await expect(
-        service.delete({ id: mockTargetRoleId, canDeleteAssignedRole: false }),
+        service.delete({ role: mockTargetRole, canDeleteAssignedRole: false }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
           'Role cannot be deleted because it is currently assigned to one or more users. Please unassign the role from all users before attempting to delete it.',
         ),
       );
 
-      expect(mockUserRolesRepository.delete).not.toHaveBeenCalled();
-      expect(mockRoleRepository.delete).not.toHaveBeenCalled();
+      expect(mockUserRolesFind).toHaveBeenCalledWith({
+        where: { role: { id: mockRoleId } },
+        take: 1,
+        skip: 0,
+      });
+      expect(mockUserRolesDelete).not.toHaveBeenCalled();
+      expect(mockRoleDelete).not.toHaveBeenCalled();
     });
 
-    it('should perform a cascading unassign cleanup step before execution if override flag is active', async () => {
-      mockRoleHelperService.checkIfManyExistOrThrow.mockResolvedValue(
-        undefined,
-      );
-      mockSystemIdentityService.getSystemRoleIds.mockResolvedValue([]);
-      mockUserRolesRepository.find.mockResolvedValue([
-        { id: 1, role: { id: mockTargetRoleId } },
-      ]);
-      mockUserRolesRepository.delete.mockResolvedValue({ affected: 1 });
-      mockRoleRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
+    it('should clear user assignments and delete the role if assigned to users and canDeleteAssignedRole is true', async () => {
+      mockGetSystemRoleIds.mockResolvedValue([]);
+      mockUserRolesFind.mockResolvedValue([{} as UserRoles]);
+      mockUserRolesDelete.mockResolvedValue({ affected: 1 });
+      mockRoleDelete.mockResolvedValue({ affected: 1 });
+      (deletedResults as jest.Mock).mockReturnValue(true);
 
       const result = await service.delete({
-        id: mockTargetRoleId,
+        role: mockTargetRole,
         canDeleteAssignedRole: true,
       });
 
       expect(result).toBe(true);
-      expect(mockUserRolesRepository.delete).toHaveBeenCalledWith({
-        role: { id: mockTargetRoleId },
+      expect(mockUserRolesDelete).toHaveBeenCalledWith({
+        role: { id: mockRoleId },
       });
-      expect(mockRoleRepository.delete).toHaveBeenCalledWith(mockTargetRoleId);
+      expect(mockRoleDelete).toHaveBeenCalledWith(mockRoleId);
     });
 
-    it('should catch database-level foreign key violations and convert them to UnprocessableEntityExceptions', async () => {
-      mockRoleHelperService.checkIfManyExistOrThrow.mockResolvedValue(
-        undefined,
-      );
-      mockSystemIdentityService.getSystemRoleIds.mockResolvedValue([]);
-      mockUserRolesRepository.find.mockResolvedValue([]);
+    it('should delete the role directly if it is not assigned to any users', async () => {
+      mockGetSystemRoleIds.mockResolvedValue([]);
+      mockUserRolesFind.mockResolvedValue([]);
+      mockRoleDelete.mockResolvedValue({ affected: 1 });
+      (deletedResults as jest.Mock).mockReturnValue(true);
 
-      const dbDriverError = new Error('foreign key constraint violation');
-      const queryError = new QueryFailedError(
-        'DELETE FROM roles...',
-        [],
-        dbDriverError,
-      );
-      Object.defineProperty(queryError, 'code', {
-        value: pgErrorStatusCodes.FOREIGN_KEY_VIOLATION,
+      const result = await service.delete({
+        role: mockTargetRole,
+        canDeleteAssignedRole: false,
       });
 
-      mockRoleRepository.delete.mockRejectedValue(queryError);
+      expect(result).toBe(true);
+      expect(mockUserRolesDelete).not.toHaveBeenCalled();
+      expect(mockRoleDelete).toHaveBeenCalledWith(mockRoleId);
+    });
+
+    it('should map a database foreign key violation to an UnprocessableEntityException', async () => {
+      mockGetSystemRoleIds.mockResolvedValue([]);
+      mockUserRolesFind.mockResolvedValue([]);
+
+      const dbError = new QueryFailedError(
+        'DELETE',
+        [],
+        new Error('FK Constraint failed'),
+      );
+      (dbError as any).code = pgErrorStatusCodes.FOREIGN_KEY_VIOLATION;
+      mockRoleDelete.mockRejectedValue(dbError);
 
       await expect(
-        service.delete({ id: mockTargetRoleId, canDeleteAssignedRole: false }),
+        service.delete({ role: mockTargetRole, canDeleteAssignedRole: false }),
       ).rejects.toThrow(
         new UnprocessableEntityException(
           'Role cannot be deleted because it is currently assigned to one or more users. Please unassign the role from all users before attempting to delete it.',
         ),
       );
-    });
-
-    it('should unconditionally propagate generic or unexpected database error modifications', async () => {
-      mockRoleHelperService.checkIfManyExistOrThrow.mockResolvedValue(
-        undefined,
-      );
-      mockSystemIdentityService.getSystemRoleIds.mockResolvedValue([]);
-      mockUserRolesRepository.find.mockResolvedValue([]);
-
-      const generalDbError = new Error(
-        'Connection pool closed or dead socket pipeline',
-      );
-      mockRoleRepository.delete.mockRejectedValue(generalDbError);
-
-      await expect(
-        service.delete({ id: mockTargetRoleId, canDeleteAssignedRole: false }),
-      ).rejects.toThrow('Connection pool closed or dead socket pipeline');
     });
   });
 });

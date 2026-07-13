@@ -1,12 +1,14 @@
 import { CacheService } from '@/base/service/cache.service';
 import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import { GetRoleDto } from '@/roleDto/role.dto';
-import { Roles } from '@/roleEntities/role.entity'; // Adjust path
+import { Roles } from '@/roleEntities/role.entity';
 import { Injectable, type PipeTransform } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { UUID } from 'crypto';
 import { Repository } from 'typeorm';
+
+export type FetchedRole = GetRoleDto;
 
 @Injectable()
 export class FetchRolePipe

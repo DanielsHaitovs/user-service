@@ -1,4 +1,3 @@
-import { CacheService } from '@/baseServices/cache.service';
 import type { UserWithStores } from '@/common/pipes/userStores.pipe';
 import type { Store } from '@/storeEntities/store.entity';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
@@ -11,7 +10,7 @@ import {
 } from '@/test/pipeline/userStore';
 import { validateStoreResponseDto } from '@/test/validate/store';
 import { AuditProducerService } from '@/user/services/audit.service';
-import { UserStorePipelineService } from '@/user/store.pipeline';
+import type { UserStorePipelineService } from '@/user/store.pipeline';
 import type { User } from '@/userEntities/user.entity';
 import { faker } from '@faker-js/faker';
 import { UnprocessableEntityException } from '@nestjs/common';
@@ -21,7 +20,7 @@ import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
 describe('UserStorePipelineService (Integration)', () => {
-  let pipelineService: UserStorePipelineService;
+  let userStorePipelineService: UserStorePipelineService;
   let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
@@ -34,29 +33,28 @@ describe('UserStorePipelineService (Integration)', () => {
   let userWithStores: UserWithStores;
 
   beforeAll(async () => {
-    ({ dataSource, moduleFixture, systemUserId } = await bootstrapTestApp());
+    ({
+      dataSource,
+      moduleFixture,
+      systemUserId,
+      userStorePipelineService,
+      cacheGetByIdSpy,
+      cacheSetSpy,
+      cacheInvalidateByIdSpy,
+    } = await bootstrapTestApp());
 
-    pipelineService = moduleFixture.get<UserStorePipelineService>(
-      UserStorePipelineService,
-    );
     auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendStoreLog');
-    cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
-    cacheGetByIdSpy = jest.spyOn(CacheService.prototype, 'getById');
-    cacheInvalidateByIdSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateById',
-    );
   });
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    testUser = await createTestUser(dataSource);
+    testUser = await createTestUser({ dataSource });
     testStore = await createTestStore({
       dataSource,
       overrides: { createdBy: { id: systemUserId } as User },
     });
     userWithStores = {
-      user: await createTestUser(dataSource),
+      user: await createTestUser({ dataSource }),
       stores: [
         await createTestStore({
           dataSource,
@@ -65,7 +63,7 @@ describe('UserStorePipelineService (Integration)', () => {
       ],
     };
     await assignTestStoreToUser({
-      pipelineService,
+      userStorePipelineService,
       data: {
         storeIds: userWithStores.stores.map((store) => store.id),
       },
@@ -83,13 +81,13 @@ describe('UserStorePipelineService (Integration)', () => {
   });
 
   it('should be defined', () => {
-    expect(pipelineService).toBeDefined();
+    expect(userStorePipelineService).toBeDefined();
     expect(dataSource).toBeDefined();
   });
 
   describe('Assign Store to user', () => {
     it('should assign a store to a user', async () => {
-      await pipelineService.assignStoresToUser({
+      await userStorePipelineService.assignStoresToUser({
         data: { storeIds: [testStore.id] },
         userStores: { user: testUser, stores: [] },
         assignedById: systemUserId,
@@ -104,7 +102,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [testStore],
@@ -116,7 +114,7 @@ describe('UserStorePipelineService (Integration)', () => {
         overrides: { createdBy: { id: systemUserId } as User },
       });
 
-      await pipelineService.assignStoresToUser({
+      await userStorePipelineService.assignStoresToUser({
         data: { storeIds: [testStore.id, store.id] },
         userStores: { user: testUser, stores: [] },
         assignedById: systemUserId,
@@ -131,7 +129,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [testStore, store],
@@ -144,7 +142,7 @@ describe('UserStorePipelineService (Integration)', () => {
       } = userWithStores;
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: userWithStores.stores,
@@ -155,7 +153,7 @@ describe('UserStorePipelineService (Integration)', () => {
         overrides: { createdBy: { id: systemUserId } as User },
       });
 
-      await pipelineService.assignStoresToUser({
+      await userStorePipelineService.assignStoresToUser({
         data: { storeIds: [store.id] },
         userStores: userWithStores,
         assignedById: systemUserId,
@@ -172,7 +170,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: stores,
@@ -184,7 +182,7 @@ describe('UserStorePipelineService (Integration)', () => {
         stores,
       } = userWithStores;
 
-      await pipelineService.assignStoresToUser({
+      await userStorePipelineService.assignStoresToUser({
         data: { storeIds: stores.map((store) => store.id) },
         userStores: userWithStores,
         assignedById: systemUserId,
@@ -199,7 +197,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: stores,
@@ -207,7 +205,7 @@ describe('UserStorePipelineService (Integration)', () => {
     });
     it('should throw error if the storeIds array is empty', async () => {
       await expect(
-        pipelineService.assignStoresToUser({
+        userStorePipelineService.assignStoresToUser({
           data: { storeIds: [] },
           userStores: { user: testUser, stores: [] },
           assignedById: systemUserId,
@@ -225,7 +223,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [],
@@ -235,7 +233,7 @@ describe('UserStorePipelineService (Integration)', () => {
       const nonExistentStoreId = randomUUID();
 
       await expect(
-        pipelineService.assignStoresToUser({
+        userStorePipelineService.assignStoresToUser({
           data: { storeIds: [testStore.id, nonExistentStoreId] },
           userStores: { user: testUser, stores: [] },
           assignedById: systemUserId,
@@ -255,7 +253,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId: testUser.id,
         cacheGetByIdSpy,
         expected: [],
@@ -270,7 +268,7 @@ describe('UserStorePipelineService (Integration)', () => {
         stores,
       } = userWithStores;
 
-      await pipelineService.unassignStoresFromUser({
+      await userStorePipelineService.unassignStoresFromUser({
         data: { storeIds: stores.map((store) => store.id) },
         userStores: userWithStores,
         requestedById: systemUserId,
@@ -285,7 +283,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: [],
@@ -298,7 +296,7 @@ describe('UserStorePipelineService (Integration)', () => {
       } = userWithStores;
 
       await assignTestStoreToUser({
-        pipelineService,
+        userStorePipelineService,
         data: { storeIds: [testStore.id] },
         userStores: { user: userWithStores.user, stores },
         assignedById: systemUserId,
@@ -310,7 +308,7 @@ describe('UserStorePipelineService (Integration)', () => {
 
       stores.push(testStore);
 
-      await pipelineService.unassignStoresFromUser({
+      await userStorePipelineService.unassignStoresFromUser({
         data: { storeIds: stores.map((store) => store.id) },
         userStores: { user: userWithStores.user, stores },
         requestedById: systemUserId,
@@ -325,7 +323,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: [],
@@ -338,7 +336,7 @@ describe('UserStorePipelineService (Integration)', () => {
       } = userWithStores;
 
       await assignTestStoreToUser({
-        pipelineService,
+        userStorePipelineService,
         data: { storeIds: [testStore.id] },
         userStores: { user: userWithStores.user, stores },
         assignedById: systemUserId,
@@ -348,7 +346,7 @@ describe('UserStorePipelineService (Integration)', () => {
         auditLogSpy,
       });
 
-      await pipelineService.unassignStoresFromUser({
+      await userStorePipelineService.unassignStoresFromUser({
         data: { storeIds: stores.map((store) => store.id) },
         userStores: { user: userWithStores.user, stores },
         requestedById: systemUserId,
@@ -363,7 +361,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: [testStore],
@@ -376,7 +374,7 @@ describe('UserStorePipelineService (Integration)', () => {
         stores,
       } = userWithStores;
 
-      await pipelineService.unassignStoresFromUser({
+      await userStorePipelineService.unassignStoresFromUser({
         data: { storeIds: [testStore.id] },
         userStores: userWithStores,
         requestedById: systemUserId,
@@ -391,7 +389,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: stores,
@@ -405,7 +403,7 @@ describe('UserStorePipelineService (Integration)', () => {
       } = userWithStores;
 
       await expect(
-        pipelineService.unassignStoresFromUser({
+        userStorePipelineService.unassignStoresFromUser({
           data: { storeIds: [] },
           userStores: userWithStores,
           requestedById: systemUserId,
@@ -423,7 +421,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: stores,
@@ -437,7 +435,7 @@ describe('UserStorePipelineService (Integration)', () => {
       } = userWithStores;
 
       await expect(
-        pipelineService.unassignStoresFromUser({
+        userStorePipelineService.unassignStoresFromUser({
           data: { storeIds: [nonExistentStoreId] },
           userStores: userWithStores,
           requestedById: systemUserId,
@@ -457,7 +455,7 @@ describe('UserStorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getAssignedStoresForUser({
-        pipelineService,
+        userStorePipelineService,
         userId,
         cacheGetByIdSpy,
         expected: stores,
@@ -472,7 +470,8 @@ describe('UserStorePipelineService (Integration)', () => {
         stores,
       } = userWithStores;
 
-      const userStores = await pipelineService.getAssignedStores(userId);
+      const userStores =
+        await userStorePipelineService.getAssignedStores(userId);
 
       expect(userStores).toBeDefined();
       expect(userStores.length).toBe(1);
@@ -495,7 +494,9 @@ describe('UserStorePipelineService (Integration)', () => {
         storeId: testStore.id,
       });
 
-      const userStores = await pipelineService.getAssignedStores(testUser.id);
+      const userStores = await userStorePipelineService.getAssignedStores(
+        testUser.id,
+      );
 
       expect(userStores).toBeDefined();
       expect(userStores.length).toBe(1);
@@ -512,7 +513,9 @@ describe('UserStorePipelineService (Integration)', () => {
     });
 
     it('should get stores for a user that is not assigned to any store and store it in cache', async () => {
-      const userStores = await pipelineService.getAssignedStores(testUser.id);
+      const userStores = await userStorePipelineService.getAssignedStores(
+        testUser.id,
+      );
 
       expect(userStores).toBeDefined();
       expect(userStores.length).toBe(0);

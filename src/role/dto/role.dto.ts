@@ -176,20 +176,6 @@ export class PermissionsToRoleDto {
   @IsNotEmpty()
   permissionCodes: string[];
 
-  // @ApiProperty({
-  //   example: EXAMPLE_ROLE_ID,
-  //   description: 'Unique identifier of the role',
-  //   type: RoleResponseDto,
-  // })
-  // @IsUUID()
-  // @ValidateNested()
-  // @Transform(() => RoleResponseDto)
-  // role: RoleResponseDto;
-
-  // constructor(role: RoleResponseDto, permissionCodes: string[]) {
-  //   this.role = role;
-  //   this.permissionCodes = permissionCodes;
-  // }
   constructor(permissionCodes: string[]) {
     this.permissionCodes = permissionCodes;
   }

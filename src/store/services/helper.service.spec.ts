@@ -51,14 +51,13 @@ describe('StoreHelperService', () => {
     });
 
     it('should return found IDs if all stores exist', async () => {
-      // const ids = ['uuid-1', 'uuid-2'] as UUID[];
       mockRepository.find.mockResolvedValue(randomIds.map((id) => ({ id })));
 
       const result = await service.checkIfManyExistOrThrow(randomIds);
 
       expect(result).toEqual(randomIds);
       expect(mockRepository.find).toHaveBeenCalledWith({
-        where: { id: expect.any(Object) }, // Checks for In() operator
+        where: { id: expect.any(Object) },
         select: ['id'],
       });
     });

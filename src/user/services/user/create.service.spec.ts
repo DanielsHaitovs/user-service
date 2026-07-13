@@ -357,7 +357,6 @@ describe('CreateService', () => {
         },
       ]);
 
-      // 🎯 THE FIX: Added the missing user property relation mapping here
       expect(mockEntityManager.save).toHaveBeenCalledWith(UserStores, [
         {
           user: { id: generatedUserId },

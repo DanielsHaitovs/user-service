@@ -3,7 +3,7 @@ import { STORE_AUDIT_QUEUE } from '@/commonConst/queue.const';
 import {
   type AuditLogPayload,
   AuditProducerService,
-} from '@/storeServices/audit.service'; // Adjust import path
+} from '@/storeServices/audit.service';
 import { getTraceId } from '@/utils/trace.util';
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -11,7 +11,6 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 
-// 🎯 Mock the external trace utility globally for this file
 jest.mock('@/utils/trace.util', () => ({
   getTraceId: jest.fn(),
 }));
@@ -41,7 +40,6 @@ describe('AuditProducerService', () => {
 
     service = module.get<AuditProducerService>(AuditProducerService);
 
-    // Reset external module mock state between runs
     (getTraceId as jest.Mock).mockReset();
   });
 
@@ -55,7 +53,7 @@ describe('AuditProducerService', () => {
     beforeEach(() => {
       basePayload = {
         userId: mockUserId,
-        action: 'CREATE' as StoreAction, // Protection type cast for enum variations
+        action: 'CREATE' as StoreAction,
         details: 'Retail store branch successfully initialized.',
         targetStoreId: mockTargetStoreId,
         oldState: undefined,

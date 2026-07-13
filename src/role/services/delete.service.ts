@@ -1,7 +1,7 @@
 import { deletedResults } from '@/base/helper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
+import { GetRoleDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
-import { RoleHelperService } from '@/roleServices/helper.service';
 import { SystemIdentityService } from '@/system/identity.service';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
@@ -17,20 +17,19 @@ export class DeleteService {
     private readonly roleRepository: Repository<Roles>,
     @InjectRepository(UserRoles)
     private readonly userRolesRepository: Repository<UserRoles>,
-    private readonly helperService: RoleHelperService,
     private readonly systemIdentityService: SystemIdentityService,
   ) {}
 
   async delete({
-    id,
+    role,
     canDeleteAssignedRole,
   }: {
-    id: UUID;
+    role: GetRoleDto;
     canDeleteAssignedRole: boolean;
   }): Promise<boolean> {
-    await this.helperService.checkIfManyExistOrThrow([id]);
+    const { id } = role;
 
-    await this.getSystemRoleIds([id]);
+    await this.preventSystemRoleRemoval([id]);
 
     try {
       await this.unAssignFromUsers({ roleId: id, canDeleteAssignedRole });
@@ -53,7 +52,7 @@ export class DeleteService {
     }
   }
 
-  private async getSystemRoleIds(roleIds: UUID[]): Promise<void> {
+  private async preventSystemRoleRemoval(roleIds: UUID[]): Promise<void> {
     const systemRoleIds = await this.systemIdentityService.getSystemRoleIds();
     const hasSystemRole = systemRoleIds.some((id) => roleIds.includes(id));
     if (hasSystemRole) {

@@ -1,5 +1,4 @@
-import { CacheService } from '@/baseServices/cache.service';
-import { StorePipelineService } from '@/store/store.pipeline';
+import type { StorePipelineService } from '@/store/store.pipeline';
 import type { StoreResponseDto } from '@/storeDto/store.dto';
 import { AuditProducerService } from '@/storeServices/audit.service';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
@@ -19,7 +18,7 @@ import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
 describe('StorePipelineService (Integration)', () => {
-  let pipelineService: StorePipelineService;
+  let storePipelineService: StorePipelineService;
   let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
@@ -32,28 +31,25 @@ describe('StorePipelineService (Integration)', () => {
   let testUser: User;
 
   beforeAll(async () => {
-    ({ dataSource, moduleFixture, systemUserId } = await bootstrapTestApp());
+    ({
+      dataSource,
+      moduleFixture,
+      systemUserId,
+      storePipelineService,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+    } = await bootstrapTestApp());
 
-    pipelineService =
-      moduleFixture.get<StorePipelineService>(StorePipelineService);
     auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendLog');
-    cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
-    cacheGetByIdSpy = jest.spyOn(CacheService.prototype, 'getById');
-    cacheInvalidateByIdSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateById',
-    );
-    cacheInvalidateByTagsSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateByTags',
-    );
     conflictStore = await createTestStore({
-      pipelineService,
+      storePipelineService,
       createdById: systemUserId,
       cacheSetSpy,
       auditLogSpy,
     });
-    testUser = await createTestUser(dataSource);
+    testUser = await createTestUser({ dataSource });
   });
 
   beforeEach(() => {
@@ -65,13 +61,13 @@ describe('StorePipelineService (Integration)', () => {
   });
 
   it('should be defined', () => {
-    expect(pipelineService).toBeDefined();
+    expect(storePipelineService).toBeDefined();
     expect(dataSource).toBeDefined();
   });
 
   describe('Should create store -> StorePipelineService -> create()', () => {
     it('should create store', async () => {
-      const createdStore = await pipelineService.create({
+      const createdStore = await storePipelineService.create({
         createDto: {
           name: `Test Store ${randomUUID()}`,
           code: `test-store-${randomUUID()}`,
@@ -88,7 +84,7 @@ describe('StorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestStoreById({
-        pipelineService,
+        storePipelineService,
         id: createdStore.id,
         expected: createdStore,
         cacheGetByIdSpy,
@@ -100,7 +96,7 @@ describe('StorePipelineService (Integration)', () => {
       const storeName = `Test Store ${randomUUID()}`;
 
       await createTestStore({
-        pipelineService,
+        storePipelineService,
         overrides: {
           name: storeName,
         },
@@ -110,7 +106,7 @@ describe('StorePipelineService (Integration)', () => {
       });
 
       await expect(
-        pipelineService.create({
+        storePipelineService.create({
           createDto: {
             name: storeName,
             code: `test-store-${randomUUID()}`,
@@ -132,7 +128,7 @@ describe('StorePipelineService (Integration)', () => {
       const storeCode = `test-store-${randomUUID()}`;
 
       await createTestStore({
-        pipelineService,
+        storePipelineService,
         overrides: {
           code: storeCode,
         },
@@ -142,7 +138,7 @@ describe('StorePipelineService (Integration)', () => {
       });
 
       await expect(
-        pipelineService.create({
+        storePipelineService.create({
           createDto: {
             name: `Test Store ${randomUUID()}`,
             code: storeCode,
@@ -164,7 +160,7 @@ describe('StorePipelineService (Integration)', () => {
       const storeViewCode = `test-store-view-${randomUUID()}`;
 
       await createTestStore({
-        pipelineService,
+        storePipelineService,
         overrides: {
           viewCode: storeViewCode,
         },
@@ -174,7 +170,7 @@ describe('StorePipelineService (Integration)', () => {
       });
 
       await expect(
-        pipelineService.create({
+        storePipelineService.create({
           createDto: {
             name: `Test Store ${randomUUID()}`,
             code: `test-store-${randomUUID()}`,
@@ -196,13 +192,13 @@ describe('StorePipelineService (Integration)', () => {
   describe('Should retrieve store -> StorePipelineService -> getByIdOrThrow()', () => {
     it('should retrieve the test store by its ID', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const retrieved = await pipelineService.getByIdOrThrow(store.id);
+      const retrieved = await storePipelineService.getByIdOrThrow(store.id);
 
       validateStoreResponseDto({
         response: retrieved,
@@ -215,7 +211,7 @@ describe('StorePipelineService (Integration)', () => {
 
     it('should throw EntityNotFoundError when looking up a missing store', async () => {
       await expect(
-        pipelineService.getByIdOrThrow(randomUUID()),
+        storePipelineService.getByIdOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
@@ -226,13 +222,13 @@ describe('StorePipelineService (Integration)', () => {
   describe('Should retrieve store -> StorePipelineService -> getByCodeOrThrow()', () => {
     it('should retrieve the test store by its code', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const retrieved = await pipelineService.getByCodeOrThrow(store.code);
+      const retrieved = await storePipelineService.getByCodeOrThrow(store.code);
 
       validateStoreResponseDto({
         response: retrieved,
@@ -245,7 +241,7 @@ describe('StorePipelineService (Integration)', () => {
 
     it('should throw EntityNotFoundError when looking up a missing store', async () => {
       await expect(
-        pipelineService.getByCodeOrThrow(randomUUID()),
+        storePipelineService.getByCodeOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
@@ -256,13 +252,13 @@ describe('StorePipelineService (Integration)', () => {
   describe('Should retrieve store -> StorePipelineService -> getByViewCodeOrThrow()', () => {
     it('should retrieve the test store by its viewCode', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const retrieved = await pipelineService.getByViewCodeOrThrow(
+      const retrieved = await storePipelineService.getByViewCodeOrThrow(
         store.viewCode,
       );
 
@@ -277,7 +273,7 @@ describe('StorePipelineService (Integration)', () => {
 
     it('should throw EntityNotFoundError when looking up a missing store', async () => {
       await expect(
-        pipelineService.getByViewCodeOrThrow(randomUUID()),
+        storePipelineService.getByViewCodeOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
@@ -288,7 +284,7 @@ describe('StorePipelineService (Integration)', () => {
   describe('Should update store -> StorePipelineService -> update()', () => {
     it('should update the test store', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
@@ -298,7 +294,7 @@ describe('StorePipelineService (Integration)', () => {
       const updatedCode = `updated-store-${randomUUID()}`;
       const updatedViewCode = `updated-store-view-${randomUUID()}`;
 
-      const updatedStore = await pipelineService.update({
+      const updatedStore = await storePipelineService.update({
         updateDto: {
           name: updatedName,
           code: updatedCode,
@@ -320,7 +316,7 @@ describe('StorePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestStoreById({
-        pipelineService,
+        storePipelineService,
         id: store.id,
         expected: {
           id: store.id,
@@ -336,14 +332,14 @@ describe('StorePipelineService (Integration)', () => {
 
     it('Should throw if trying to update store with a name that already exists', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
       await expect(
-        pipelineService.update({
+        storePipelineService.update({
           updateDto: {
             name: conflictStore.name,
           },
@@ -366,14 +362,14 @@ describe('StorePipelineService (Integration)', () => {
 
     it('Should throw if trying to update store with a code that already exists', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
       await expect(
-        pipelineService.update({
+        storePipelineService.update({
           updateDto: {
             code: conflictStore.code,
           },
@@ -396,14 +392,14 @@ describe('StorePipelineService (Integration)', () => {
 
     it('Should throw if trying to update store with a view code that already exists', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
       await expect(
-        pipelineService.update({
+        storePipelineService.update({
           updateDto: {
             viewCode: conflictStore.viewCode,
           },
@@ -428,13 +424,13 @@ describe('StorePipelineService (Integration)', () => {
   describe('Should delete store -> StorePipelineService -> delete()', () => {
     it('should delete the unused test store with canDeleteAssignedStore set to true', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const deleted = await pipelineService.delete({
+      const deleted = await storePipelineService.delete({
         store,
         canDeleteAssignedStore: true,
         requestedByUserId: systemUserId,
@@ -453,13 +449,13 @@ describe('StorePipelineService (Integration)', () => {
 
     it('should delete the unused test store with canDeleteAssignedStore set to false', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const deleted = await pipelineService.delete({
+      const deleted = await storePipelineService.delete({
         store,
         canDeleteAssignedStore: false,
         requestedByUserId: systemUserId,
@@ -478,7 +474,7 @@ describe('StorePipelineService (Integration)', () => {
 
     it('should delete the test store with canDeleteAssignedStore set to true and when store is assigned to user', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
@@ -490,7 +486,7 @@ describe('StorePipelineService (Integration)', () => {
         storeId: store.id,
       });
 
-      const deleted = await pipelineService.delete({
+      const deleted = await storePipelineService.delete({
         store,
         canDeleteAssignedStore: true,
         requestedByUserId: systemUserId,
@@ -509,7 +505,7 @@ describe('StorePipelineService (Integration)', () => {
 
     it('should throw unprocessable entity exception when trying to delete a store assigned to users with canDeleteAssignedStore set to false', async () => {
       const store = await createTestStore({
-        pipelineService,
+        storePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
@@ -522,7 +518,7 @@ describe('StorePipelineService (Integration)', () => {
       });
 
       await expect(
-        pipelineService.delete({
+        storePipelineService.delete({
           store,
           canDeleteAssignedStore: false,
           requestedByUserId: systemUserId,

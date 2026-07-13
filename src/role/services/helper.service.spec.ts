@@ -100,7 +100,7 @@ describe('RoleHelperService', () => {
     it('should isolate non-existent IDs and throw a detailed exception message if a partial database mismatch occurs', async () => {
       const missingId = randomUUID();
       const inputIds = [mockRoleId1, missingId];
-      const databaseRecords = [{ id: mockRoleId1 }]; // DB only contains one of them
+      const databaseRecords = [{ id: mockRoleId1 }];
       mockRoleRepository.find.mockResolvedValue(databaseRecords);
 
       await expect(service.checkIfManyExistOrThrow(inputIds)).rejects.toThrow(
@@ -115,7 +115,6 @@ describe('RoleHelperService', () => {
     it('should compile query context parameters onto the query builder and unnest unique deduplicated permissions', async () => {
       const targetRoleIds = [mockRoleId1, mockRoleId2];
 
-      // Simulate data structure returning duplicate permissions across different roles to test Set logic
       const mockRoleQueryResults = [
         {
           id: mockRoleId1,
@@ -123,10 +122,7 @@ describe('RoleHelperService', () => {
         },
         {
           id: mockRoleId2,
-          permissions: [
-            { code: 'READ_USERS' }, // Duplicate entry
-            { code: 'DELETE_USERS' },
-          ],
+          permissions: [{ code: 'READ_USERS' }, { code: 'DELETE_USERS' }],
         },
       ];
 
@@ -134,7 +130,6 @@ describe('RoleHelperService', () => {
 
       const result = await service.getAllPermissions(targetRoleIds);
 
-      // Verify that 'READ_USERS' only surfaces once due to the internal Set array mapping
       expect(result).toEqual(['READ_USERS', 'WRITE_USERS', 'DELETE_USERS']);
 
       expect(mockRoleRepository.createQueryBuilder).toHaveBeenCalledWith(
@@ -150,6 +145,7 @@ describe('RoleHelperService', () => {
       );
       expect(mockQueryBuilder.select).toHaveBeenCalledWith([
         `${ROLE_QUERY_ALIAS}.id`,
+        'permission.id',
         'permission.code',
       ]);
       expect(mockEntityQueryService.getAll).toHaveBeenCalledWith({

@@ -130,7 +130,6 @@ describe('AuditProducerService', () => {
       );
       mockQueue.add.mockRejectedValue(queueOutageError);
 
-      // 🎯 THE FIX: Spy on the private logger to suppress terminal noise and track invocations
       const targetLogger = (service as unknown as { logger: Logger }).logger;
       const loggerSpy = jest.spyOn(targetLogger, 'error').mockImplementation();
 

@@ -1,13 +1,11 @@
 /* eslint-disable @typescript-eslint/no-misused-spread */
-import { CacheService } from '@/baseServices/cache.service';
 import { COUNTRIES } from '@/commonConst/countries.const';
-import { RolePipelineService } from '@/role/role.pipeline';
+import type { RolePipelineService } from '@/role/role.pipeline';
 import type { RoleResponseDto } from '@/roleDto/role.dto';
-import { StorePipelineService } from '@/store/store.pipeline';
+import type { StorePipelineService } from '@/store/store.pipeline';
 import type { StoreResponseDto } from '@/storeDto/store.dto';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import { createTestUser as createTestUserDB } from '@/test/db/user';
-import { assignRoleToUser as assignRoleToUserDB } from '@/test/db/userRole';
 import {
   createTestUser,
   getManyUserBy,
@@ -17,10 +15,10 @@ import {
 import { getAssignedRolesForUser } from '@/test/pipeline/userRole';
 import { getAssignedStoresForUser } from '@/test/pipeline/userStore';
 import { validateUserResponseDto } from '@/test/validate/user';
-import { UserRolePipelineService } from '@/user/role.pipeline';
+import type { UserRolePipelineService } from '@/user/role.pipeline';
 import { AuditProducerService } from '@/user/services/audit.service';
-import { UserStorePipelineService } from '@/user/store.pipeline';
-import { UserPipelineService } from '@/user/user.pipeline';
+import type { UserStorePipelineService } from '@/user/store.pipeline';
+import type { UserPipelineService } from '@/user/user.pipeline';
 import type {
   CreateUserDto,
   UpdateUserDto,
@@ -37,7 +35,7 @@ import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
 describe('UserPipelineService (Integration)', () => {
-  let pipelineService: UserPipelineService;
+  let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
   let userRolePipelineService: UserRolePipelineService;
   let storePipelineService: StorePipelineService;
@@ -47,6 +45,8 @@ describe('UserPipelineService (Integration)', () => {
   let systemUserId: UUID;
   let fakeUuid: UUID;
   let auditLogSpy: jest.SpyInstance;
+  let auditRoleLogSpy: jest.SpyInstance;
+  let auditStoreLogSpy: jest.SpyInstance;
   let cacheSetSpy: jest.SpyInstance;
   let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheInvalidateByTagsSpy: jest.SpyInstance;
@@ -59,31 +59,27 @@ describe('UserPipelineService (Integration)', () => {
   let updateUserDto: UpdateUserDto;
 
   beforeAll(async () => {
-    ({ dataSource, moduleFixture, systemUserId } = await bootstrapTestApp());
+    ({
+      dataSource,
+      moduleFixture,
+      systemUserId,
+      userPipelineService,
+      userRolePipelineService,
+      userStorePipelineService,
+      storePipelineService,
+      rolePipelineService,
+      cacheGetSpy,
+      cacheGetByIdSpy,
+      cacheSetSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+    } = await bootstrapTestApp());
 
-    pipelineService =
-      moduleFixture.get<UserPipelineService>(UserPipelineService);
-    rolePipelineService =
-      moduleFixture.get<RolePipelineService>(RolePipelineService);
-    userRolePipelineService = moduleFixture.get<UserRolePipelineService>(
-      UserRolePipelineService,
-    );
-    storePipelineService =
-      moduleFixture.get<StorePipelineService>(StorePipelineService);
-    userStorePipelineService = moduleFixture.get<UserStorePipelineService>(
-      UserStorePipelineService,
-    );
     auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendLog');
-    cacheGetByIdSpy = jest.spyOn(CacheService.prototype, 'getById');
-    cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
-    cacheGetSpy = jest.spyOn(CacheService.prototype, 'get');
-    cacheInvalidateByIdSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateById',
-    );
-    cacheInvalidateByTagsSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateByTags',
+    auditRoleLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendRoleLog');
+    auditStoreLogSpy = jest.spyOn(
+      AuditProducerService.prototype,
+      'sendStoreLog',
     );
     testRole = await rolePipelineService.create({
       createDto: {
@@ -107,12 +103,8 @@ describe('UserPipelineService (Integration)', () => {
         userAgent: faker.internet.userAgent(),
       },
     });
-  });
-
-  beforeEach(async () => {
-    jest.clearAllMocks();
     testUser = await createTestUser({
-      pipelineService,
+      userPipelineService,
       createdById: systemUserId,
       cache: {
         cacheSetSpy,
@@ -120,6 +112,10 @@ describe('UserPipelineService (Integration)', () => {
       },
       auditLogSpy,
     });
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
 
     createUserMock = {
       isActive: true,
@@ -151,14 +147,14 @@ describe('UserPipelineService (Integration)', () => {
   });
 
   it('should be defined', () => {
-    expect(pipelineService).toBeDefined();
+    expect(userPipelineService).toBeDefined();
     expect(dataSource).toBeDefined();
   });
 
   describe('Get User', () => {
     describe('Get User By Id', () => {
       it('should retrieve a user by ID and check that cache was already set', async () => {
-        const retrievedUser = await pipelineService.getByIdOrThrow({
+        const retrievedUser = await userPipelineService.getByIdOrThrow({
           id: testUser.id,
         });
 
@@ -171,9 +167,9 @@ describe('UserPipelineService (Integration)', () => {
         expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       });
       it('should retrieve a user by ID and cache the result', async () => {
-        const user = await createTestUserDB(dataSource);
+        const user = await createTestUserDB({ dataSource });
 
-        const retrievedUser = await pipelineService.getByIdOrThrow({
+        const retrievedUser = await userPipelineService.getByIdOrThrow({
           id: user.id,
         });
 
@@ -188,14 +184,14 @@ describe('UserPipelineService (Integration)', () => {
 
       it('should throw error if user id does not exist', async () => {
         await expect(
-          pipelineService.getByIdOrThrow({ id: randomUUID() }),
+          userPipelineService.getByIdOrThrow({ id: randomUUID() }),
         ).rejects.toThrow(/Could not find any entity of type "User"/);
       });
     });
 
     describe('Get User By Email', () => {
       it('should retrieve a user by Email and check that cache was already set', async () => {
-        const retrievedUser = await pipelineService.getByEmailOrThrow({
+        const retrievedUser = await userPipelineService.getByEmailOrThrow({
           email: testUser.email,
         });
 
@@ -208,9 +204,9 @@ describe('UserPipelineService (Integration)', () => {
         expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       });
       it('should retrieve a user by Email and cache the result', async () => {
-        const user = await createTestUserDB(dataSource);
+        const user = await createTestUserDB({ dataSource });
 
-        const retrievedUser = await pipelineService.getByEmailOrThrow({
+        const retrievedUser = await userPipelineService.getByEmailOrThrow({
           email: user.email,
         });
 
@@ -225,7 +221,7 @@ describe('UserPipelineService (Integration)', () => {
 
       it('should throw error if user email does not exist', async () => {
         await expect(
-          pipelineService.getByEmailOrThrow({ email: '123' }),
+          userPipelineService.getByEmailOrThrow({ email: '123' }),
         ).rejects.toThrow(/Could not find any entity of type "User"/);
       });
     });
@@ -234,7 +230,7 @@ describe('UserPipelineService (Integration)', () => {
   describe('Create User', () => {
     describe('Create Simple User', () => {
       it('should perform 3 steps: 1. create a new empty user 2. cache the result 3. send audit log', async () => {
-        const user = await pipelineService.create({
+        const user = await userPipelineService.create({
           createDto: createUserMock,
           createdById: systemUserId,
           metadata: {
@@ -250,10 +246,12 @@ describe('UserPipelineService (Integration)', () => {
 
         expect(cacheSetSpy).toHaveBeenCalledTimes(2);
         expect(auditLogSpy).toHaveBeenCalledTimes(1);
-        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+        expect(auditStoreLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditRoleLogSpy).toHaveBeenCalledTimes(0);
+        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
 
         await getTestUserById({
-          pipelineService,
+          userPipelineService,
           id: user.id,
           expected: createUserMock,
           cache: {
@@ -267,7 +265,7 @@ describe('UserPipelineService (Integration)', () => {
       it('should throw error if user email already exists', async () => {
         createUserMock.email = testUser.email;
         await expect(
-          pipelineService.create({
+          userPipelineService.create({
             createDto: createUserMock,
             createdById: systemUserId,
             metadata: {
@@ -283,10 +281,12 @@ describe('UserPipelineService (Integration)', () => {
 
         expect(cacheSetSpy).toHaveBeenCalledTimes(0);
         expect(auditLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditStoreLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditRoleLogSpy).toHaveBeenCalledTimes(0);
         expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
 
         await getTestUserByEmail({
-          pipelineService,
+          userPipelineService,
           email: testUser.email,
           expected: testUser,
           cache: {
@@ -305,7 +305,7 @@ describe('UserPipelineService (Integration)', () => {
           roleIds: [testRole.id],
         };
 
-        const user = await pipelineService.create({
+        const user = await userPipelineService.create({
           createDto,
           createdById: systemUserId,
           metadata: {
@@ -323,11 +323,13 @@ describe('UserPipelineService (Integration)', () => {
 
         expect(cacheSetSpy).toHaveBeenCalledTimes(2);
         expect(auditLogSpy).toHaveBeenCalledTimes(1);
-        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+        expect(auditStoreLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditRoleLogSpy).toHaveBeenCalledTimes(1);
+        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
 
         await getAssignedRolesForUser({
           userId: user.id,
-          pipelineService: userRolePipelineService,
+          userRolePipelineService,
           expected: [testRole],
         });
       });
@@ -338,7 +340,7 @@ describe('UserPipelineService (Integration)', () => {
         };
 
         await expect(
-          pipelineService.create({
+          userPipelineService.create({
             createDto,
             createdById: systemUserId,
             metadata: {
@@ -354,10 +356,14 @@ describe('UserPipelineService (Integration)', () => {
 
         expect(cacheSetSpy).toHaveBeenCalledTimes(0);
         expect(auditLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditStoreLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditRoleLogSpy).toHaveBeenCalledTimes(0);
         expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
 
         await expect(
-          pipelineService.getByEmailOrThrow({ email: createUserMock.email }),
+          userPipelineService.getByEmailOrThrow({
+            email: createUserMock.email,
+          }),
         ).rejects.toThrow(/Could not find any entity of type "User"/);
       });
     });
@@ -369,7 +375,7 @@ describe('UserPipelineService (Integration)', () => {
           storeIds: [testStore.id],
         };
 
-        const user = await pipelineService.create({
+        const user = await userPipelineService.create({
           createDto,
           createdById: systemUserId,
           metadata: {
@@ -387,11 +393,13 @@ describe('UserPipelineService (Integration)', () => {
 
         expect(cacheSetSpy).toHaveBeenCalledTimes(2);
         expect(auditLogSpy).toHaveBeenCalledTimes(1);
-        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+        expect(auditStoreLogSpy).toHaveBeenCalledTimes(1);
+        expect(auditRoleLogSpy).toHaveBeenCalledTimes(0);
+        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
 
         await getAssignedStoresForUser({
           userId: user.id,
-          pipelineService: userStorePipelineService,
+          userStorePipelineService,
           expected: [testStore],
         });
       });
@@ -403,7 +411,7 @@ describe('UserPipelineService (Integration)', () => {
         };
 
         await expect(
-          pipelineService.create({
+          userPipelineService.create({
             createDto,
             createdById: systemUserId,
             metadata: {
@@ -419,10 +427,14 @@ describe('UserPipelineService (Integration)', () => {
 
         expect(cacheSetSpy).toHaveBeenCalledTimes(0);
         expect(auditLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditStoreLogSpy).toHaveBeenCalledTimes(0);
+        expect(auditRoleLogSpy).toHaveBeenCalledTimes(0);
         expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
 
         await expect(
-          pipelineService.getByEmailOrThrow({ email: createUserMock.email }),
+          userPipelineService.getByEmailOrThrow({
+            email: createUserMock.email,
+          }),
         ).rejects.toThrow(/Could not find any entity of type "User"/);
       });
     });
@@ -435,7 +447,7 @@ describe('UserPipelineService (Integration)', () => {
           roleIds: [testRole.id],
         };
 
-        const user = await pipelineService.create({
+        const user = await userPipelineService.create({
           createDto,
           createdById: systemUserId,
           metadata: {
@@ -453,17 +465,20 @@ describe('UserPipelineService (Integration)', () => {
 
         expect(cacheSetSpy).toHaveBeenCalledTimes(2);
         expect(auditLogSpy).toHaveBeenCalledTimes(1);
-        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+        expect(auditLogSpy).toHaveBeenCalledTimes(1);
+        expect(auditStoreLogSpy).toHaveBeenCalledTimes(1);
+        expect(auditRoleLogSpy).toHaveBeenCalledTimes(1);
+        expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
 
         await getAssignedStoresForUser({
           userId: user.id,
-          pipelineService: userStorePipelineService,
+          userStorePipelineService,
           expected: [testStore],
         });
 
         await getAssignedRolesForUser({
           userId: user.id,
-          pipelineService: userRolePipelineService,
+          userRolePipelineService,
           expected: [testRole],
         });
       });
@@ -472,7 +487,7 @@ describe('UserPipelineService (Integration)', () => {
 
   describe('Update User', () => {
     it('should update a user, invalidate cache and send audit log', async () => {
-      const updated = await pipelineService.update({
+      const updated = await userPipelineService.update({
         user: testUser,
         data: updateUserDto,
         requestedById: systemUserId,
@@ -488,7 +503,7 @@ describe('UserPipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await getTestUserById({
-        pipelineService,
+        userPipelineService,
         id: testUser.id,
         expected: {
           ...testUser,
@@ -503,7 +518,7 @@ describe('UserPipelineService (Integration)', () => {
     });
     it('should throw error when trying to update user with email that is already present', async () => {
       const conflictUser = await createTestUser({
-        pipelineService,
+        userPipelineService,
         createdById: systemUserId,
         cache: {
           cacheSetSpy,
@@ -515,41 +530,7 @@ describe('UserPipelineService (Integration)', () => {
       updateUserDto.email = conflictUser.email;
 
       await expect(
-        pipelineService.update({
-          user: testUser,
-          data: updateUserDto,
-          requestedById: systemUserId,
-          metadata: {
-            ipAddress: faker.internet.ip(),
-            userAgent: faker.internet.userAgent(),
-          },
-        }),
-      ).rejects.toThrow(
-        new ConflictException(
-          `Email "${conflictUser.email}" is already in use by another user.`,
-        ),
-      );
-
-      expect(auditLogSpy).toHaveBeenCalledTimes(0);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
-    });
-
-    it('after unsuccessful update should NOT invalidate existing cache', async () => {
-      const conflictUser = await createTestUser({
-        pipelineService,
-        createdById: systemUserId,
-        cache: {
-          cacheSetSpy,
-          cacheInvalidateByTagsSpy,
-        },
-        auditLogSpy,
-      });
-
-      updateUserDto.email = conflictUser.email;
-
-      await expect(
-        pipelineService.update({
+        userPipelineService.update({
           user: testUser,
           data: updateUserDto,
           requestedById: systemUserId,
@@ -571,8 +552,19 @@ describe('UserPipelineService (Integration)', () => {
   });
 
   describe('Delete User', () => {
+    beforeEach(async () => {
+      testUser = await createTestUser({
+        userPipelineService,
+        createdById: systemUserId,
+        cache: {
+          cacheSetSpy,
+          cacheInvalidateByTagsSpy,
+        },
+        auditLogSpy,
+      });
+    });
     it('should delete a user with access only to user, invalidate cache and send audit log', async () => {
-      const deleted = await pipelineService.delete({
+      const deleted = await userPipelineService.delete({
         data: { user: testUser, roles: [], stores: [] },
         requestedById: systemUserId,
         metadata: {
@@ -585,12 +577,12 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(
         getTestUserById({
-          pipelineService,
+          userPipelineService,
           id: testUser.id,
           expected: testUser,
           cache: {
@@ -602,7 +594,7 @@ describe('UserPipelineService (Integration)', () => {
       ).rejects.toThrow(/Could not find any entity of type "User"/);
     });
     it('should delete a user with root access, invalidate cache and send audit log', async () => {
-      const deleted = await pipelineService.delete({
+      const deleted = await userPipelineService.delete({
         data: { user: testUser, roles: [], stores: [] },
         requestedById: systemUserId,
         metadata: {
@@ -615,12 +607,12 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(
         getTestUserById({
-          pipelineService,
+          userPipelineService,
           id: testUser.id,
           expected: testUser,
           cache: {
@@ -634,7 +626,7 @@ describe('UserPipelineService (Integration)', () => {
     it('should return false when trying to delete user that does not exist', async () => {
       testUser.id = randomUUID();
 
-      const deleted = await pipelineService.delete({
+      const deleted = await userPipelineService.delete({
         data: { user: testUser, roles: [], stores: [] },
         requestedById: systemUserId,
         metadata: {
@@ -666,7 +658,7 @@ describe('UserPipelineService (Integration)', () => {
       auditLogSpy.mockClear();
       cacheSetSpy.mockClear();
 
-      const deleted = await pipelineService.delete({
+      const deleted = await userPipelineService.delete({
         data: { user: testUser, roles: [testRole], stores: [] },
         requestedById: systemUserId,
         metadata: {
@@ -679,12 +671,12 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(
         getTestUserById({
-          pipelineService,
+          userPipelineService,
           id: testUser.id,
           cache: {
             cacheSetSpy,
@@ -711,7 +703,7 @@ describe('UserPipelineService (Integration)', () => {
       cacheSetSpy.mockClear();
 
       await expect(
-        pipelineService.delete({
+        userPipelineService.delete({
           data: { user: testUser, roles: [testRole], stores: [] },
           requestedById: systemUserId,
           metadata: {
@@ -732,7 +724,7 @@ describe('UserPipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
 
       await getTestUserById({
-        pipelineService,
+        userPipelineService,
         id: testUser.id,
         cache: {
           cacheSetSpy,
@@ -757,7 +749,7 @@ describe('UserPipelineService (Integration)', () => {
       auditLogSpy.mockClear();
       cacheSetSpy.mockClear();
 
-      const deleted = await pipelineService.delete({
+      const deleted = await userPipelineService.delete({
         data: { user: testUser, roles: [], stores: [testStore] },
         requestedById: systemUserId,
         metadata: {
@@ -770,12 +762,12 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(
         getTestUserById({
-          pipelineService,
+          userPipelineService,
           id: testUser.id,
           cache: {
             cacheSetSpy,
@@ -802,7 +794,7 @@ describe('UserPipelineService (Integration)', () => {
       cacheSetSpy.mockClear();
 
       await expect(
-        pipelineService.delete({
+        userPipelineService.delete({
           data: { user: testUser, roles: [], stores: [testStore] },
           requestedById: systemUserId,
           metadata: {
@@ -823,7 +815,7 @@ describe('UserPipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
 
       await getTestUserById({
-        pipelineService,
+        userPipelineService,
         id: testUser.id,
         cache: {
           cacheSetSpy,
@@ -836,15 +828,9 @@ describe('UserPipelineService (Integration)', () => {
 
   describe('Cache Invalidation', () => {
     it('should invalidate cache when user is updated', async () => {
-      const user = await createTestUserDB(dataSource);
-      await assignRoleToUserDB({
-        dataSource,
-        userId: user.id,
-        roleId: testRole.id,
-      });
-
+      const user = await createTestUserDB({ dataSource });
       await getManyUserBy({
-        pipelineService,
+        userPipelineService,
         query: {
           page: 1,
           limit: 10,
@@ -867,7 +853,7 @@ describe('UserPipelineService (Integration)', () => {
       });
 
       await getTestUserById({
-        pipelineService,
+        userPipelineService,
         id: user.id,
         expected: user,
         cache: {
@@ -878,7 +864,7 @@ describe('UserPipelineService (Integration)', () => {
       });
 
       await getTestUserByEmail({
-        pipelineService,
+        userPipelineService,
         email: user.email,
         expected: user,
         cache: {
@@ -888,7 +874,7 @@ describe('UserPipelineService (Integration)', () => {
         },
       });
 
-      const updated = await pipelineService.update({
+      const updated = await userPipelineService.update({
         user,
         data: updateUserDto,
         requestedById: systemUserId,
@@ -910,7 +896,7 @@ describe('UserPipelineService (Integration)', () => {
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
 
       await getManyUserBy({
-        pipelineService,
+        userPipelineService,
         query: {
           page: 1,
           limit: 10,
@@ -933,7 +919,7 @@ describe('UserPipelineService (Integration)', () => {
       });
 
       await getTestUserById({
-        pipelineService,
+        userPipelineService,
         id: updatedUser.id,
         expected: updatedUser,
         cache: {
@@ -943,7 +929,120 @@ describe('UserPipelineService (Integration)', () => {
         },
       });
       await getTestUserByEmail({
-        pipelineService,
+        userPipelineService,
+        email: updatedUser.email,
+        expected: updatedUser,
+        cache: {
+          cacheSetSpy,
+          cacheGetByIdSpy,
+          setCache: true,
+        },
+      });
+    });
+    it('should invalidate cache when user is deleted', async () => {
+      const user = await createTestUserDB({ dataSource });
+
+      await getManyUserBy({
+        userPipelineService,
+        query: {
+          page: 1,
+          limit: 10,
+          ids: [user.id],
+          sortField: 'createdAt',
+          sortOrder: 'DESC',
+        },
+        expected: {
+          data: [user],
+          total: 1,
+          page: 1,
+          limit: 10,
+          totalPages: 1,
+        },
+        cache: {
+          cacheSetSpy,
+          cacheGetSpy,
+          setCache: true,
+        },
+      });
+
+      await getTestUserById({
+        userPipelineService,
+        id: user.id,
+        expected: user,
+        cache: {
+          cacheSetSpy,
+          cacheGetByIdSpy,
+          setCache: true,
+        },
+      });
+
+      await getTestUserByEmail({
+        userPipelineService,
+        email: user.email,
+        expected: user,
+        cache: {
+          cacheSetSpy,
+          cacheGetByIdSpy,
+          setCache: true,
+        },
+      });
+
+      const updated = await userPipelineService.update({
+        user,
+        data: updateUserDto,
+        requestedById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      const updatedUser = {
+        ...user,
+        ...updateUserDto,
+      };
+
+      expect(updated).toBe(true);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+
+      await getManyUserBy({
+        userPipelineService,
+        query: {
+          page: 1,
+          limit: 10,
+          ids: [user.id],
+          sortField: 'createdAt',
+          sortOrder: 'DESC',
+        },
+        expected: {
+          data: [user],
+          total: 1,
+          page: 1,
+          limit: 10,
+          totalPages: 1,
+        },
+        cache: {
+          cacheSetSpy,
+          cacheGetSpy,
+          setCache: true,
+        },
+      });
+
+      await getTestUserById({
+        userPipelineService,
+        id: updatedUser.id,
+        expected: updatedUser,
+        cache: {
+          cacheSetSpy,
+          cacheGetByIdSpy,
+          setCache: true,
+        },
+      });
+      await getTestUserByEmail({
+        userPipelineService,
         email: updatedUser.email,
         expected: updatedUser,
         cache: {

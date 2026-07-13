@@ -22,13 +22,13 @@ import { randomUUID, type UUID } from 'crypto';
  * @returns The fully committed database Role entity
  */
 export async function createTestRole({
-  pipelineService,
+  rolePipelineService,
   overrides = {},
   createdById,
   cacheSetSpy,
   auditLogSpy,
 }: {
-  pipelineService: RolePipelineService;
+  rolePipelineService: RolePipelineService;
   overrides?: Partial<CreateRoleDto>;
   createdById: UUID;
   cacheSetSpy: jest.SpyInstance;
@@ -43,7 +43,7 @@ export async function createTestRole({
     ...overrides,
   };
 
-  const newRole = await pipelineService.create({
+  const newRole = await rolePipelineService.create({
     createDto,
     createdById,
     metadata: {
@@ -67,14 +67,14 @@ export async function createTestRole({
 }
 
 export async function getTestRoleById({
-  pipelineService,
+  rolePipelineService,
   id,
   name,
   cacheGetByIdSpy,
   cacheSetSpy,
   setCache,
 }: {
-  pipelineService: RolePipelineService;
+  rolePipelineService: RolePipelineService;
   id: UUID;
   name: string | undefined;
   cacheGetByIdSpy: jest.SpyInstance;
@@ -84,7 +84,7 @@ export async function getTestRoleById({
   cacheSetSpy.mockClear();
   cacheGetByIdSpy.mockClear();
 
-  const response = await pipelineService.getByIdOrThrow(id);
+  const response = await rolePipelineService.getByIdOrThrow(id);
 
   validateRoleResponseDto({
     response,
@@ -109,14 +109,14 @@ export async function getTestRoleById({
 }
 
 export async function getTestRoleWithPermissionsById({
-  pipelineService,
+  rolePipelineService,
   id,
   expected,
   cacheGetByIdSpy,
   cacheSetSpy,
   setCache,
 }: {
-  pipelineService: RolePipelineService;
+  rolePipelineService: RolePipelineService;
   id: UUID;
   expected: Partial<RoleResponseDto>;
   cacheGetByIdSpy: jest.SpyInstance;
@@ -126,7 +126,7 @@ export async function getTestRoleWithPermissionsById({
   cacheSetSpy.mockClear();
   cacheGetByIdSpy.mockClear();
 
-  const response = await pipelineService.getPermissionsOrThrow(id);
+  const response = await rolePipelineService.getPermissionsOrThrow(id);
 
   validateRoleWithPermissionsResponseDto({
     response,
@@ -148,7 +148,7 @@ export async function getTestRoleWithPermissionsById({
 }
 
 export async function createTestRoleWithPermissions({
-  pipelineService,
+  rolePipelineService,
   role = {},
   permissions,
   createdById,
@@ -156,7 +156,7 @@ export async function createTestRoleWithPermissions({
   auditLogSpy,
   cacheInvalidateByIdSpy,
 }: {
-  pipelineService: RolePipelineService;
+  rolePipelineService: RolePipelineService;
   role?: Partial<CreateRoleDto>;
   permissions?: GetPermissionDto[];
   createdById: UUID;
@@ -169,7 +169,7 @@ export async function createTestRoleWithPermissions({
   cacheInvalidateByIdSpy.mockClear();
 
   const newRole = await createTestRole({
-    pipelineService,
+    rolePipelineService,
     overrides: role,
     createdById,
     cacheSetSpy,
@@ -177,7 +177,7 @@ export async function createTestRoleWithPermissions({
   });
 
   if (permissions && permissions.length > 0) {
-    await pipelineService.assignPermissionsToRole({
+    await rolePipelineService.assignPermissionsToRole({
       role: newRole,
       assignPayload: {
         permissionCodes: permissions.map((p) => p.code),

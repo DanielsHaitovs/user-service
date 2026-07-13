@@ -12,13 +12,13 @@ import { faker } from '@faker-js/faker/.';
 import { randomUUID, type UUID } from 'crypto';
 
 export async function createTestStore({
-  pipelineService,
+  storePipelineService,
   overrides = {},
   createdById,
   cacheSetSpy,
   auditLogSpy,
 }: {
-  pipelineService: StorePipelineService;
+  storePipelineService: StorePipelineService;
   overrides?: Partial<CreateStoreDto>;
   createdById: UUID;
   cacheSetSpy: jest.SpyInstance;
@@ -40,7 +40,7 @@ export async function createTestStore({
     ...overrides,
   };
 
-  const store = await pipelineService.create({
+  const store = await storePipelineService.create({
     createDto,
     createdById,
     metadata: {
@@ -64,14 +64,14 @@ export async function createTestStore({
 }
 
 export async function getTestStoreById({
-  pipelineService,
+  storePipelineService,
   id,
   expected,
   cacheGetByIdSpy,
   cacheSetSpy,
   setCache,
 }: {
-  pipelineService: StorePipelineService;
+  storePipelineService: StorePipelineService;
   id: UUID;
   expected?: Partial<StoreResponseDto>;
   cacheGetByIdSpy: jest.SpyInstance;
@@ -81,7 +81,7 @@ export async function getTestStoreById({
   cacheSetSpy.mockClear();
   cacheGetByIdSpy.mockClear();
 
-  const store = await pipelineService.getByIdOrThrow(id);
+  const store = await storePipelineService.getByIdOrThrow(id);
 
   validateStoreResponseDto({
     response: store,

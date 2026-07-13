@@ -111,7 +111,6 @@ describe('StoreService', () => {
         alias: STORE_QUERY_ALIAS,
       });
 
-      // Verify all whereIn filters
       expect(mockEntityQueryService.whereIn).toHaveBeenCalledWith(
         expect.objectContaining({ field: 'name', values: ['Main Store'] }),
       );
@@ -125,7 +124,6 @@ describe('StoreService', () => {
         expect.objectContaining({ field: 'viewCode', values: ['VC01'] }),
       );
 
-      // Verify Date Filters
       expect(mockEntityQueryService.dateGreaterThan).toHaveBeenCalled();
       expect(mockEntityQueryService.dateLessThan).toHaveBeenCalled();
     });

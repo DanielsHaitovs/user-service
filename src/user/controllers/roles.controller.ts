@@ -3,6 +3,7 @@ import {
   UserWithRoles,
 } from '@/common/pipes/userRoles.pipe';
 import { EXAMPLE_USER_ID } from '@/commonConst/user.const';
+import { Idempotent } from '@/commonDecorators/idempotent.decorator';
 import {
   ClientMetadata,
   GetClientMetadata,
@@ -68,7 +69,7 @@ export class UserRolesController {
     protected readonly userRolePipelineService: UserRolePipelineService,
   ) {}
 
-  @Post('user/:userId')
+  @Post('user/:id')
   @Version('1')
   @HttpCode(HttpStatus.CREATED)
   @Permissions({
@@ -101,12 +102,13 @@ export class UserRolesController {
     description: 'User or one or more roles not found',
   })
   @ApiParam({
-    name: 'userId',
+    name: 'id',
     type: String,
     format: 'uuid',
     description: 'User unique identifier - must be a valid UUID',
     example: EXAMPLE_USER_ID,
   })
+  @Idempotent()
   async assignRole(
     @Param('id', FetchUserRolesPipe) userRoles: UserWithRoles,
     @Body() assignDto: AssignRolesToUserDto,
@@ -121,7 +123,7 @@ export class UserRolesController {
     });
   }
 
-  @Delete('user/:userId')
+  @Delete('user/:id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions({
@@ -154,12 +156,13 @@ export class UserRolesController {
     description: 'User or one or more roles not found',
   })
   @ApiParam({
-    name: 'userId',
+    name: 'id',
     type: String,
     format: 'uuid',
     description: 'User unique identifier - must be a valid UUID',
     example: EXAMPLE_USER_ID,
   })
+  @Idempotent()
   async remove(
     @Param('id', FetchUserRolesPipe) userRoles: UserWithRoles,
     @Body() unassignDto: UnassignRolesFromUserDto,
@@ -210,7 +213,7 @@ export class UserRolesController {
     return await this.userRolePipelineService.getRoles(query);
   }
 
-  @Get('permissions/:userId')
+  @Get('permissions/:id')
   @Version('1')
   @HttpCode(HttpStatus.OK)
   @Permissions({
@@ -243,13 +246,13 @@ export class UserRolesController {
     isArray: true,
   })
   @ApiParam({
-    name: 'userId',
+    name: 'id',
     type: String,
     description: 'User unique identifier - must be a valid UUID',
     example: EXAMPLE_USER_ID,
   })
   async findPermissionsByUserId(
-    @Param('userId', ParseUUIDPipe) userId: UUID,
+    @Param('id', ParseUUIDPipe) userId: UUID,
   ): Promise<string[]> {
     return await this.userRolePipelineService.getPermissions(userId);
   }

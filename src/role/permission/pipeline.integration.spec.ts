@@ -1,4 +1,3 @@
-import { CacheService } from '@/baseServices/cache.service';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import { createTestPermissions } from '@/test/db/permission';
@@ -10,19 +9,24 @@ import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
 describe('PermissionPipelineService (Integration)', () => {
-  let pipelineService: PermissionPipelineService;
+  let permissionPipelineService: PermissionPipelineService;
   let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
   let cacheSetSpy: jest.SpyInstance;
 
   beforeAll(async () => {
-    ({ dataSource, moduleFixture, systemUserId } = await bootstrapTestApp());
+    ({
+      dataSource,
+      moduleFixture,
+      systemUserId,
+      permissionPipelineService,
+      cacheSetSpy,
+    } = await bootstrapTestApp());
 
-    pipelineService = moduleFixture.get<PermissionPipelineService>(
+    permissionPipelineService = moduleFixture.get<PermissionPipelineService>(
       PermissionPipelineService,
     );
-    cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
   });
 
   beforeEach(() => {
@@ -34,7 +38,7 @@ describe('PermissionPipelineService (Integration)', () => {
   });
 
   it('should be defined', () => {
-    expect(pipelineService).toBeDefined();
+    expect(permissionPipelineService).toBeDefined();
     expect(dataSource).toBeDefined();
   });
 
@@ -56,7 +60,7 @@ describe('PermissionPipelineService (Integration)', () => {
       }
 
       validatePermissionResponseDto({
-        response: await pipelineService.getByIdOrThrow(expected.id),
+        response: await permissionPipelineService.getByIdOrThrow(expected.id),
         expected,
       });
 
@@ -65,7 +69,7 @@ describe('PermissionPipelineService (Integration)', () => {
 
     it('should throw EntityNotFoundError when looking up a missing permission', async () => {
       await expect(
-        pipelineService.getByIdOrThrow(randomUUID()),
+        permissionPipelineService.getByIdOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Permission"/);
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
@@ -90,7 +94,9 @@ describe('PermissionPipelineService (Integration)', () => {
       }
 
       validatePermissionResponseDto({
-        response: await pipelineService.getByCodeOrThrow(expected.code),
+        response: await permissionPipelineService.getByCodeOrThrow(
+          expected.code,
+        ),
         expected,
       });
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
@@ -98,7 +104,7 @@ describe('PermissionPipelineService (Integration)', () => {
 
     it('should throw EntityNotFoundError when looking up a missing permission', async () => {
       await expect(
-        pipelineService.getByCodeOrThrow(randomUUID()),
+        permissionPipelineService.getByCodeOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Permission"/);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
     });

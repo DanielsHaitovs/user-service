@@ -99,14 +99,3 @@ export const STORE_FULL_OPERATION_BAD_REQUEST_MSG = [
   'each createdById must be a valid UUIDv4',
   ...STORE_MIN_OPERATION_BAD_REQUEST_MSG,
 ];
-
-// export const STORE_MIN_API_OK_LIST = {
-//   badRequestMessages: {
-//     examples: STORE_MIN_OPERATION_BAD_REQUEST_MSG,
-//   },
-//   okOperation: {
-//     description: STORE_API_OK_RESPONSE_MSG,
-//     type: STOREListResponseDto,
-//     isArray: false,
-//   },
-// };

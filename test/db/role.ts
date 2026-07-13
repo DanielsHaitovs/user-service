@@ -1,10 +1,10 @@
-import type { Permission } from '@/permissionEntities/permissions.entity';
+import { Permission } from '@/permissionEntities/permissions.entity';
 import { Roles } from '@/role/entities/role.entity';
 import { createTestPermissions } from '@/test/db/permission';
 import { faker } from '@faker-js/faker';
 
 import { randomUUID, type UUID } from 'crypto';
-import type { DataSource } from 'typeorm';
+import { type DataSource, In } from 'typeorm';
 
 /**
  * Test Utility Factory to seed a Role directly into the test database context.
@@ -147,4 +147,51 @@ export async function getTestRoleWithPermissionsById({
   }
 
   return role;
+}
+
+export async function removePermissionFromRole({
+  dataSource,
+  roleId,
+  permissionId,
+}: {
+  dataSource: DataSource;
+  roleId: UUID;
+  permissionId: UUID;
+}): Promise<void> {
+  const roleRepository = dataSource.getRepository(Roles);
+  const role = await roleRepository.findOneOrFail({
+    where: { id: roleId, permissions: { id: permissionId } },
+    relations: ['permissions'],
+  });
+
+  role.permissions = role.permissions.filter(
+    (permission) => permission.id !== permissionId,
+  );
+
+  await roleRepository.save(role);
+}
+
+export async function addPermissionToRole({
+  dataSource,
+  roleId,
+  permissionIds,
+}: {
+  dataSource: DataSource;
+  roleId: UUID;
+  permissionIds: UUID[];
+}): Promise<void> {
+  const roleRepository = dataSource.getRepository(Roles);
+  const role = await roleRepository.findOneOrFail({
+    where: { id: roleId },
+    relations: ['permissions'],
+  });
+
+  const permissionRepository = dataSource.getRepository(Permission);
+  const permission = await permissionRepository.find({
+    where: { id: In(permissionIds) },
+  });
+
+  role.permissions.push(...permission);
+
+  await roleRepository.save(role);
 }

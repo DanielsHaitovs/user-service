@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-spread */
-import { CacheService } from '@/baseServices/cache.service';
 import type { Permission } from '@/permissionEntities/permissions.entity';
-import { RolePipelineService } from '@/role/role.pipeline';
+import type { RolePipelineService } from '@/role/role.pipeline';
 import { AuditProducerService } from '@/roleServices/audit.service';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import { createTestPermissions } from '@/test/db/permission';
@@ -30,7 +29,7 @@ import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
 describe('RolePipelineService (Integration)', () => {
-  let pipelineService: RolePipelineService;
+  let rolePipelineService: RolePipelineService;
   let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
@@ -42,21 +41,18 @@ describe('RolePipelineService (Integration)', () => {
   let permissions: Permission[];
 
   beforeAll(async () => {
-    ({ dataSource, moduleFixture, systemUserId } = await bootstrapTestApp());
+    ({
+      dataSource,
+      moduleFixture,
+      systemUserId,
+      rolePipelineService,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+    } = await bootstrapTestApp());
 
-    pipelineService =
-      moduleFixture.get<RolePipelineService>(RolePipelineService);
     auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendLog');
-    cacheSetSpy = jest.spyOn(CacheService.prototype, 'set');
-    cacheGetByIdSpy = jest.spyOn(CacheService.prototype, 'getById');
-    cacheInvalidateByIdSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateById',
-    );
-    cacheInvalidateByTagsSpy = jest.spyOn(
-      CacheService.prototype,
-      'invalidateByTags',
-    );
     permissions = await createTestPermissions({
       dataSource,
       permissions: [
@@ -79,13 +75,13 @@ describe('RolePipelineService (Integration)', () => {
   });
 
   it('should be defined', () => {
-    expect(pipelineService).toBeDefined();
+    expect(rolePipelineService).toBeDefined();
     expect(dataSource).toBeDefined();
   });
 
   describe('Should create role -> RolePipelineService -> getPermissionsOrThrow()', () => {
     it('should create role without permissions', async () => {
-      const createdRole = await pipelineService.create({
+      const createdRole = await rolePipelineService.create({
         createDto: {
           name: `Test Role ${randomUUID()}`,
         },
@@ -100,7 +96,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleById({
-        pipelineService,
+        rolePipelineService,
         id: createdRole.id,
         name: createdRole.name,
         cacheGetByIdSpy,
@@ -109,7 +105,7 @@ describe('RolePipelineService (Integration)', () => {
     });
 
     it('should create role with permissions', async () => {
-      const expected = await pipelineService.create({
+      const expected = await rolePipelineService.create({
         createDto: {
           name: `Test Role ${randomUUID()}`,
           permissions: permissions.map((p) => p.code),
@@ -125,7 +121,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: expected.id,
         expected,
         cacheGetByIdSpy,
@@ -135,7 +131,7 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw Conflict when trying to save role with the same name', async () => {
       const roleName = `Test Role ${randomUUID()}`;
-      await pipelineService.create({
+      await rolePipelineService.create({
         createDto: {
           name: roleName,
         },
@@ -153,7 +149,7 @@ describe('RolePipelineService (Integration)', () => {
       auditLogSpy.mockClear();
 
       await expect(
-        pipelineService.create({
+        rolePipelineService.create({
           createDto: {
             name: roleName,
           },
@@ -174,7 +170,7 @@ describe('RolePipelineService (Integration)', () => {
     });
 
     it('should not assign all permissions if empty permission property is present as empty array', async () => {
-      const expected = await pipelineService.create({
+      const expected = await rolePipelineService.create({
         createDto: {
           name: `Test Role ${randomUUID()}`,
           permissions: [],
@@ -190,7 +186,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: expected.id,
         expected,
         cacheGetByIdSpy,
@@ -200,7 +196,7 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw UnprocessableEntityException when trying to save role with non-existing permission codes', async () => {
       await expect(
-        pipelineService.create({
+        rolePipelineService.create({
           createDto: {
             name: `Test Role ${randomUUID()}`,
             permissions: [
@@ -228,14 +224,14 @@ describe('RolePipelineService (Integration)', () => {
   describe('Should retrieve role without permissions -> RolePipelineService -> getByIdOrThrow()', () => {
     it('should retrieve the test role by its ID', async () => {
       const expected = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
       validateRoleResponseDto({
-        response: await pipelineService.getByIdOrThrow(expected.id),
+        response: await rolePipelineService.getByIdOrThrow(expected.id),
         expected,
       });
 
@@ -244,7 +240,7 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw EntityNotFoundError when looking up a missing role', async () => {
       await expect(
-        pipelineService.getByIdOrThrow(randomUUID()),
+        rolePipelineService.getByIdOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Roles"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
@@ -255,7 +251,7 @@ describe('RolePipelineService (Integration)', () => {
   describe('Should retrieve role with permissions -> RolePipelineService -> getPermissionsOrThrow()', () => {
     it('should retrieve the test role by its ID with its permissions', async () => {
       const expected = await createTestRoleWithPermissions({
-        pipelineService,
+        rolePipelineService,
         permissions,
         createdById: systemUserId,
         cacheSetSpy,
@@ -264,7 +260,7 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       validateRoleWithPermissionsResponseDto({
-        response: await pipelineService.getPermissionsOrThrow(expected.id),
+        response: await rolePipelineService.getPermissionsOrThrow(expected.id),
         expected,
       });
 
@@ -274,7 +270,7 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw EntityNotFoundError when looking up a missing role', async () => {
       await expect(
-        pipelineService.getPermissionsOrThrow(randomUUID()),
+        rolePipelineService.getPermissionsOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Roles"/);
 
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
@@ -285,13 +281,13 @@ describe('RolePipelineService (Integration)', () => {
   describe('Should assign permissions to role -> RolePipelineService -> assignPermissionsToRole()', () => {
     it('should assign permissions to the test role with 0 permissions', async () => {
       const expected = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      await pipelineService.assignPermissionsToRole({
+      await rolePipelineService.assignPermissionsToRole({
         role: expected,
         assignPayload: {
           permissionCodes: permissions.map((p) => p.code),
@@ -308,7 +304,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: expected.id,
         expected: {
           ...expected,
@@ -322,7 +318,7 @@ describe('RolePipelineService (Integration)', () => {
     it('should assign permissions to the test role with 2 existing permissions', async () => {
       const { permissions: existingPermissions, ...role } =
         await createTestRoleWithPermissions({
-          pipelineService,
+          rolePipelineService,
           permissions,
           createdById: systemUserId,
           cacheSetSpy,
@@ -338,7 +334,7 @@ describe('RolePipelineService (Integration)', () => {
         ],
       });
 
-      await pipelineService.assignPermissionsToRole({
+      await rolePipelineService.assignPermissionsToRole({
         role: { ...role, permissions: existingPermissions },
         assignPayload: {
           permissionCodes: permissionsToAssign.map((p) => p.code),
@@ -355,7 +351,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: role.id,
         expected: {
           name: role.name,
@@ -369,7 +365,7 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw UnprocessableEntityException when trying to assign non-existing permission codes', async () => {
       const expected = await createTestRoleWithPermissions({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
@@ -379,7 +375,7 @@ describe('RolePipelineService (Integration)', () => {
       const invalidPermissionCode = randomUUID();
 
       await expect(
-        pipelineService.assignPermissionsToRole({
+        rolePipelineService.assignPermissionsToRole({
           role: expected,
           assignPayload: {
             permissionCodes: [invalidPermissionCode],
@@ -401,7 +397,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: expected.id,
         expected,
         cacheGetByIdSpy,
@@ -411,14 +407,14 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw UnprocessableEntityException when trying to assign permissions with an empty permissionCodes array', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
       await expect(
-        pipelineService.assignPermissionsToRole({
+        rolePipelineService.assignPermissionsToRole({
           role,
           assignPayload: {
             permissionCodes: [],
@@ -444,13 +440,13 @@ describe('RolePipelineService (Integration)', () => {
   describe('Should unassign permissions from role -> RolePipelineService -> unassignPermissionsFromRole()', () => {
     it('should unassign permissions from the test role with 0 permissions', async () => {
       const expected = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      await pipelineService.unassignPermissionsFromRole({
+      await rolePipelineService.unassignPermissionsFromRole({
         role: expected,
         unassignPayload: {
           permissionCodes: permissions.map((p) => p.code),
@@ -467,7 +463,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: expected.id,
         expected,
         cacheGetByIdSpy,
@@ -481,7 +477,7 @@ describe('RolePipelineService (Integration)', () => {
     it('should unassign 2 permissions from the test role with 4 existing permissions', async () => {
       const { permissions: existingPermissions, ...role } =
         await createTestRoleWithPermissions({
-          pipelineService,
+          rolePipelineService,
           createdById: systemUserId,
           permissions: [
             ...permissions,
@@ -501,7 +497,7 @@ describe('RolePipelineService (Integration)', () => {
       const permissionsToUnassign = [...existingPermissions.slice(0, 2)];
       const permissionsToKeep = [...existingPermissions.slice(2)];
 
-      await pipelineService.unassignPermissionsFromRole({
+      await rolePipelineService.unassignPermissionsFromRole({
         role: { ...role, permissions: existingPermissions },
         unassignPayload: {
           permissionCodes: permissionsToUnassign.map((p) => p.code),
@@ -518,7 +514,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: role.id,
         expected: {
           name: role.name,
@@ -532,7 +528,7 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw UnprocessableEntityException when trying to unassign non-existing permission codes', async () => {
       const expected = await createTestRoleWithPermissions({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         permissions,
         cacheSetSpy,
@@ -543,7 +539,7 @@ describe('RolePipelineService (Integration)', () => {
       const invalidPermissionCode = randomUUID();
 
       await expect(
-        pipelineService.unassignPermissionsFromRole({
+        rolePipelineService.unassignPermissionsFromRole({
           role: expected,
           unassignPayload: {
             permissionCodes: [invalidPermissionCode],
@@ -565,7 +561,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: expected.id,
         expected,
         cacheGetByIdSpy,
@@ -575,13 +571,13 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should successfully return when trying to unassign existing permission codes that are not currently assigned to the role', async () => {
       const expected = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      await pipelineService.unassignPermissionsFromRole({
+      await rolePipelineService.unassignPermissionsFromRole({
         role: expected,
         unassignPayload: {
           permissionCodes: permissions.map((p) => p.code),
@@ -598,7 +594,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: expected.id,
         expected,
         cacheGetByIdSpy,
@@ -608,14 +604,14 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw UnprocessableEntityException when trying to unassign permissions with an empty permissionCodes array', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
       await expect(
-        pipelineService.unassignPermissionsFromRole({
+        rolePipelineService.unassignPermissionsFromRole({
           role,
           unassignPayload: {
             permissionCodes: [],
@@ -641,7 +637,7 @@ describe('RolePipelineService (Integration)', () => {
   describe('Should update role -> RolePipelineService -> update()', () => {
     it('should update role name with a new unique name', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
@@ -649,7 +645,7 @@ describe('RolePipelineService (Integration)', () => {
 
       const newName = `Updated Role ${randomUUID()}`;
 
-      const updated = await pipelineService.update({
+      const updated = await rolePipelineService.update({
         role,
         updateDto: {
           name: newName,
@@ -668,7 +664,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleById({
-        pipelineService,
+        rolePipelineService,
         id: role.id,
         name: newName,
         cacheGetByIdSpy,
@@ -679,7 +675,7 @@ describe('RolePipelineService (Integration)', () => {
       role.name = newName;
 
       await getTestRoleWithPermissionsById({
-        pipelineService,
+        rolePipelineService,
         id: role.id,
         expected: role,
         cacheGetByIdSpy,
@@ -690,13 +686,13 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should return true when attempting to update with the same name', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const updated = await pipelineService.update({
+      const updated = await rolePipelineService.update({
         role,
         updateDto: {
           name: role.name,
@@ -716,7 +712,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleById({
-        pipelineService,
+        rolePipelineService,
         id: role.id,
         name: role.name,
         cacheGetByIdSpy,
@@ -727,20 +723,20 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should throw UnprocessableEntityException when attempting to update with name that is already taken by another role', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
       const conflictRole = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
       await expect(
-        pipelineService.update({
+        rolePipelineService.update({
           role,
           updateDto: {
             name: conflictRole.name,
@@ -762,7 +758,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleById({
-        pipelineService,
+        rolePipelineService,
         id: role.id,
         name: role.name,
         cacheGetByIdSpy,
@@ -773,13 +769,13 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should return false when trying to update with an empty updateDto', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const updated = await pipelineService.update({
+      const updated = await rolePipelineService.update({
         role,
         updateDto: {},
         requestedByUserId: systemUserId,
@@ -797,7 +793,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleById({
-        pipelineService,
+        rolePipelineService,
         id: role.id,
         name: role.name,
         cacheGetByIdSpy,
@@ -810,14 +806,14 @@ describe('RolePipelineService (Integration)', () => {
   describe('Should delete role -> RolePipelineService -> delete()', () => {
     it('should delete the test role with 0 permissions with canDeleteAssignedRole set to true', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const deleted = await pipelineService.delete({
-        id: role.id,
+      const deleted = await rolePipelineService.delete({
+        role,
         canDeleteAssignedRole: true,
         requestedByUserId: systemUserId,
         metadata: {
@@ -832,21 +828,21 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
-      await expect(pipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
         /Could not find any entity of type "Roles"/,
       );
     });
 
     it('should delete the test role with 0 permissions with canDeleteAssignedRole set to false', async () => {
       const role = await createTestRole({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
       });
 
-      const deleted = await pipelineService.delete({
-        id: role.id,
+      const deleted = await rolePipelineService.delete({
+        role,
         canDeleteAssignedRole: false,
         requestedByUserId: systemUserId,
         metadata: {
@@ -861,14 +857,14 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
-      await expect(pipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
         /Could not find any entity of type "Roles"/,
       );
     });
 
     it('should delete the test role with 2 permissions with canDeleteAssignedRole set to true', async () => {
       const role = await createTestRoleWithPermissions({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         permissions,
         cacheSetSpy,
@@ -876,8 +872,8 @@ describe('RolePipelineService (Integration)', () => {
         auditLogSpy,
       });
 
-      const deleted = await pipelineService.delete({
-        id: role.id,
+      const deleted = await rolePipelineService.delete({
+        role,
         canDeleteAssignedRole: true,
         requestedByUserId: systemUserId,
         metadata: {
@@ -892,14 +888,14 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
-      await expect(pipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
         /Could not find any entity of type "Roles"/,
       );
     });
 
     it('should delete the test role with 2 permissions with canDeleteAssignedRole set to false', async () => {
       const role = await createTestRoleWithPermissions({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         permissions,
         cacheSetSpy,
@@ -907,8 +903,8 @@ describe('RolePipelineService (Integration)', () => {
         auditLogSpy,
       });
 
-      const deleted = await pipelineService.delete({
-        id: role.id,
+      const deleted = await rolePipelineService.delete({
+        role,
         canDeleteAssignedRole: false,
         requestedByUserId: systemUserId,
         metadata: {
@@ -923,21 +919,21 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
-      await expect(pipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
         /Could not find any entity of type "Roles"/,
       );
     });
 
     it('should not delete the test role with 2 permissions that is assigned to a user with canDeleteAssignedRole set to false', async () => {
       const role = await createTestRoleWithPermissions({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         permissions,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
         auditLogSpy,
       });
-      const user = await createTestUser(dataSource);
+      const user = await createTestUser({ dataSource });
 
       await assignRoleToUser({
         dataSource,
@@ -946,8 +942,8 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       await expect(
-        pipelineService.delete({
-          id: role.id,
+        rolePipelineService.delete({
+          role,
           canDeleteAssignedRole: false,
           requestedByUserId: systemUserId,
           metadata: {
@@ -968,7 +964,7 @@ describe('RolePipelineService (Integration)', () => {
 
     it('should delete the test role with 2 permissions that is assigned to a user with canDeleteAssignedRole set to true', async () => {
       const role = await createTestRoleWithPermissions({
-        pipelineService,
+        rolePipelineService,
         createdById: systemUserId,
         permissions,
         cacheSetSpy,
@@ -976,7 +972,7 @@ describe('RolePipelineService (Integration)', () => {
         auditLogSpy,
       });
 
-      const user = await createTestUser(dataSource);
+      const user = await createTestUser({ dataSource });
 
       await assignRoleToUser({
         dataSource,
@@ -984,8 +980,8 @@ describe('RolePipelineService (Integration)', () => {
         roleId: role.id,
       });
 
-      const deleted = await pipelineService.delete({
-        id: role.id,
+      const deleted = await rolePipelineService.delete({
+        role,
         canDeleteAssignedRole: true,
         requestedByUserId: systemUserId,
         metadata: {
@@ -1000,7 +996,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
-      await expect(pipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
         /Could not find any entity of type "Roles"/,
       );
     });

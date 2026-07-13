@@ -70,7 +70,7 @@ describe('CreateService', () => {
 
       mockRoleRepository.findOne.mockResolvedValue(null);
       mockPermissionHelper.checkIfManyExistOrThrow.mockResolvedValue([
-        mockPermissionUuid,
+        { id: mockPermissionUuid },
       ]);
 
       mockRoleRepository.create.mockImplementation((dto: CreateRoleDto) => {

@@ -3,7 +3,7 @@ import { AuthCacheService } from '@/auth/cache.service';
 import { ROOT_ADMIN_PERMISSION } from '@/commonConst/permission.const';
 import { PERMISSIONS_KEY } from '@/commonDecorators/permission.decorator';
 import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
-import { extractBearerFromHeader } from '@/utils/headers.utils';
+import { extractBearerFromHeader } from '@/utils/headers.util';
 import {
   CanActivate,
   ExecutionContext,

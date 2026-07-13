@@ -1,5 +1,8 @@
 import { CacheService } from '@/baseServices/cache.service';
 import { UserAction } from '@/common/enum/action.enum';
+import { FullUser } from '@/common/pipes/full-user.pipe';
+import { USER_ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
+import { USER_STORES_QUERY_ALIAS } from '@/commonConst/store.const';
 import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { ClientMetadata } from '@/commonDecorators/meta.decorator';
 import { AuditProducerService } from '@/user/services/audit.service';
@@ -18,8 +21,6 @@ import { UserService } from '@/userServices/user.service';
 import { Injectable } from '@nestjs/common';
 
 import { UUID } from 'crypto';
-
-import { FullUser } from '../common/pipes/full-user.pipe';
 
 @Injectable()
 export class UserPipelineService {
@@ -113,8 +114,32 @@ export class UserPipelineService {
     const { createdAt } = user;
 
     const promises: Promise<void>[] = [
-      this.invalidateUserCache({}),
-      this.setUserCache(user),
+      this.cacheService.invalidateByTags({
+        tag: { purge: true },
+        alias: USER_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateByTags({
+        tag: { purge: true },
+        alias: USER_ROLE_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateByTags({
+        tag: { purge: true },
+        alias: USER_STORES_QUERY_ALIAS,
+      }),
+      this.cacheService.set<GetUserDto>({
+        key: this.cacheService.getIdKeyPrefixByAlias({
+          id: user.id,
+          alias: USER_QUERY_ALIAS,
+        }),
+        value: user,
+      }) as Promise<void>,
+      this.cacheService.set<GetUserDto>({
+        key: this.cacheService.getIdKeyPrefixByAlias({
+          id: user.email,
+          alias: USER_QUERY_ALIAS,
+        }),
+        value: user,
+      }) as Promise<void>,
       this.audiService.sendLog({
         createdAt,
         userId: createdById,
@@ -180,7 +205,18 @@ export class UserPipelineService {
 
     if (updated) {
       await Promise.all([
-        this.invalidateUserCache({ id: user.id, email: user.email }),
+        this.cacheService.invalidateByTags({
+          tag: { purge: true },
+          alias: USER_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id: user.id,
+          alias: USER_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id: data.email ?? user.id,
+          alias: USER_QUERY_ALIAS,
+        }),
         this.audiService.sendLog({
           createdAt: new Date(),
           userId: requestedById,
@@ -222,7 +258,26 @@ export class UserPipelineService {
 
     if (deleted) {
       await Promise.all([
-        this.invalidateUserCache({ id: user.id, email: user.email }),
+        this.cacheService.invalidateById({
+          id: user.email,
+          alias: USER_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateByTags({
+          tag: { purge: true },
+          alias: USER_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id: user.id,
+          alias: USER_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id: user.id,
+          alias: USER_ROLE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id: user.id,
+          alias: USER_STORES_QUERY_ALIAS,
+        }),
         this.audiService.sendLog({
           createdAt: new Date(),
           userId: requestedById,
@@ -238,59 +293,5 @@ export class UserPipelineService {
     }
 
     return deleted;
-  }
-
-  private async setUserCache(user: GetUserDto): Promise<void> {
-    await Promise.all([
-      this.cacheService.set<GetUserDto>({
-        key: this.cacheService.getIdKeyPrefixByAlias({
-          id: user.id,
-          alias: USER_QUERY_ALIAS,
-        }),
-        value: user,
-      }),
-      this.cacheService.set<GetUserDto>({
-        key: this.cacheService.getIdKeyPrefixByAlias({
-          id: user.email,
-          alias: USER_QUERY_ALIAS,
-        }),
-        value: user,
-      }),
-    ]);
-  }
-
-  private async invalidateUserCache({
-    id,
-    email,
-  }: {
-    id?: UUID;
-    email?: string;
-  }): Promise<void> {
-    const promises: Promise<void>[] = [
-      this.cacheService.invalidateByTags({
-        tag: { purge: true },
-        alias: USER_QUERY_ALIAS,
-      }),
-    ];
-
-    if (id != undefined) {
-      promises.push(
-        this.cacheService.invalidateById({
-          id,
-          alias: USER_QUERY_ALIAS,
-        }),
-      );
-    }
-
-    if (email != undefined) {
-      promises.push(
-        this.cacheService.invalidateById({
-          id: email,
-          alias: USER_QUERY_ALIAS,
-        }),
-      );
-    }
-
-    await Promise.all(promises);
   }
 }

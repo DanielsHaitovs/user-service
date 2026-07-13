@@ -6,6 +6,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 
@@ -32,7 +33,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const statusCode =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : HttpStatus.UNPROCESSABLE_ENTITY;
 
     const request = ctx.getRequest<FastifyRequest>();
 
@@ -50,10 +51,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const hideError = !this.errorStatusToKeep.has(statusCode);
 
     const responseBody = {
-      statusCode: hideError ? HttpStatus.INTERNAL_SERVER_ERROR : statusCode,
+      statusCode: hideError ? HttpStatus.UNPROCESSABLE_ENTITY : statusCode,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message: hideError ? 'Internal Server Error' : errorMessage,
+      message: hideError ? UnprocessableEntityException.name : errorMessage,
     };
 
     httpAdapter.reply(ctx.getResponse(), responseBody, statusCode);

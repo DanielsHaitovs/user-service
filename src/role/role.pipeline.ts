@@ -3,6 +3,7 @@ import { RoleAction } from '@/common/enum/action.enum';
 import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
 import {
   ROLE_QUERY_ALIAS,
+  USER_ROLE_PERMISSIONS_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/commonConst/role.const';
 import { ClientMetadata } from '@/commonDecorators/meta.decorator';
@@ -229,6 +230,10 @@ export class RolePipelineService {
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
 
+    await this.cacheService.invalidateByKeyPattern(
+      `*:${USER_ROLE_PERMISSIONS_QUERY_ALIAS}`,
+    );
+
     const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
       id: role.id,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
@@ -306,20 +311,22 @@ export class RolePipelineService {
   }
 
   async delete({
-    id,
+    role,
     canDeleteAssignedRole,
     requestedByUserId,
     metadata,
   }: {
-    id: UUID;
+    role: GetRoleDto;
     canDeleteAssignedRole: boolean;
     requestedByUserId: UUID;
     metadata: ClientMetadata;
   }): Promise<boolean> {
     const deleted = await this.deleteService.delete({
-      id,
+      role,
       canDeleteAssignedRole,
     });
+
+    const { id } = role;
 
     if (deleted) {
       await Promise.all([

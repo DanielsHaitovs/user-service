@@ -76,14 +76,3 @@ export const DEPARTMENT_FULL_OPERATION_BAD_REQUEST_MSG = [
   'each createdById must be a valid UUIDv4',
   ...DEPARTMENT_MIN_OPERATION_BAD_REQUEST_MSG,
 ];
-
-// export const DEPARTMENT_MIN_API_OK_LIST = {
-//   badRequestMessages: {
-//     examples: DEPARTMENT_MIN_OPERATION_BAD_REQUEST_MSG,
-//   },
-//   okOperation: {
-//     description: DEPARTMENT_API_OK_RESPONSE_MSG,
-//     type: DepartmentListResponseDto,
-//     isArray: false,
-//   },
-// };

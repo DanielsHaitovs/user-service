@@ -19,7 +19,7 @@ import type { UUID } from 'crypto';
  * @returns The fully committed database Role entity
  */
 export async function assignTestStoreToUser({
-  pipelineService,
+  userStorePipelineService,
   data,
   userStores,
   assignedById,
@@ -28,7 +28,7 @@ export async function assignTestStoreToUser({
   cacheGetByIdSpy,
   auditLogSpy,
 }: {
-  pipelineService: UserStorePipelineService;
+  userStorePipelineService: UserStorePipelineService;
   data: AssignStoresToUserDto;
   userStores: UserWithStores;
   assignedById: UUID;
@@ -37,7 +37,7 @@ export async function assignTestStoreToUser({
   cacheInvalidateByIdSpy: jest.SpyInstance;
   auditLogSpy: jest.SpyInstance;
 }): Promise<void> {
-  await pipelineService.assignStoresToUser({
+  await userStorePipelineService.assignStoresToUser({
     data,
     userStores,
     assignedById,
@@ -59,12 +59,12 @@ export async function assignTestStoreToUser({
 }
 
 export async function getAssignedStoresForUser({
-  pipelineService,
+  userStorePipelineService,
   userId,
   expected,
   cacheGetByIdSpy,
 }: {
-  pipelineService: UserStorePipelineService;
+  userStorePipelineService: UserStorePipelineService;
   userId: UUID;
   expected?: Partial<StoreResponseDto>[] | undefined;
   cacheGetByIdSpy?: jest.SpyInstance;
@@ -73,7 +73,7 @@ export async function getAssignedStoresForUser({
     cacheGetByIdSpy.mockClear();
   }
 
-  const userStores = await pipelineService.getAssignedStores(userId);
+  const userStores = await userStorePipelineService.getAssignedStores(userId);
 
   expect(userStores).toBeDefined();
 

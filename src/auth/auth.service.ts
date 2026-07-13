@@ -4,14 +4,13 @@ import { AuthCacheService } from '@/auth/cache.service';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { Environment } from '@/config/env/env.validation';
 import { UserRolePipelineService } from '@/user/role.pipeline';
+import { UserStorePipelineService } from '@/user/store.pipeline';
 import { User } from '@/userEntities/user.entity';
 import { UserHelperService } from '@/userServices/helper.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import * as bcrypt from 'bcrypt';
-
-import { UserStorePipelineService } from '../user/store.pipeline';
 
 @Injectable()
 export class AuthService {

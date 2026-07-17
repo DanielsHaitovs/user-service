@@ -577,7 +577,7 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(
@@ -607,7 +607,7 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(
@@ -671,7 +671,7 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(
@@ -762,7 +762,7 @@ describe('UserPipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(4);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await expect(

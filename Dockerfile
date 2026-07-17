@@ -14,12 +14,8 @@ RUN npm ci && \
 
 COPY . .
 
-# 2. Build the application
+# 2. Build the application (devDeps kept for nest CLI in debug mode)
 RUN npm run build
-
-# 3. FIX: Prune away devDependencies without triggering the breaking husky hooks
-# This keeps your pre-compiled production C++ modules perfectly intact
-RUN npm prune --omit=dev
 
 EXPOSE 3000
 

@@ -94,10 +94,16 @@ export class UserRolePipelineService {
       return;
     }
 
-    await this.cacheService.invalidateById({
-      id: userId,
-      alias: USER_ROLE_QUERY_ALIAS,
-    });
+    await Promise.all([
+      this.cacheService.invalidateById({
+        id: userId,
+        alias: USER_ROLE_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateById({
+        id: userId,
+        alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+      }),
+    ]);
 
     const assignedRoles = await this.getAssignedRoles(userId);
 
@@ -140,10 +146,16 @@ export class UserRolePipelineService {
       return;
     }
 
-    await this.cacheService.invalidateById({
-      id: userId,
-      alias: USER_ROLE_QUERY_ALIAS,
-    });
+    await Promise.all([
+      this.cacheService.invalidateById({
+        id: userId,
+        alias: USER_ROLE_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateById({
+        id: userId,
+        alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+      }),
+    ]);
 
     const assignedRoles = await this.getAssignedRoles(userId);
 

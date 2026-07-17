@@ -29,6 +29,8 @@ async function bootstrap(): Promise<void> {
 
   const envConfig = app.get(EnvConfigService);
 
+  app.setGlobalPrefix('users');
+
   app.enableVersioning({
     type: VersioningType.URI,
   });
@@ -66,7 +68,7 @@ async function bootstrap(): Promise<void> {
     .addTag('Roles', 'Roles management operations')
     .addTag('Roles Permissions', 'Roles permissions management operations')
     .addTag('Permissions', 'Permissions management operations')
-    .addServer('/users')
+    .addServer('/')
     .addBearerAuth(
       {
         type: 'http',

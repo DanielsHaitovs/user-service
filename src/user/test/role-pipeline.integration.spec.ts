@@ -97,7 +97,7 @@ describe('UserRolePipelineService (Integration)', () => {
         },
       });
 
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
@@ -124,7 +124,7 @@ describe('UserRolePipelineService (Integration)', () => {
         },
       });
 
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
@@ -165,7 +165,7 @@ describe('UserRolePipelineService (Integration)', () => {
 
       roles.push(role);
 
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
@@ -278,7 +278,7 @@ describe('UserRolePipelineService (Integration)', () => {
         },
       });
 
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
@@ -318,7 +318,7 @@ describe('UserRolePipelineService (Integration)', () => {
         },
       });
 
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
@@ -356,7 +356,7 @@ describe('UserRolePipelineService (Integration)', () => {
         },
       });
 
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 

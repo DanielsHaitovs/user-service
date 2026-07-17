@@ -71,7 +71,8 @@ export const httpRequestDurationProvider = makeHistogramProvider({
               res: () => undefined,
               err: pino.stdSerializers.err,
             },
-            ...(configService.nodeEnv === Environment.Test
+            ...(configService.nodeEnv === Environment.Test ||
+            configService.nodeEnv === Environment.Development
               ? {
                   transport: {
                     target: 'pino-pretty',
@@ -111,15 +112,6 @@ export const httpRequestDurationProvider = makeHistogramProvider({
     TypeOrmModule.forRootAsync({
       useFactory: (configService: EnvConfigService) => ({
         type: 'postgres',
-        cache: {
-          type: 'ioredis',
-          options: {
-            host: configService.redisHost,
-            port: configService.redisPort,
-            password: configService.redisPassword,
-          },
-          alwaysEnabled: false,
-        },
         host: configService.databaseHost,
         port: configService.databasePort,
         username: configService.databaseUsername,
@@ -141,7 +133,7 @@ export const httpRequestDurationProvider = makeHistogramProvider({
 
         return {
           stores: [createKeyv(redisUrl)],
-          ttl: 10000,
+          ttl: configService.userCacheTtl,
         };
       },
     }),
@@ -198,7 +190,6 @@ export class AppModule implements NestModule, OnApplicationShutdown {
     consumer.apply(TraceMiddleware).exclude('metrics').forRoutes('*');
   }
 
-  // 🎯 4. This method triggers automatically whenever NestJS initiates an app.close() event
   async onApplicationShutdown(): Promise<void> {
     await this.redisClient.quit();
   }

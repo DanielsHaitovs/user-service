@@ -43,6 +43,7 @@ describe('UserController (e2e)', () => {
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
   let cacheGetSpy: jest.SpyInstance;
+  let cacheInvalidateByTagsSpy: jest.SpyInstance;
 
   let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
@@ -64,6 +65,8 @@ describe('UserController (e2e)', () => {
       systemPermissions,
       cacheSetSpy,
       cacheGetSpy,
+      cacheInvalidateByTagsSpy,
+      // cacheInvalidateByIdSpy,
       userPipelineService,
       userRolePipelineService,
       rolePipelineService,
@@ -109,6 +112,7 @@ describe('UserController (e2e)', () => {
 
     cacheSetSpy.mockClear();
     cacheGetSpy.mockClear();
+    cacheInvalidateByTagsSpy.mockClear();
   });
 
   afterAll(async () => {
@@ -141,6 +145,8 @@ describe('UserController (e2e)', () => {
       const body = JSON.parse(response.payload);
       expect(body).toHaveProperty('id');
       expect(body.email).toBe(payload.email);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
     });
 
     it('201 CREATED - should strip role configurations from payload data if loose role verification components are missing', async () => {
@@ -156,6 +162,10 @@ describe('UserController (e2e)', () => {
         email: testUser.email,
         password: testUserPassword,
       });
+
+      cacheSetSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
+
       const payload = {
         firstName: 'Stripped',
         lastName: 'Role',
@@ -175,6 +185,8 @@ describe('UserController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
     });
 
     it('201 CREATED - should strip store associations from incoming properties if loose store evaluation scopes are missing', async () => {
@@ -190,6 +202,10 @@ describe('UserController (e2e)', () => {
         email: testUser.email,
         password: testUserPassword,
       });
+
+      cacheSetSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
+
       const payload = {
         firstName: 'Stripped',
         lastName: 'Store',
@@ -209,6 +225,8 @@ describe('UserController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
     });
 
     it('403 FORBIDDEN - should block route access if core creation permissions are missing from account context scopes', async () => {

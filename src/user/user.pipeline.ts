@@ -1,7 +1,10 @@
 import { CacheService } from '@/baseServices/cache.service';
 import { UserAction } from '@/common/enum/action.enum';
 import { FullUser } from '@/common/pipes/full-user.pipe';
-import { USER_ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
+import {
+  USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+  USER_ROLE_QUERY_ALIAS,
+} from '@/commonConst/role.const';
 import { USER_STORES_QUERY_ALIAS } from '@/commonConst/store.const';
 import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { ClientMetadata } from '@/commonDecorators/meta.decorator';
@@ -277,6 +280,10 @@ export class UserPipelineService {
         this.cacheService.invalidateById({
           id: user.id,
           alias: USER_STORES_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateById({
+          id: user.id,
+          alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
         }),
         this.audiService.sendLog({
           createdAt: new Date(),

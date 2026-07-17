@@ -52,7 +52,7 @@ export async function assignTestRoleToUser({
     },
   });
 
-  expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+  expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
   expect(cacheSetSpy).toHaveBeenCalledTimes(1);
   expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
 

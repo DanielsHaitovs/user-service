@@ -378,4 +378,5 @@ export const swaggerSetupOptions = {
   customSiteTitle: 'MEC • User API',
   customfavIcon: '/favicon.ico',
   customCss: SWAGGER_DARK_THEME_CSS,
+  useGlobalPrefix: true,
 };

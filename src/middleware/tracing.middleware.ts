@@ -5,12 +5,12 @@ import {
 } from '@/utils/trace.util';
 import { Injectable, NestMiddleware } from '@nestjs/common';
 
-import { NextFunction, Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 @Injectable()
 export class TraceMiddleware implements NestMiddleware {
-  use(req: Request, res: Response, next: NextFunction): void {
-    const store = startTraceId(); // creates and returns a fresh context map
+  use(req: FastifyRequest, res: FastifyReply, next: () => void): void {
+    const store = startTraceId();
 
     traceStorage.run(store, () => {
       setRequestTrace(`${req.method} ${req.url}`);

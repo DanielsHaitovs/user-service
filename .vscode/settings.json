@@ -1,4 +1,9 @@
 {
+  "eslint.format.enable": true,
+  "eslint.run": "onSave",
+  "editor.inlineSuggest.edits.showCollapsed": true,
+  "outline.collapseItems": "alwaysCollapse",
+  "editor.foldingImportsByDefault": true,
   "editor.foldingStrategy": "auto",
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
@@ -36,9 +41,7 @@
   "editor.rulers": [80, 120],
   "editor.wordWrap": "bounded",
   "editor.wordWrapColumn": 80,
-  "emmet.includeLanguages": {
-    "typescript": "html"
-  },
-  "jest.runMode": "on-demand",
-  "jest.rootPath": "./dist"
+  "jest.jestCommandLine": "npm test --",
+  "jest.runMode": "on-save",
+  "jest.rootPath": "."
 }

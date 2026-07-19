@@ -1,15 +1,16 @@
 import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
 
-import { Response } from 'express';
+import type { FastifyReply } from 'fastify';
 import { EntityNotFoundError } from 'typeorm';
 
 @Catch(EntityNotFoundError)
 export class EntityNotFoundFilter implements ExceptionFilter {
   catch(exception: EntityNotFoundError, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
 
-    response.status(404).json({
+    const reply = ctx.getResponse<FastifyReply>();
+
+    reply.status(404).send({
       statusCode: 404,
       message: exception.message,
       error: 'EntityNotFoundError',

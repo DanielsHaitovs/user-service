@@ -33,12 +33,10 @@ export function screenSensitiveData(data: string, secrets?: string[]): string {
     );
 
     return data.replace(regex, (match: string, key: string, value: any) => {
-      // Full redaction
       if (fullyScreen.includes(key)) {
         return `"${key}": "***"`;
       }
 
-      // Partial masking
       if (sensitiveDataScreeningConfig.partiallyScreen.includes(key)) {
         try {
           const stringValue =

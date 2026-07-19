@@ -104,6 +104,15 @@ export function hashToken(token: string): string {
 }
 
 /**
+ *
+ * @param obj - The object to hash
+ * @returns SHA-256 hash of the object
+ */
+export function hashObject(obj: unknown): string {
+  return createHash('sha256').update(JSON.stringify(obj)).digest('hex');
+}
+
+/**
  * Generates a token with expiration time
  * @param expirationMinutes - Expiration time in minutes (default: 15)
  * @returns Object containing token and expiration date
@@ -267,7 +276,6 @@ export function generateSecurePassword(
     excludeAmbiguous = false,
   } = options;
 
-  // Define initial character sets
   const initialSets = {
     uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
     lowercase: 'abcdefghijklmnopqrstuvwxyz',
@@ -277,10 +285,8 @@ export function generateSecurePassword(
     excludeAmbiguous,
   };
 
-  // Apply exclusions
   const characterSets = applyCharacterExclusions(initialSets);
 
-  // Add required characters
   const { chars, requiredChars } = addRequiredCharacters({
     includeUppercase,
     includeLowercase,
@@ -300,7 +306,6 @@ export function generateSecurePassword(
     );
   }
 
-  // Generate remaining characters
   const remainingLength = length - requiredChars.length;
   for (let i = 0; i < remainingLength; i++) {
     const char = getRandomCharFromString(chars);
@@ -309,7 +314,6 @@ export function generateSecurePassword(
     }
   }
 
-  // Shuffle the password characters
   for (let i = requiredChars.length - 1; i > 0; i--) {
     const randomByte = randomBytes(1)[0];
     if (randomByte !== undefined) {

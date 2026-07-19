@@ -1,0 +1,1053 @@
+/* eslint-disable @typescript-eslint/no-misused-spread */
+import type { Permission } from '@/permissionEntities/permissions.entity';
+import type { RolePipelineService } from '@/role/role.pipeline';
+import { AuditProducerService } from '@/roleServices/audit.service';
+import { bootstrapTestApp } from '@/test/bootstrap-e2e';
+import { createTestPermissions } from '@/test/db/permission';
+import { createTestUser } from '@/test/db/user';
+import { assignRoleToUser } from '@/test/db/userRole';
+import {
+  createTestRole,
+  createTestRoleWithPermissions,
+  getTestRoleById,
+  getTestRoleWithPermissionsById,
+} from '@/test/pipeline/role';
+import {
+  validateRoleResponseDto,
+  validateRoleWithPermissionsResponseDto,
+} from '@/test/validate/role';
+import type { GetCreatedByDto } from '@/userDto/user.dto';
+import type { User } from '@/userEntities/user.entity';
+import { faker } from '@faker-js/faker';
+import {
+  ConflictException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import type { TestingModule } from '@nestjs/testing';
+
+import { randomUUID, type UUID } from 'crypto';
+import type { DataSource } from 'typeorm';
+
+import type { RoleResponseDto } from './dto/role.dto';
+
+describe('RolePipelineService (Integration)', () => {
+  let rolePipelineService: RolePipelineService;
+  let dataSource: DataSource;
+  let moduleFixture: TestingModule;
+  let systemUserId: UUID;
+  let auditLogSpy: jest.SpyInstance;
+  let cacheSetSpy: jest.SpyInstance;
+  let cacheInvalidateByIdSpy: jest.SpyInstance;
+  let cacheGetByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByTagsSpy: jest.SpyInstance;
+  let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
+  let permissions: Permission[];
+  let conflictRole: RoleResponseDto;
+
+  beforeAll(async () => {
+    ({
+      dataSource,
+      moduleFixture,
+      systemUserId,
+      rolePipelineService,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
+    } = await bootstrapTestApp());
+
+    auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendLog');
+    permissions = await createTestPermissions({
+      dataSource,
+      permissions: [
+        {
+          createdBy: { id: systemUserId } as User,
+        },
+        {
+          createdBy: { id: systemUserId } as User,
+        },
+      ],
+    });
+    conflictRole = await createTestRole({
+      rolePipelineService,
+      createdById: systemUserId,
+      cacheSetSpy,
+      cacheInvalidateByTagsSpy,
+      auditLogSpy,
+    });
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterAll(async () => {
+    await moduleFixture.close();
+  });
+
+  it('should be defined', () => {
+    expect(rolePipelineService).toBeDefined();
+    expect(dataSource).toBeDefined();
+  });
+
+  describe('Should create role -> RolePipelineService -> getPermissionsOrThrow()', () => {
+    it('should create role without permissions', async () => {
+      const createdRole = await rolePipelineService.create({
+        createDto: {
+          name: `Test Role ${randomUUID()}`,
+        },
+        createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+
+      await getTestRoleById({
+        rolePipelineService,
+        id: createdRole.id,
+        name: createdRole.name,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should create role with permissions', async () => {
+      const expected = await rolePipelineService.create({
+        createDto: {
+          name: `Test Role ${randomUUID()}`,
+          permissions: permissions.map((p) => p.code),
+        },
+        createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: expected.id,
+        expected,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should throw Conflict when trying to save role with the same name', async () => {
+      await expect(
+        rolePipelineService.create({
+          createDto: {
+            name: conflictRole.name,
+          },
+          createdById: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new ConflictException(
+          `A role with the name "${conflictRole.name}" already exists.`,
+        ),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('should not assign permissions if permission property is empty array', async () => {
+      const expected = await rolePipelineService.create({
+        createDto: {
+          name: `Test Role ${randomUUID()}`,
+          permissions: [],
+        },
+        createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: expected.id,
+        expected,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should throw UnprocessableEntityException when trying to save role with non-existing permission codes', async () => {
+      await expect(
+        rolePipelineService.create({
+          createDto: {
+            name: `Test Role ${randomUUID()}`,
+            permissions: [
+              'NON_EXISTING_PERMISSION_CODE_1',
+              'NON_EXISTING_PERMISSION_CODE_2',
+            ],
+          },
+          createdById: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          'The following permission codes do not exist: NON_EXISTING_PERMISSION_CODE_1, NON_EXISTING_PERMISSION_CODE_2',
+        ),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('Should retrieve role without permissions -> RolePipelineService -> getByIdOrThrow()', () => {
+    it('should retrieve the test role by its ID', async () => {
+      const expected = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      validateRoleResponseDto({
+        response: await rolePipelineService.getByIdOrThrow(expected.id),
+        expected,
+      });
+
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw EntityNotFoundError when looking up a missing role', async () => {
+      await expect(
+        rolePipelineService.getByIdOrThrow(randomUUID()),
+      ).rejects.toThrow(/Could not find any entity of type "Roles"/);
+
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('Should retrieve role with permissions -> RolePipelineService -> getPermissionsOrThrow()', () => {
+    it('should retrieve the test role by its ID with its permissions', async () => {
+      const expected = await createTestRoleWithPermissions({
+        rolePipelineService,
+        permissions,
+        createdById: systemUserId,
+        cacheSetSpy,
+        auditLogSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        cacheInvalidateByIdSpy,
+      });
+
+      validateRoleWithPermissionsResponseDto({
+        response: await rolePipelineService.getPermissionsOrThrow(expected.id),
+        expected,
+      });
+
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('should throw EntityNotFoundError when looking up a missing role', async () => {
+      await expect(
+        rolePipelineService.getPermissionsOrThrow(randomUUID()),
+      ).rejects.toThrow(/Could not find any entity of type "Roles"/);
+
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('Should assign permissions to role -> RolePipelineService -> assignPermissionsToRole()', () => {
+    it('should assign permissions to the test role with 0 permissions', async () => {
+      const expected = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      await rolePipelineService.assignPermissionsToRole({
+        role: expected,
+        assignPayload: {
+          permissionCodes: permissions.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: expected.id,
+        expected: {
+          ...expected,
+          permissions,
+        },
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should assign permissions to the test role with 2 existing permissions', async () => {
+      const { permissions: existingPermissions, ...role } =
+        await createTestRoleWithPermissions({
+          rolePipelineService,
+          permissions,
+          createdById: systemUserId,
+          cacheSetSpy,
+          auditLogSpy,
+          cacheInvalidateByTagsSpy,
+          cacheInvalidateByKeyPatternSpy,
+          cacheInvalidateByIdSpy,
+        });
+
+      const permissionsToAssign = await createTestPermissions({
+        dataSource,
+        permissions: [
+          { createdBy: { id: systemUserId } as User },
+          { createdBy: { id: systemUserId } as User },
+        ],
+      });
+
+      await rolePipelineService.assignPermissionsToRole({
+        role: { ...role, permissions: existingPermissions },
+        assignPayload: {
+          permissionCodes: permissionsToAssign.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: role.id,
+        expected: {
+          name: role.name,
+          createdBy: { id: systemUserId } as GetCreatedByDto,
+          permissions: [...existingPermissions, ...permissionsToAssign],
+        },
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should throw UnprocessableEntityException when trying to assign non-existing permission codes', async () => {
+      const expected = await createTestRoleWithPermissions({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        auditLogSpy,
+      });
+
+      const invalidPermissionCode = randomUUID();
+
+      await expect(
+        rolePipelineService.assignPermissionsToRole({
+          role: expected,
+          assignPayload: {
+            permissionCodes: [invalidPermissionCode],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          `The following permission codes do not exist: ${invalidPermissionCode}`,
+        ),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: expected.id,
+        expected,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should throw UnprocessableEntityException when trying to assign permissions with an empty permissionCodes array', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      await expect(
+        rolePipelineService.assignPermissionsToRole({
+          role,
+          assignPayload: {
+            permissionCodes: [],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          'At least one permission code must be provided to assign permissions to the role.',
+        ),
+      );
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('Should unassign permissions from role -> RolePipelineService -> unassignPermissionsFromRole()', () => {
+    it('should unassign permissions from the test role with 0 permissions', async () => {
+      const expected = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      await rolePipelineService.unassignPermissionsFromRole({
+        role: expected,
+        unassignPayload: {
+          permissionCodes: permissions.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: expected.id,
+        expected,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('should unassign 2 permissions from the test role with 4 existing permissions', async () => {
+      const { permissions: existingPermissions, ...role } =
+        await createTestRoleWithPermissions({
+          rolePipelineService,
+          createdById: systemUserId,
+          permissions: [
+            ...permissions,
+            ...(await createTestPermissions({
+              dataSource,
+              permissions: [
+                { createdBy: { id: systemUserId } as User },
+                { createdBy: { id: systemUserId } as User },
+              ],
+            })),
+          ],
+          cacheSetSpy,
+          cacheInvalidateByIdSpy,
+          cacheInvalidateByTagsSpy,
+          cacheInvalidateByKeyPatternSpy,
+          auditLogSpy,
+        });
+
+      const permissionsToUnassign = [...existingPermissions.slice(0, 2)];
+      const permissionsToKeep = [...existingPermissions.slice(2)];
+
+      await rolePipelineService.unassignPermissionsFromRole({
+        role: { ...role, permissions: existingPermissions },
+        unassignPayload: {
+          permissionCodes: permissionsToUnassign.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: role.id,
+        expected: {
+          name: role.name,
+          createdBy: { id: systemUserId } as GetCreatedByDto,
+          permissions: permissionsToKeep,
+        },
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should throw UnprocessableEntityException when trying to unassign non-existing permission codes', async () => {
+      const expected = await createTestRoleWithPermissions({
+        rolePipelineService,
+        createdById: systemUserId,
+        permissions,
+        cacheSetSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        auditLogSpy,
+      });
+
+      const invalidPermissionCode = randomUUID();
+
+      await expect(
+        rolePipelineService.unassignPermissionsFromRole({
+          role: expected,
+          unassignPayload: {
+            permissionCodes: [invalidPermissionCode],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          `Some of the provided permission codes are not currently assigned to the role.`,
+        ),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: expected.id,
+        expected,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should successfully return when trying to unassign existing permission codes that are not currently assigned to the role', async () => {
+      const expected = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      await rolePipelineService.unassignPermissionsFromRole({
+        role: expected,
+        unassignPayload: {
+          permissionCodes: permissions.map((p) => p.code),
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: expected.id,
+        expected,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+      });
+    });
+
+    it('should throw UnprocessableEntityException when trying to unassign permissions with an empty permissionCodes array', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      await expect(
+        rolePipelineService.unassignPermissionsFromRole({
+          role,
+          unassignPayload: {
+            permissionCodes: [],
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          'At least one permission code must be provided to unassign permissions from the role.',
+        ),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('Should update role -> RolePipelineService -> update()', () => {
+    it('should update role name with a new unique name', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      const newName = `Updated Role ${randomUUID()}`;
+
+      const updated = await rolePipelineService.update({
+        role,
+        updateDto: {
+          name: newName,
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(updated).toBeDefined();
+      expect(updated).toBe(true);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await getTestRoleById({
+        rolePipelineService,
+        id: role.id,
+        name: newName,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+        setCache: true,
+      });
+
+      role.name = newName;
+
+      await getTestRoleWithPermissionsById({
+        rolePipelineService,
+        id: role.id,
+        expected: role,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+        setCache: true,
+      });
+    });
+
+    it('should return true when attempting to update with the same name', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      const updated = await rolePipelineService.update({
+        role,
+        updateDto: {
+          name: role.name,
+        },
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(updated).toBeDefined();
+      expect(updated).toBe(false);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+
+      await getTestRoleById({
+        rolePipelineService,
+        id: role.id,
+        name: role.name,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+        setCache: false,
+      });
+    });
+
+    it('should throw UnprocessableEntityException when attempting to update with name that is already taken by another role', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+      const conflictRole = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      await expect(
+        rolePipelineService.update({
+          role,
+          updateDto: {
+            name: conflictRole.name,
+          },
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          `A role with the name "${conflictRole.name}" already exists.`,
+        ),
+      );
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+
+      await getTestRoleById({
+        rolePipelineService,
+        id: role.id,
+        name: role.name,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+        setCache: false,
+      });
+    });
+
+    it('should return false when trying to update with an empty updateDto', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      const updated = await rolePipelineService.update({
+        role,
+        updateDto: {},
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(updated).toBeDefined();
+      expect(updated).toBe(false);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+
+      await getTestRoleById({
+        rolePipelineService,
+        id: role.id,
+        name: role.name,
+        cacheGetByIdSpy,
+        cacheSetSpy,
+        setCache: false,
+      });
+    });
+  });
+
+  describe('Should delete role -> RolePipelineService -> delete()', () => {
+    it('should delete the test role with 0 permissions with canDeleteAssignedRole set to true', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      const deleted = await rolePipelineService.delete({
+        role,
+        canDeleteAssignedRole: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(deleted).toBe(true);
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+        /Could not find any entity of type "Roles"/,
+      );
+    });
+
+    it('should delete the test role with 0 permissions with canDeleteAssignedRole set to false', async () => {
+      const role = await createTestRole({
+        rolePipelineService,
+        createdById: systemUserId,
+        cacheSetSpy,
+        cacheInvalidateByTagsSpy,
+        auditLogSpy,
+      });
+
+      const deleted = await rolePipelineService.delete({
+        role,
+        canDeleteAssignedRole: false,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(deleted).toBe(true);
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+        /Could not find any entity of type "Roles"/,
+      );
+    });
+
+    it('should delete the test role with 2 permissions with canDeleteAssignedRole set to true', async () => {
+      const role = await createTestRoleWithPermissions({
+        rolePipelineService,
+        createdById: systemUserId,
+        permissions,
+        cacheSetSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        auditLogSpy,
+      });
+
+      const deleted = await rolePipelineService.delete({
+        role,
+        canDeleteAssignedRole: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(deleted).toBe(true);
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+        /Could not find any entity of type "Roles"/,
+      );
+    });
+
+    it('should delete the test role with 2 permissions with canDeleteAssignedRole set to false', async () => {
+      const role = await createTestRoleWithPermissions({
+        rolePipelineService,
+        createdById: systemUserId,
+        permissions,
+        cacheSetSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        auditLogSpy,
+      });
+
+      const deleted = await rolePipelineService.delete({
+        role,
+        canDeleteAssignedRole: false,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(deleted).toBe(true);
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+        /Could not find any entity of type "Roles"/,
+      );
+    });
+
+    it('should not delete the test role with 2 permissions that is assigned to a user with canDeleteAssignedRole set to false', async () => {
+      const role = await createTestRoleWithPermissions({
+        rolePipelineService,
+        createdById: systemUserId,
+        permissions,
+        cacheSetSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        auditLogSpy,
+      });
+      const user = await createTestUser({ dataSource });
+
+      await assignRoleToUser({
+        dataSource,
+        userId: user.id,
+        roleId: role.id,
+      });
+
+      await expect(
+        rolePipelineService.delete({
+          role,
+          canDeleteAssignedRole: false,
+          requestedByUserId: systemUserId,
+          metadata: {
+            ipAddress: faker.internet.ip(),
+            userAgent: faker.internet.userAgent(),
+          },
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          'Role cannot be deleted because it is currently assigned to one or more users. Please unassign the role from all users before attempting to delete it.',
+        ),
+      );
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(auditLogSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('should delete the test role with 2 permissions that is assigned to a user with canDeleteAssignedRole set to true', async () => {
+      const role = await createTestRoleWithPermissions({
+        rolePipelineService,
+        createdById: systemUserId,
+        permissions,
+        cacheSetSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        auditLogSpy,
+      });
+
+      const user = await createTestUser({ dataSource });
+
+      await assignRoleToUser({
+        dataSource,
+        userId: user.id,
+        roleId: role.id,
+      });
+
+      const deleted = await rolePipelineService.delete({
+        role,
+        canDeleteAssignedRole: true,
+        requestedByUserId: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      expect(deleted).toBe(true);
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+      await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
+        /Could not find any entity of type "Roles"/,
+      );
+    });
+  });
+});

@@ -1,45 +1,85 @@
-import { RequestWithUserPermissions } from '@/auth/interfaces/req.interface';
-import { PERMISSIONS_KEY } from '@/common/decorators/permission.decorator';
+import { AuthenticatedRequest } from '@/auth/auth.interface';
+import { AuthCacheService } from '@/auth/cache.service';
+import { ROOT_ADMIN_PERMISSION } from '@/commonConst/permission.const';
+import { PERMISSIONS_KEY } from '@/commonDecorators/permission.decorator';
+import { IS_PUBLIC_KEY } from '@/commonDecorators/public.decorator';
+import { extractBearerFromHeader } from '@/utils/headers.util';
 import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  private readonly logger = new Logger(PermissionsGuard.name);
 
-  canActivate(context: ExecutionContext): boolean {
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-      PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly cacheService: AuthCacheService,
+  ) {}
 
-    if (requiredPermissions.length === 0) {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
       return true;
     }
 
-    const request = context
-      .switchToHttp()
-      .getRequest<RequestWithUserPermissions>();
+    const { required, loose } = this.reflector.getAllAndOverride<{
+      required: string[] | undefined;
+      loose: string[] | undefined;
+    }>(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
 
-    const { permissions } = request.user;
-
-    if (permissions.includes('root_all')) return true;
-
-    const hasAllPermissions = requiredPermissions.every((perm) =>
-      permissions.includes(perm),
-    );
-
-    if (!hasAllPermissions) {
-      throw new ForbiddenException(
-        `You do not have the required permissions: ${requiredPermissions.join(', ')}`,
-      );
+    if (required == undefined || required.length === 0) {
+      return true;
     }
 
-    return true;
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+
+    try {
+      let payload = request.user;
+
+      if (!payload) {
+        const token = extractBearerFromHeader(request);
+        if (token === undefined) {
+          throw new ForbiddenException('No token provided');
+        }
+
+        payload = request.user = await this.cacheService.get(token);
+      }
+
+      const { permissions } = payload;
+
+      if (permissions.includes(ROOT_ADMIN_PERMISSION)) return true;
+
+      const minRequiredPermissions =
+        loose != undefined && loose.length > 0
+          ? required.filter((permission) => !loose.includes(permission))
+          : required;
+
+      const hasAllPermissions = minRequiredPermissions.every((perm) =>
+        permissions.includes(perm),
+      );
+
+      if (!hasAllPermissions) {
+        throw new ForbiddenException(
+          `You do not have the required permissions: ${minRequiredPermissions.join(', ')}`,
+        );
+      }
+
+      request.user = payload;
+
+      return true;
+    } catch (error) {
+      this.logger.error(error);
+      throw new ForbiddenException('Invalid token');
+    }
   }
 }

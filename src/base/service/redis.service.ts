@@ -113,6 +113,7 @@ export class RedisService
       return await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
     } catch (error) {
       this.logger.error(error);
+      return null;
     }
   }
 

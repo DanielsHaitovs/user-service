@@ -1,0 +1,414 @@
+/* eslint-disable sonarjs/no-hardcoded-passwords */
+import { CacheService } from '@/baseServices/cache.service';
+import {
+  READ_USER_STORE,
+  UNASSIGN_USER_STORE,
+} from '@/commonConst/store.const';
+import type { RolePipelineService } from '@/role/role.pipeline';
+import type { RoleResponseDto } from '@/roleDto/role.dto';
+import type { StorePipelineService } from '@/store/store.pipeline';
+import type { StoreResponseDto } from '@/storeDto/store.dto';
+import {
+  CREATE_STORE_ENDPOINT_PERMISSION,
+  DELETE_STORE_ENDPOINT_PERMISSION,
+  READ_STORE_ENDPOINT_PERMISSION,
+} from '@/system/const/store.const';
+import { bootstrapTestApp } from '@/test/bootstrap-e2e';
+import { loginTestUser } from '@/test/e2e/auth';
+import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
+import { initTestUser } from '@/test/pipeline/user';
+import type { UserRolePipelineService } from '@/user/role.pipeline';
+import type { UserStorePipelineService } from '@/user/store.pipeline';
+import type { UserPipelineService } from '@/user/user.pipeline';
+import type { UserResponseDto } from '@/userDto/user.dto';
+import { faker } from '@faker-js/faker';
+import { HttpStatus } from '@nestjs/common';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { TestingModule } from '@nestjs/testing';
+
+import { randomUUID, type UUID } from 'crypto';
+
+describe('StoreController (e2e)', () => {
+  let app: NestFastifyApplication;
+  let moduleFixture: TestingModule;
+  let authorizedHeader: Record<string, string>;
+  let systemUserId: UUID;
+  let systemPermissions: string[];
+  let cacheSetSpy: jest.SpyInstance;
+  let cacheGetSpy: jest.SpyInstance;
+
+  let userPipelineService: UserPipelineService;
+  let rolePipelineService: RolePipelineService;
+  let userRolePipelineService: UserRolePipelineService;
+  let storePipelineService: StorePipelineService;
+  let userStorePipelineService: UserStorePipelineService;
+
+  const testUserPassword = 'TestPassword123!';
+  let testUser: UserResponseDto;
+  let testRole: RoleResponseDto;
+  let seedStore: StoreResponseDto;
+
+  beforeAll(async () => {
+    const bootstrap = await bootstrapTestApp();
+    ({
+      moduleFixture,
+      systemUserId,
+      systemPermissions,
+      cacheSetSpy,
+      cacheGetSpy,
+      userPipelineService,
+      userRolePipelineService,
+      rolePipelineService,
+      storePipelineService,
+      userStorePipelineService,
+    } = bootstrap);
+    app = bootstrap.app as NestFastifyApplication;
+
+    jest.spyOn(CacheService.prototype, 'invalidateByTags').mockResolvedValue();
+
+    systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
+  });
+
+  beforeEach(async () => {
+    const { user, role } = await initTestUser({
+      userPipelineService,
+      rolePipelineService,
+      userRolePipelineService,
+      storePipelineService,
+      userStorePipelineService,
+      overrides: {
+        password: testUserPassword,
+        isActive: true,
+      },
+      systemPermissions,
+      systemUserId,
+    });
+
+    testUser = user;
+    testRole = role;
+    authorizedHeader = await loginTestUser({
+      app,
+      email: testUser.email,
+      password: testUserPassword,
+    });
+
+    seedStore = await storePipelineService.create({
+      createDto: {
+        name: `SEED_STORE_${randomUUID()}`,
+        code: `CODE_${randomUUID().substring(0, 8)}`,
+        viewCode: `VIEW_${randomUUID().substring(0, 8)}`,
+      },
+      createdById: systemUserId,
+      metadata: {
+        ipAddress: faker.internet.ip(),
+        userAgent: faker.internet.userAgent(),
+      },
+    });
+
+    cacheSetSpy.mockClear();
+    cacheGetSpy.mockClear();
+  });
+
+  afterAll(async () => {
+    await moduleFixture.close();
+  });
+
+  describe('POST /v1/store', () => {
+    it('201 CREATED - should successfully create a new store with unique attributes', async () => {
+      const payload = {
+        name: `STORE_${randomUUID()}`,
+        code: `CODE_${randomUUID().substring(0, 8)}`,
+        viewCode: `VIEW_${randomUUID().substring(0, 8)}`,
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/store',
+        headers: authorizedHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+      const body = JSON.parse(response.payload);
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+    });
+
+    it('403 FORBIDDEN - should block store creation if user lacks strict permission scope', async () => {
+      await unAssignPermissionFromRole({
+        rolePipelineService,
+        testRole,
+        permissionsToUnassign: CREATE_STORE_ENDPOINT_PERMISSION,
+        systemUserId,
+      });
+
+      const headers = await loginTestUser({
+        app,
+        email: testUser.email,
+        password: testUserPassword,
+      });
+      const payload = { name: 'FORBIDDEN_STORE', code: 'F1', viewCode: 'V1' };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/store',
+        headers,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+    });
+
+    it('400 BAD REQUEST - should fail global validation pipes if input types are structurally malformed', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/store',
+        headers: authorizedHeader,
+        payload: { name: 12345 },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+    });
+  });
+
+  describe('GET /v1/store/id/:id', () => {
+    it('200 OK - should locate and return the target store data by its unique ID record', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/id/${seedStore.id}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      expect(body).toHaveProperty('id', seedStore.id);
+    });
+
+    it('404 NOT FOUND - should throw entity missing exception for a valid unassigned UUID format', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/id/${randomUUID()}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('400 BAD REQUEST - should halt execution at the gateway via ParseUUIDPipe checks if structure is invalid', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/store/id/invalid-uuid-string-token',
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+    });
+  });
+
+  describe('GET /v1/store/code/:code', () => {
+    it('200 OK - should successfully fetch store properties matching string code paths', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/code/${seedStore.code}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      expect(body).toHaveProperty('code', seedStore.code);
+    });
+
+    it('404 NOT FOUND - should map an error payload if string code cannot be located in storage', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/code/GHOST_CODE_${randomUUID()}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+  });
+
+  describe('GET /v1/store/viewCode/:viewCode', () => {
+    it('200 OK - should find target store payloads using public custom viewCode strings', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/viewCode/${seedStore.viewCode}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      expect(body).toHaveProperty('viewCode', seedStore.viewCode);
+    });
+
+    it('404 NOT FOUND - should flag exceptions if custom viewCode records do not exist', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/viewCode/GHOST_VIEW_${randomUUID()}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+  });
+
+  describe('GET /v1/store', () => {
+    it('200 OK - should evaluate internal pagination grids using basic search parameter queries', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/store',
+        headers: authorizedHeader,
+        query: { page: '1', limit: '10', ids: [seedStore.id] },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      expect(body).toHaveProperty('data');
+      expect(Array.isArray(body.data)).toBe(true);
+    });
+
+    it('403 FORBIDDEN - should drop connection requests if global view tokens are missing from context profiles', async () => {
+      await unAssignPermissionFromRole({
+        rolePipelineService,
+        testRole,
+        permissionsToUnassign: READ_STORE_ENDPOINT_PERMISSION,
+        systemUserId,
+      });
+
+      const headers = await loginTestUser({
+        app,
+        email: testUser.email,
+        password: testUserPassword,
+      });
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/store',
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+    });
+  });
+
+  describe('PATCH /v1/store/:id', () => {
+    it('200 OK - should process modifications smoothly and return true for valid updates', async () => {
+      const payload = { name: `MUTATED_STORE_${randomUUID()}` };
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/store/${seedStore.id}`,
+        headers: authorizedHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      expect(response.payload).toBe('true');
+    });
+
+    it('404 NOT FOUND - should break early if FetchStorePipe unmasks a completely fake identifier', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/store/${randomUUID()}`,
+        headers: authorizedHeader,
+        payload: { name: 'NEW_NAME' },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('400 BAD REQUEST - should trip validation logic early if input attributes break criteria guidelines', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/store/${seedStore.id}`,
+        headers: authorizedHeader,
+        payload: { name: 12345 },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+    });
+  });
+
+  describe('DELETE /v1/store/:id', () => {
+    it('204 NO CONTENT - should process structural asset purges completely when strict and loose tokens exist', async () => {
+      const transientDeleteTarget = await storePipelineService.create({
+        createDto: {
+          name: `DELETE_TARGET_${randomUUID()}`,
+          code: `DL_${randomUUID().substring(0, 8)}`,
+          viewCode: `DLV_${randomUUID().substring(0, 8)}`,
+        },
+        createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/store/${transientDeleteTarget.id}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+    });
+
+    it('204 NO CONTENT - should successfully execute deletions even if loose metadata check scopes are removed', async () => {
+      await unAssignPermissionFromRole({
+        rolePipelineService,
+        testRole,
+        permissionsToUnassign: [READ_USER_STORE, UNASSIGN_USER_STORE],
+        systemUserId,
+      });
+
+      const headers = await loginTestUser({
+        app,
+        email: testUser.email,
+        password: testUserPassword,
+      });
+
+      const transientDeleteTarget = await storePipelineService.create({
+        createDto: {
+          name: `LOOSE_DELETE_TARGET_${randomUUID()}`,
+          code: `LD_${randomUUID().substring(0, 8)}`,
+          viewCode: `LDV_${randomUUID().substring(0, 8)}`,
+        },
+        createdById: systemUserId,
+        metadata: {
+          ipAddress: faker.internet.ip(),
+          userAgent: faker.internet.userAgent(),
+        },
+      });
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/store/${transientDeleteTarget.id}`,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+    });
+
+    it('403 FORBIDDEN - should block operational cycles instantly if strict elimination rights are revoked', async () => {
+      await unAssignPermissionFromRole({
+        rolePipelineService,
+        testRole,
+        permissionsToUnassign: DELETE_STORE_ENDPOINT_PERMISSION,
+        systemUserId,
+      });
+
+      const headers = await loginTestUser({
+        app,
+        email: testUser.email,
+        password: testUserPassword,
+      });
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/store/${seedStore.id}`,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+    });
+  });
+});

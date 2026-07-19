@@ -1,19 +1,43 @@
+import { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import { AuthService } from '@/auth/auth.service';
-import { LoginDto } from '@/auth/dto/auth.dto';
-import { TokenResponseDto } from '@/auth/dto/response.dto';
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from '@/commonDecorators/public.decorator';
+import { TraceController } from '@/commonDecorators/trace.decorator';
+import { Body, Controller, Post } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
+@Controller({
+  path: 'auth',
+  version: ['1'],
+})
 @ApiTags('Auth')
-@Controller('auth')
+@ApiBearerAuth('JWT-auth')
+@TraceController()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'User login' })
-  @ApiResponse({ status: 200, description: 'Returns JWT access token' })
-  async login(@Body() loginDto: LoginDto): Promise<TokenResponseDto> {
-    return this.authService.login(loginDto);
+  @Public()
+  @ApiBody({
+    type: AuthenticateDto,
+    required: true,
+    description: 'The credentials of the user to authenticate',
+  })
+  @ApiOkResponse({
+    description: 'The JWT token for authenticated user',
+    type: AuthenticateResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid credentials',
+  })
+  async signIn(
+    @Body() signInDto: AuthenticateDto,
+  ): Promise<AuthenticateResponseDto> {
+    return this.authService.signIn(signInDto);
   }
 }

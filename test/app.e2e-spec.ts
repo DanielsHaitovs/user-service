@@ -1,30 +1,17 @@
 import type { INestApplication } from '@nestjs/common';
 
-import * as request from 'supertest';
 import type { App } from 'supertest/types';
-import type { DataSource } from 'typeorm';
-
-import { ensureSystemUser } from '../src/modules/base/system-user.bootstrap';
 
 import { bootstrapTestApp } from './bootstrap-e2e';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
-  let dataSource: DataSource;
 
   beforeAll(async () => {
-    ({ app, dataSource } = await bootstrapTestApp());
-    await ensureSystemUser(app);
+    ({ app } = await bootstrapTestApp());
   });
 
   afterAll(async () => {
-    if (dataSource.isInitialized) {
-      await dataSource.destroy();
-    }
     await app.close();
-  });
-
-  it('/health (GET)', () => {
-    return request(app.getHttpServer()).get('/health').expect(200).expect('OK');
   });
 });

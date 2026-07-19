@@ -1,40 +1,42 @@
 import { AuthController } from '@/auth/auth.controller';
 import { AuthService } from '@/auth/auth.service';
-import { JwtStrategy } from '@/auth/strategies/jwt.strategy';
-import { RolesModule } from '@/role/role.module';
+import { AuthCacheService } from '@/auth/cache.service';
+import { AuthGuard } from '@/commonGuards/auth.guard';
+import { PermissionsGuard } from '@/commonGuards/permission.guard';
+import { EnvConfigService } from '@/config/env/env.config.service';
 import { UserModule } from '@/user/user.module';
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
-    ConfigModule,
     UserModule,
-    RolesModule,
-    PassportModule,
     JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const secret = configService.get<string>('JWT_SECRET');
-
-        if (secret === undefined) {
-          throw new Error('JWT_SECRET is not defined in environment variables');
-        }
-
-        return {
-          secret,
-          signOptions: {
-            expiresIn: configService.get<string>('JWT_EXPIRES_IN') ?? '1h',
-          },
-        };
-      },
+      global: true,
+      useFactory: (configService: EnvConfigService) => ({
+        secret: configService.jwtSecret,
+        signOptions: {
+          expiresIn: configService.jwtExpiration,
+        },
+      }),
+      inject: [EnvConfigService],
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthCacheService,
+    AuthService,
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
+    },
+  ],
+  exports: [AuthService],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class AuthModule {}

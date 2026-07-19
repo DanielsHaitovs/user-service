@@ -28,6 +28,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
+import type { RoleResponseDto } from './dto/role.dto';
+
 describe('RolePipelineService (Integration)', () => {
   let rolePipelineService: RolePipelineService;
   let dataSource: DataSource;
@@ -38,7 +40,9 @@ describe('RolePipelineService (Integration)', () => {
   let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
   let cacheInvalidateByTagsSpy: jest.SpyInstance;
+  let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
   let permissions: Permission[];
+  let conflictRole: RoleResponseDto;
 
   beforeAll(async () => {
     ({
@@ -50,6 +54,7 @@ describe('RolePipelineService (Integration)', () => {
       cacheGetByIdSpy,
       cacheInvalidateByIdSpy,
       cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
     } = await bootstrapTestApp());
 
     auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendLog');
@@ -63,6 +68,13 @@ describe('RolePipelineService (Integration)', () => {
           createdBy: { id: systemUserId } as User,
         },
       ],
+    });
+    conflictRole = await createTestRole({
+      rolePipelineService,
+      createdById: systemUserId,
+      cacheSetSpy,
+      cacheInvalidateByTagsSpy,
+      auditLogSpy,
     });
   });
 
@@ -94,6 +106,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleById({
         rolePipelineService,
@@ -119,6 +132,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
         rolePipelineService,
@@ -130,28 +144,10 @@ describe('RolePipelineService (Integration)', () => {
     });
 
     it('should throw Conflict when trying to save role with the same name', async () => {
-      const roleName = `Test Role ${randomUUID()}`;
-      await rolePipelineService.create({
-        createDto: {
-          name: roleName,
-        },
-        createdById: systemUserId,
-        metadata: {
-          ipAddress: faker.internet.ip(),
-          userAgent: faker.internet.userAgent(),
-        },
-      });
-
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
-      expect(auditLogSpy).toHaveBeenCalledTimes(1);
-
-      cacheSetSpy.mockClear();
-      auditLogSpy.mockClear();
-
       await expect(
         rolePipelineService.create({
           createDto: {
-            name: roleName,
+            name: conflictRole.name,
           },
           createdById: systemUserId,
           metadata: {
@@ -161,15 +157,16 @@ describe('RolePipelineService (Integration)', () => {
         }),
       ).rejects.toThrow(
         new ConflictException(
-          `A role with the name "${roleName}" already exists.`,
+          `A role with the name "${conflictRole.name}" already exists.`,
         ),
       );
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('should not assign all permissions if empty permission property is present as empty array', async () => {
+    it('should not assign permissions if permission property is empty array', async () => {
       const expected = await rolePipelineService.create({
         createDto: {
           name: `Test Role ${randomUUID()}`,
@@ -183,6 +180,7 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
@@ -217,6 +215,7 @@ describe('RolePipelineService (Integration)', () => {
       );
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
   });
@@ -227,6 +226,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -256,6 +256,8 @@ describe('RolePipelineService (Integration)', () => {
         createdById: systemUserId,
         cacheSetSpy,
         auditLogSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         cacheInvalidateByIdSpy,
       });
 
@@ -284,6 +286,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -300,6 +303,7 @@ describe('RolePipelineService (Integration)', () => {
       });
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
@@ -323,6 +327,8 @@ describe('RolePipelineService (Integration)', () => {
           createdById: systemUserId,
           cacheSetSpy,
           auditLogSpy,
+          cacheInvalidateByTagsSpy,
+          cacheInvalidateByKeyPatternSpy,
           cacheInvalidateByIdSpy,
         });
 
@@ -348,6 +354,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
@@ -369,6 +376,8 @@ describe('RolePipelineService (Integration)', () => {
         createdById: systemUserId,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         auditLogSpy,
       });
 
@@ -393,6 +402,7 @@ describe('RolePipelineService (Integration)', () => {
       );
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
@@ -410,6 +420,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -432,6 +443,7 @@ describe('RolePipelineService (Integration)', () => {
       );
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
@@ -443,6 +455,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -460,6 +473,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleWithPermissionsById({
@@ -491,6 +505,8 @@ describe('RolePipelineService (Integration)', () => {
           ],
           cacheSetSpy,
           cacheInvalidateByIdSpy,
+          cacheInvalidateByTagsSpy,
+          cacheInvalidateByKeyPatternSpy,
           auditLogSpy,
         });
 
@@ -511,6 +527,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleWithPermissionsById({
@@ -533,6 +550,8 @@ describe('RolePipelineService (Integration)', () => {
         permissions,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         auditLogSpy,
       });
 
@@ -558,6 +577,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleWithPermissionsById({
@@ -574,6 +594,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -591,6 +612,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleWithPermissionsById({
@@ -607,6 +629,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -630,6 +653,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
   });
@@ -640,6 +664,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -661,6 +686,7 @@ describe('RolePipelineService (Integration)', () => {
       expect(updated).toBe(true);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestRoleById({
@@ -689,6 +715,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -709,6 +736,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleById({
@@ -726,12 +754,14 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
       const conflictRole = await createTestRole({
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -754,6 +784,7 @@ describe('RolePipelineService (Integration)', () => {
       );
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
@@ -772,6 +803,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -790,6 +822,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
 
       await getTestRoleById({
@@ -809,6 +842,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -826,6 +860,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
@@ -838,6 +873,7 @@ describe('RolePipelineService (Integration)', () => {
         rolePipelineService,
         createdById: systemUserId,
         cacheSetSpy,
+        cacheInvalidateByTagsSpy,
         auditLogSpy,
       });
 
@@ -855,6 +891,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
@@ -869,6 +906,8 @@ describe('RolePipelineService (Integration)', () => {
         permissions,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         auditLogSpy,
       });
 
@@ -886,6 +925,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
@@ -900,6 +940,8 @@ describe('RolePipelineService (Integration)', () => {
         permissions,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         auditLogSpy,
       });
 
@@ -917,6 +959,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(
@@ -931,6 +974,8 @@ describe('RolePipelineService (Integration)', () => {
         permissions,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         auditLogSpy,
       });
       const user = await createTestUser({ dataSource });
@@ -959,6 +1004,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
@@ -969,6 +1015,8 @@ describe('RolePipelineService (Integration)', () => {
         permissions,
         cacheSetSpy,
         cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         auditLogSpy,
       });
 
@@ -994,6 +1042,7 @@ describe('RolePipelineService (Integration)', () => {
 
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await expect(rolePipelineService.getByIdOrThrow(role.id)).rejects.toThrow(

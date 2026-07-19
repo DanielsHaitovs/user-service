@@ -1,3 +1,4 @@
+import { RedisService } from '@/baseServices/redis.service';
 import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
 import {
   ROLE_QUERY_ALIAS,
@@ -10,16 +11,11 @@ import {
 } from '@/commonConst/store.const';
 import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import { EnvConfigService } from '@/config/env/env.config.service';
-import KeyvRedis, { Keyv, RedisClientType } from '@keyv/redis';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
-  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-
-import { Cache } from 'cache-manager';
 
 type alias =
   | typeof USER_QUERY_ALIAS
@@ -33,12 +29,12 @@ type alias =
 
 @Injectable()
 export class CacheService {
-  private readonly cacheTtl;
+  private readonly cacheTtl: number;
   private readonly logService = new Logger(CacheService.name);
   private readonly pendingOperations = new Map<string, Promise<unknown>>();
 
   constructor(
-    @Inject(CACHE_MANAGER) protected readonly cacheManager: Cache,
+    private readonly redisService: RedisService,
     private readonly envConfigService: EnvConfigService,
   ) {
     this.cacheTtl = this.envConfigService.userCacheTtl * 1000;
@@ -56,42 +52,48 @@ export class CacheService {
     try {
       const finalTtl = ttl ?? this.cacheTtl;
 
-      await this.cacheManager.set(key, value, finalTtl);
+      const serializedValue =
+        typeof value === 'string' ? value : JSON.stringify(value);
+
+      await this.redisService.set(key, serializedValue, finalTtl);
 
       return value;
     } catch (e) {
       const error = e as Error;
-
       this.logService.error(
-        `Failed to set cache for key [${key}]): ${error.message}`,
+        `Failed to set cache for key [${key}]: ${error.message}`,
       );
-
       return undefined;
     }
   }
 
   async get<T>(key: string): Promise<T | undefined> {
     try {
-      return await this.cacheManager.get<T>(key);
+      const data = await this.redisService.get(key);
+
+      if (data == undefined) return undefined;
+
+      try {
+        return JSON.parse(data) as T;
+      } catch {
+        return data as unknown as T;
+      }
     } catch (e) {
       const error = e as Error;
-
       this.logService.error(
-        `Failed to get cache for key [${key}]): ${error.message}`,
+        `Failed to get cache for key [${key}]: ${error.message}`,
       );
-
       return undefined;
     }
   }
 
   async del(key: string): Promise<void> {
     try {
-      await this.cacheManager.del(key);
+      await this.redisService.delete(key);
     } catch (e) {
       const error = e as Error;
-
       this.logService.error(
-        `Failed to delete cache for key [${key}]): ${error.message}`,
+        `Failed to delete cache for key [${key}]: ${error.message}`,
       );
     }
   }
@@ -118,40 +120,11 @@ export class CacheService {
 
   async invalidateByKeyPattern(pattern: string): Promise<void> {
     try {
-      const keyv: Keyv | undefined = this.cacheManager.stores[0];
-
-      if (!keyv) {
-        return;
-      }
-
-      const store = keyv.opts.store as KeyvRedis<unknown> | undefined;
-      const redisClient = store?.client as RedisClientType | undefined;
-
-      if (!redisClient) {
-        return;
-      }
-
-      const keysToDelete: string[] = [];
-
-      for await (const result of redisClient.scanIterator({
-        MATCH: pattern,
-        COUNT: 100,
-      })) {
-        if (Array.isArray(result)) {
-          keysToDelete.push(...result);
-        } else if (typeof result === 'string') {
-          keysToDelete.push(result);
-        }
-      }
-
-      if (keysToDelete.length > 0) {
-        await redisClient.sendCommand(['UNLINK', ...keysToDelete]);
-      }
+      await this.redisService.deleteKeysByPattern(pattern);
     } catch (e) {
       const error = e as Error;
-
       this.logService.error(
-        `Failed to invalidate cache for pattern [${pattern}]): ${error.message}`,
+        `Failed to invalidate cache for pattern [${pattern}]: ${error.message}`,
       );
     }
   }
@@ -168,17 +141,20 @@ export class CacheService {
     alias: alias;
   }): Promise<void> {
     if (tag.purge != undefined && tag.purge) {
-      await this.invalidateByKeyPattern(`${alias}_*`);
+      await Promise.all([
+        this.redisService.deleteKeysByPattern(`${alias}_all_*`),
+        this.redisService.deleteKeysByPattern(`${alias}_paginated_*`),
+      ]);
       return;
     }
 
     if (tag.all != undefined && tag.all) {
-      await this.invalidateByKeyPattern(`${alias}_all_*`);
+      await this.redisService.deleteKeysByPattern(`${alias}_all_*`);
       return;
     }
 
     if (tag.paginated != undefined && tag.paginated) {
-      await this.invalidateByKeyPattern(`${alias}_paginated_*`);
+      await this.redisService.deleteKeysByPattern(`${alias}_paginated_*`);
     }
   }
 
@@ -213,7 +189,7 @@ export class CacheService {
       case PERMISSION_QUERY_ALIAS:
         return `id:${id}:${PERMISSION_QUERY_ALIAS}`;
       case `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`:
-        return `id:${id}:${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`;
+        return `id:${id}:${ROLE_QUERY_ALIAS}${PERMISSION_QUERY_ALIAS}`;
       case USER_ROLE_QUERY_ALIAS:
         return `id:${id}:${USER_ROLE_QUERY_ALIAS}`;
       case USER_ROLE_PERMISSIONS_QUERY_ALIAS:

@@ -66,7 +66,6 @@ describe('UserController (e2e)', () => {
       cacheSetSpy,
       cacheGetSpy,
       cacheInvalidateByTagsSpy,
-      // cacheInvalidateByIdSpy,
       userPipelineService,
       userRolePipelineService,
       rolePipelineService,

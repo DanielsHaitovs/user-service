@@ -117,6 +117,10 @@ export class RolePipelineService {
     });
 
     await Promise.all([
+      this.cacheService.invalidateByTags({
+        tag: { purge: true },
+        alias: ROLE_QUERY_ALIAS,
+      }),
       this.cacheService.set({
         key: this.cacheService.getIdKeyPrefixByAlias({
           id: role.id,
@@ -163,10 +167,15 @@ export class RolePipelineService {
       assignPayload,
     });
 
-    await this.cacheService.invalidateById({
-      id: role.id,
-      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
-    });
+    await Promise.all([
+      this.cacheService.invalidateById({
+        id: role.id,
+        alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+      }),
+      this.cacheService.invalidateByKeyPattern(
+        `*:${USER_ROLE_PERMISSIONS_QUERY_ALIAS}`,
+      ),
+    ]);
 
     const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
       id: role.id,
@@ -225,14 +234,15 @@ export class RolePipelineService {
       return;
     }
 
-    await this.cacheService.invalidateById({
-      id: role.id,
-      alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
-    });
-
-    await this.cacheService.invalidateByKeyPattern(
-      `*:${USER_ROLE_PERMISSIONS_QUERY_ALIAS}`,
-    );
+    await Promise.all([
+      this.cacheService.invalidateById({
+        id: role.id,
+        alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
+      }),
+      this.cacheService.invalidateByKeyPattern(
+        `*:${USER_ROLE_PERMISSIONS_QUERY_ALIAS}`,
+      ),
+    ]);
 
     const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
       id: role.id,
@@ -293,6 +303,12 @@ export class RolePipelineService {
           id,
           alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
         }),
+        this.cacheService.invalidateByTags({
+          tag: {
+            purge: true,
+          },
+          alias: ROLE_QUERY_ALIAS,
+        }),
         this.auditService.sendLog({
           userId: requestedByUserId,
           action: RoleAction.UPDATE,
@@ -336,6 +352,15 @@ export class RolePipelineService {
           },
           alias: ROLE_QUERY_ALIAS,
         }),
+        this.cacheService.invalidateByTags({
+          tag: {
+            purge: true,
+          },
+          alias: USER_ROLE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateByKeyPattern(
+          `*:${USER_ROLE_PERMISSIONS_QUERY_ALIAS}`,
+        ),
         this.cacheService.invalidateById({
           id,
           alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
@@ -343,12 +368,6 @@ export class RolePipelineService {
         this.cacheService.invalidateById({
           id,
           alias: ROLE_QUERY_ALIAS,
-        }),
-        this.cacheService.invalidateByTags({
-          tag: {
-            purge: true,
-          },
-          alias: USER_ROLE_QUERY_ALIAS,
         }),
         this.auditService.sendLog({
           userId: requestedByUserId,

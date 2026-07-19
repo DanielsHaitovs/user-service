@@ -1,167 +1,154 @@
-// import type { OnModuleDestroy } from '@nestjs/common';
+import { EnvConfigService } from '@/config/env/env.config.service';
+import {
+  BeforeApplicationShutdown,
+  Injectable,
+  Logger,
+  OnApplicationShutdown,
+  OnModuleDestroy,
+} from '@nestjs/common';
 
-// import type { UUID } from 'crypto';
-// import { Redis, type RedisOptions } from 'ioredis';
+import { Redis, type RedisOptions } from 'ioredis';
 
-// export class RedisService implements OnModuleDestroy {
-//   client: Redis;
+@Injectable()
+export class RedisService
+  implements OnModuleDestroy, BeforeApplicationShutdown, OnApplicationShutdown
+{
+  private readonly logger = new Logger(RedisService.name);
+  public readonly client: Redis;
 
-//   constructor() {
-//     const options: RedisOptions = {
-//       host: process.env.REDIS_HOST ?? 'localhost',
-//       port: Number(process.env.REDIS_PORT) || 6379,
-//       password: process.env.REDIS_PASSWORD,
-//       username: process.env.REDIS_USERNAME,
-//       autoResubscribe: true,
-//       maxRetriesPerRequest: 13,
-//       enableOfflineQueue: true,
-//       retryStrategy: (times) => {
-//         return Math.min(times * 2000, 5000);
-//       },
-//       reconnectOnError: (err) => {
-//         return err.message.startsWith('READONLY');
-//       },
-//     };
-//   }
+  constructor(private readonly config: EnvConfigService) {
+    const options: RedisOptions = {
+      host: this.config.redisHost,
+      port: this.config.redisPort,
+      password: this.config.redisPassword,
+      autoResubscribe: true,
+      maxRetriesPerRequest: 13,
+      enableOfflineQueue: true,
+      tls: { rejectUnauthorized: false },
+      retryStrategy: (times) => Math.min(times * 2000, 5000),
+      reconnectOnError: (err) => err.message.startsWith('READONLY'),
+    };
 
-//   async set(key: string, value: string, transactionExpireTime?: number) {
-//     return await this.client.set(
-//       key,
-//       value,
-//       'EX',
-//       Number(transactionExpireTime || process.env.REDIS_TTL || 10800),
-//     );
-//   }
+    this.client = new Redis(options);
 
-//   async get(key: string) {
-//     return await this.client.get(key);
-//   }
+    this.client.on('connect', () => {
+      this.logger.log('Redis client connecting...');
+    });
+    this.client.on('ready', () => {
+      this.logger.log('Redis client successfully connected and ready.');
+    });
+    this.client.on('error', (err) => {
+      this.logger.error(`Redis client connection error: ${err.message}`);
+    });
+  }
 
-//   async getAll(key: string) {
-//     return await this.client.hgetall(key);
-//   }
+  async set(key: string, value: string, ttlSeconds?: number): Promise<string> {
+    const expiry = ttlSeconds ?? process.env.REDIS_TTL ?? 10800;
+    return await this.client.set(key, value, 'EX', expiry);
+  }
 
-//   // Store callback in Redis hash with a timestamp (nanosecond) as field
-//   async incomingCallback(data: ICallback): Promise<void> {
-//     const key = `callback::${data.transactionId}`;
-//     const timeStamp = process.hrtime.bigint().toString();
+  async get(key: string): Promise<string | null> {
+    return await this.client.get(key);
+  }
 
-//     await this.client.hset(key, timeStamp, JSON.stringify(data));
-//   }
+  async delete(key: string): Promise<number> {
+    return await this.client.del(key);
+  }
 
-//   async unsetTransactionCallbackBuffer(
-//     transactionId: string,
-//     timeStamps?: string[],
-//   ) {
-//     const key = `callback::${transactionId}`;
+  isRedisClientReady(): boolean {
+    return this.client.status === 'ready';
+  }
 
-//     // If no timestamps provided, delete entire hash
-//     if (!timeStamps) {
-//       await this.client.del(key);
-//       return;
-//     }
+  async deleteKeysByPattern(pattern: string): Promise<void> {
+    this.logger.log(
+      `Initiating deletion for keys matching pattern: [${pattern}]`,
+    );
 
-//     // If timestamps provided, delete specific fields
-//     if (timeStamps.length > 0) {
-//       await this.client.hdel(key, ...timeStamps);
-//     }
-//   }
+    return new Promise<void>((resolve, reject) => {
+      const stream = this.client.scanStream({ match: pattern, count: 100 });
 
-//   async delete(key: string) {
-//     return await this.client.del(key);
-//   }
+      stream.on('data', (keys: string[]) => {
+        if (keys.length === 0) return;
 
-//   isRedisClientReady() {
-//     return this.client.status === 'ready';
-//   }
+        stream.pause();
 
-//   beforeApplicationShutdown(signal?: string) {
-//     this.printSystemData(
-//       `Application shutdown initiated | signal=${signal ?? 'none'}`,
-//     );
-//   }
+        void (async (): Promise<void> => {
+          try {
+            await this.client.unlink(keys);
+          } catch (error) {
+            this.logger.error(error);
+          } finally {
+            stream.resume();
+          }
+        })();
+      });
 
-//   onApplicationShutdown(signal?: string) {
-//     this.printSystemData(
-//       `Application shutdown finalized | signal=${signal ?? 'none'}`,
-//     );
-//   }
+      stream.on('end', () => {
+        this.logger.log(
+          `Finished deleting keys matching pattern: [${pattern}]`,
+        );
+        resolve();
+      });
 
-//   async onModuleDestroy() {
-//     console.trace('[SIGNAL DETECTED] Trace for onModuleDestroy');
-//     if (this.client) {
-//       await this.deleteCallbackInProgressKeys();
-//       await this.client.quit();
-//     }
-//   }
+      stream.on('error', (err) => {
+        reject(err);
+      });
+    });
+  }
 
-//   async deleteCallbackInProgressKeys() {
-//     await this.deleteKeysByPattern('*-callbacks-in-progress');
-//   }
+  async deleteCallbackInProgressKeys(): Promise<void> {
+    await this.deleteKeysByPattern('*-callbacks-in-progress');
+  }
 
-//   async deleteKeysByPattern(pattern: string) {
-//     this.logger.log({ message: `Deleting redis keys by pattern: ${pattern}` });
-//     const keys = await this.client.keys(pattern);
-//     keys.forEach(async (key) => {
-//       await this.client.del(key);
-//     });
-//     this.logger.log({
-//       message: `Finished deleting redis keys by pattern: ${pattern}`,
-//     });
-//   }
+  /**
+   * Atomically sets a key only if it does not already exist (NX mode).
+   * Returns "OK" if the lock was acquired successfully, or null if it already exists.
+   */
+  async setUnique(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<string | null> {
+    try {
+      return await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
+    } catch (error) {
+      this.logger.error(error);
+    }
+  }
 
-//   async setMerchantLastActivity(merchantId: string): Promise<void> {
-//     await this.client.sadd('merchant:lastActivity', merchantId);
-//   }
+  beforeApplicationShutdown(signal?: string): void {
+    this.printSystemData(
+      `Application shutdown initiated | signal=${signal ?? 'none'}`,
+    );
+  }
 
-//   async getAllMerchantLastActivities(): Promise<UUID[]> {
-//     return (await this.client.smembers('merchant:lastActivity')) as UUID[];
-//   }
+  onApplicationShutdown(signal?: string): void {
+    this.printSystemData(
+      `Application shutdown finalized | signal=${signal ?? 'none'}`,
+    );
+  }
 
-//   async clearMerchantLastActivities() {
-//     await this.client.del('merchant:lastActivity');
-//   }
+  async onModuleDestroy(): Promise<void> {
+    this.logger.warn(
+      '[SIGNAL DETECTED] Executing RedisService cleanup onModuleDestroy...',
+    );
+    try {
+      await this.deleteCallbackInProgressKeys();
+    } catch (err) {
+      this.logger.error(err);
+    } finally {
+      await this.client.quit();
+    }
+  }
 
-//   async setCallbackTraceId(transactionId: string, traceId: string) {
-//     await this.set(transactionId, traceId, Number(process.env.REDIS_TRACE_TTL));
-//   }
-
-//   async setUnique(key: string, value: string, transactionExpireTime?: number) {
-//     return await this.client.set(
-//       key,
-//       value,
-//       'EX',
-//       Number(transactionExpireTime || process.env.REDIS_TTL || 10800),
-//       'NX',
-//     );
-//   }
-
-//   private printSystemData(message: string) {
-//     const uptimeSeconds = process.uptime();
-//     const uptimeFormatted = this.formatUptime(uptimeSeconds);
-//     const memoryUsage = Object.fromEntries(
-//       Object.entries(process.memoryUsage()).map(([key, value]) => [
-//         key,
-//         `${(value / 1024 / 1024).toFixed(2)} MB`,
-//       ]),
-//     );
-//     console.trace();
-//     this.logger.log<LogI>({
-//       data: { uptimeSeconds, uptimeFormatted, memoryUsage },
-//       message,
-//     });
-//   }
-
-//   private formatUptime(seconds: number) {
-//     const days = Math.floor(seconds / 86400);
-//     seconds %= 86400;
-
-//     const hours = Math.floor(seconds / 3600);
-//     seconds %= 3600;
-
-//     const minutes = Math.floor(seconds / 60);
-//     const secs = Math.floor(seconds % 60);
-
-//     return `${days}d ${hours}h ${minutes}m ${secs}s`;
-//   }
-// }
+  private printSystemData(message: string): void {
+    const uptimeSeconds = process.uptime();
+    const memoryUsage = Object.fromEntries(
+      Object.entries(process.memoryUsage()).map(([key, value]) => [
+        key,
+        `${(value / 1024 / 1024).toFixed(2)} MB`,
+      ]),
+    );
+    this.logger.log({ message, uptimeSeconds, memoryUsage });
+  }
+}

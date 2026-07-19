@@ -16,6 +16,8 @@ export const classesToSkip = [
   'Repository',
   'DataSource',
   'Logger',
+  'RedisService',
+  'Socket',
   'Queue',
   'InjectQueue',
   'IdempotencyInterceptor',

@@ -32,6 +32,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
+import { validateRoleResponseDto } from '../../../test/validate/role';
+
 describe('RoleController (e2e)', () => {
   let app: NestFastifyApplication;
   let dataSource: DataSource;
@@ -40,7 +42,10 @@ describe('RoleController (e2e)', () => {
   let systemUserId: UUID;
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
-  let cacheGetSpy: jest.SpyInstance;
+  let cacheGetByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByTagsSpy: jest.SpyInstance;
+  let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 
   let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
@@ -60,7 +65,10 @@ describe('RoleController (e2e)', () => {
       systemUserId,
       systemPermissions,
       cacheSetSpy,
-      cacheGetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
       userPipelineService,
       rolePipelineService,
       userRolePipelineService,
@@ -107,7 +115,10 @@ describe('RoleController (e2e)', () => {
     });
 
     cacheSetSpy.mockClear();
-    cacheGetSpy.mockClear();
+    cacheGetByIdSpy.mockClear();
+    cacheInvalidateByIdSpy.mockClear();
+    cacheInvalidateByTagsSpy.mockClear();
+    cacheInvalidateByKeyPatternSpy.mockClear();
   });
 
   afterAll(async () => {
@@ -125,12 +136,13 @@ describe('RoleController (e2e)', () => {
         payload,
       });
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
-
       expect(response.statusCode).toBe(HttpStatus.CREATED);
       const body = JSON.parse(response.payload);
       expect(body).toHaveProperty('id');
       expect(body.name).toBe(payload.name);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('201 CREATED - should strip permissions down to empty array if user lacks permission to read permissions', async () => {
@@ -148,7 +160,8 @@ describe('RoleController (e2e)', () => {
       });
 
       cacheSetSpy.mockClear();
-      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
 
       const payload = {
         name: `STRIPPED_ROLE_${randomUUID()}`,
@@ -162,8 +175,9 @@ describe('RoleController (e2e)', () => {
         payload,
       });
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('201 CREATED - should strip permissions down to empty array if user lacks permission to assign permissions', async () => {
@@ -181,7 +195,8 @@ describe('RoleController (e2e)', () => {
       });
 
       cacheSetSpy.mockClear();
-      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
 
       const payload = {
         name: `STRIPPED_ROLE_${randomUUID()}`,
@@ -195,8 +210,9 @@ describe('RoleController (e2e)', () => {
         payload,
       });
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to create role', async () => {
@@ -214,7 +230,8 @@ describe('RoleController (e2e)', () => {
       });
 
       cacheSetSpy.mockClear();
-      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
 
       const response = await app.inject({
         method: 'POST',
@@ -225,6 +242,7 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to read role', async () => {
@@ -242,7 +260,8 @@ describe('RoleController (e2e)', () => {
       });
 
       cacheSetSpy.mockClear();
-      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
 
       const response = await app.inject({
         method: 'POST',
@@ -253,6 +272,7 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to read role', async () => {
@@ -265,6 +285,7 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.UNAUTHORIZED);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should fail global validation rules if the incoming payload properties are malformed', async () => {
@@ -277,6 +298,7 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -290,7 +312,14 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', seedRole.id);
+
+      validateRoleResponseDto({
+        response: body,
+        expected: seedRole,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
     it('404 NOT FOUND - should trigger exception mapping if the UUID does not point to an active record', async () => {
@@ -301,6 +330,8 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
     it('400 BAD REQUEST - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
@@ -311,6 +342,8 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 BAD REQUEST - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
@@ -328,7 +361,8 @@ describe('RoleController (e2e)', () => {
       });
 
       cacheSetSpy.mockClear();
-      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+
       const response = await app.inject({
         method: 'GET',
         url: `/v1/role/id/${seedRole.id}`,
@@ -336,6 +370,8 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -395,6 +431,8 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       expect(response.payload).toBe('true');
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
     });
 
     it('404 NOT FOUND - should throw exception if FetchRolePipe fails to locate target role ID', async () => {
@@ -406,6 +444,8 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the required update scope', async () => {
@@ -415,6 +455,9 @@ describe('RoleController (e2e)', () => {
         permissionsToUnassign: UPDATE_ROLE_ENDPOINT_PERMISSION,
         systemUserId,
       });
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      cacheInvalidateByIdSpy.mockClear();
 
       const headers = await loginTestUser({
         app,
@@ -430,6 +473,8 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should block requests with malformed update body strings', async () => {
@@ -441,6 +486,8 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -453,6 +500,9 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
 
     it('204 NO CONTENT - should process delete execution smoothly even if user lacks optional loose permissions', async () => {
@@ -462,6 +512,11 @@ describe('RoleController (e2e)', () => {
         permissionsToUnassign: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
         systemUserId,
       });
+
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+      cacheInvalidateByIdSpy.mockClear();
+      cacheInvalidateByKeyPatternSpy.mockClear();
 
       const headers = await loginTestUser({
         app,
@@ -476,6 +531,9 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
 
     it('404 NOT FOUND - should throw exception if FetchRolePipe discovers target model is missing', async () => {
@@ -486,6 +544,9 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks strict deletion scope permission', async () => {
@@ -495,6 +556,13 @@ describe('RoleController (e2e)', () => {
         permissionsToUnassign: DELETE_ROLE_ENDPOINT_PERMISSION,
         systemUserId,
       });
+
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+
+      cacheInvalidateByIdSpy.mockClear();
+      cacheInvalidateByKeyPatternSpy.mockClear();
 
       const headers = await loginTestUser({
         app,
@@ -509,6 +577,9 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 });

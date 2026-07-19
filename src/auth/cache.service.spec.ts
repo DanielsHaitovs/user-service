@@ -1,7 +1,7 @@
 import type { JwtPayload } from '@/auth/auth.interface';
 import { AuthCacheService } from '@/auth/cache.service';
+import { CacheService } from '@/baseServices/cache.service';
 import { EnvConfigService } from '@/config/env/env.config.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -32,6 +32,7 @@ describe('AuthCacheService', () => {
     id: randomUUID(),
     email: 'cache.test@example.com',
     permissions: ['READ_STORES'],
+    stores: [randomUUID()],
   };
 
   beforeEach(async () => {
@@ -53,7 +54,7 @@ describe('AuthCacheService', () => {
       providers: [
         AuthCacheService,
         {
-          provide: CACHE_MANAGER,
+          provide: CacheService,
           useValue: mockCacheManager,
         },
         {
@@ -81,11 +82,11 @@ describe('AuthCacheService', () => {
         token: mockToken,
       });
 
-      expect(mockCacheManager.set).toHaveBeenCalledWith(
-        mockCacheKey,
-        mockPayload,
-        3600 * 1000,
-      );
+      expect(mockCacheManager.set).toHaveBeenCalledWith({
+        key: mockCacheKey,
+        value: mockPayload,
+        ttl: 3600 * 1000,
+      });
     });
   });
 
@@ -110,11 +111,11 @@ describe('AuthCacheService', () => {
       expect(mockCacheManager.get).toHaveBeenCalledWith(mockCacheKey);
       expect(mockJwtService.verifyAsync).toHaveBeenCalledWith(mockToken);
 
-      expect(mockCacheManager.set).toHaveBeenCalledWith(
-        mockCacheKey,
-        mockPayload,
-        3600 * 1000,
-      );
+      expect(mockCacheManager.set).toHaveBeenCalledWith({
+        key: mockCacheKey,
+        value: mockPayload,
+        ttl: 3600 * 1000,
+      });
     });
 
     it('should intercept structural errors or cryptographic validation failures and throw an UnauthorizedException', async () => {

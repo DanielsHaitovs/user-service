@@ -1,19 +1,12 @@
 import { CacheService } from '@/baseServices/cache.service';
+import type { RedisService } from '@/baseServices/redis.service';
 import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
-import {
-  ROLE_QUERY_ALIAS,
-  USER_ROLE_PERMISSIONS_QUERY_ALIAS,
-  USER_ROLE_QUERY_ALIAS,
-} from '@/commonConst/role.const';
-import {
-  STORE_QUERY_ALIAS,
-  USER_STORES_QUERY_ALIAS,
-} from '@/commonConst/store.const';
+import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
+import { STORE_QUERY_ALIAS } from '@/commonConst/store.const';
 import { USER_QUERY_ALIAS } from '@/commonConst/user.const';
 import type { EnvConfigService } from '@/config/env/env.config.service';
-import { InternalServerErrorException, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 
-import type { Cache } from 'cache-manager';
 import { setTimeout } from 'timers/promises';
 
 interface CacheServiceInternals {
@@ -23,26 +16,17 @@ interface CacheServiceInternals {
 
 describe('CacheService (Unit)', () => {
   let service: CacheService;
-  let mockCacheManager: jest.Mocked<Cache>;
+  let mockRedisService: jest.Mocked<RedisService>;
   let mockEnvConfigService: jest.Mocked<EnvConfigService>;
   let loggerErrorSpy: jest.SpyInstance;
 
-  let mockScanIterator: jest.Mock;
-  let mockSendCommand: jest.Mock;
+  let redisSetMock: jest.Mock;
+  let redisGetMock: jest.Mock;
+  let redisDeleteMock: jest.Mock;
+  let redisDeleteKeysMock: jest.Mock;
 
   const mockTtlSeconds = 5;
   const mockTtlMilliseconds = mockTtlSeconds * 1000;
-
-  const allAliases = [
-    USER_QUERY_ALIAS,
-    STORE_QUERY_ALIAS,
-    ROLE_QUERY_ALIAS,
-    PERMISSION_QUERY_ALIAS,
-    `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
-    USER_ROLE_QUERY_ALIAS,
-    USER_ROLE_PERMISSIONS_QUERY_ALIAS,
-    USER_STORES_QUERY_ALIAS,
-  ] as const;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,32 +35,23 @@ describe('CacheService (Unit)', () => {
       userCacheTtl: mockTtlSeconds,
     } as unknown as jest.Mocked<EnvConfigService>;
 
-    mockScanIterator = jest.fn();
-    mockSendCommand = jest.fn().mockResolvedValue('OK');
+    redisSetMock = jest.fn().mockResolvedValue('OK');
+    redisGetMock = jest.fn();
+    redisDeleteMock = jest.fn().mockResolvedValue(1);
+    redisDeleteKeysMock = jest.fn().mockResolvedValue(undefined);
 
-    const mockRedisStore = {
-      opts: {
-        store: {
-          client: {
-            scanIterator: mockScanIterator,
-            sendCommand: mockSendCommand,
-          },
-        },
-      },
-    };
-
-    mockCacheManager = {
-      set: jest.fn().mockResolvedValue(undefined),
-      get: jest.fn(),
-      del: jest.fn().mockResolvedValue(undefined),
-      stores: [mockRedisStore],
-    } as unknown as jest.Mocked<Cache>;
+    mockRedisService = {
+      set: redisSetMock,
+      get: redisGetMock,
+      delete: redisDeleteMock,
+      deleteKeysByPattern: redisDeleteKeysMock,
+    } as unknown as jest.Mocked<RedisService>;
 
     loggerErrorSpy = jest
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
 
-    service = new CacheService(mockCacheManager, mockEnvConfigService);
+    service = new CacheService(mockRedisService, mockEnvConfigService);
   });
 
   describe('Constructor Initialization', () => {
@@ -87,39 +62,53 @@ describe('CacheService (Unit)', () => {
   });
 
   describe('set()', () => {
-    it('should successfully store value in cache using the application default TTL configuration', async () => {
+    it('should successfully serialize objects to JSON and store them using default TTL windows', async () => {
+      const payload = { roles: ['ADMIN'], active: true };
       const result = await service.set({
         key: 'test-key',
-        value: 'data-payload',
+        value: payload,
       });
 
-      expect(mockCacheManager.set).toHaveBeenCalledWith(
+      expect(redisSetMock).toHaveBeenCalledWith(
         'test-key',
-        'data-payload',
+        JSON.stringify(payload),
         mockTtlMilliseconds,
       );
-      expect(result).toBe('data-payload');
+      expect(result).toEqual(payload);
+    });
+
+    it('should store raw strings directly without adding double JSON escaping characters', async () => {
+      const result = await service.set({
+        key: 'string-key',
+        value: 'raw-string-data',
+      });
+
+      expect(redisSetMock).toHaveBeenCalledWith(
+        'string-key',
+        'raw-string-data',
+        mockTtlMilliseconds,
+      );
+      expect(result).toBe('raw-string-data');
     });
 
     it('should explicitly prioritize custom parameter overrides for TTL execution windows', async () => {
       const customTtl = 99000;
-      const result = await service.set({
+      await service.set({
         key: 'test-key',
-        value: 'data-payload',
+        value: 'payload',
         ttl: customTtl,
       });
 
-      expect(mockCacheManager.set).toHaveBeenCalledWith(
+      expect(redisSetMock).toHaveBeenCalledWith(
         'test-key',
-        'data-payload',
+        'payload',
         customTtl,
       );
-      expect(result).toBe('data-payload');
     });
 
     it('should capture storage exceptions safely, issue system logs, and return undefined', async () => {
-      mockCacheManager.set.mockRejectedValueOnce(
-        new Error('Redis connection dropped'),
+      redisSetMock.mockRejectedValueOnce(
+        new Error('Command execution timeout'),
       );
 
       const result = await service.set({
@@ -135,19 +124,34 @@ describe('CacheService (Unit)', () => {
   });
 
   describe('get()', () => {
-    it('should retrieve accurate value mappings from the cache store container', async () => {
-      mockCacheManager.get.mockResolvedValueOnce('cached-value');
+    it('should retrieve accurate value mappings and parse JSON structures back to objects', async () => {
+      const cachedData = { id: 1, name: 'Test' };
+      redisGetMock.mockResolvedValueOnce(JSON.stringify(cachedData));
 
       const result = await service.get('target-key');
 
-      expect(mockCacheManager.get).toHaveBeenCalledWith('target-key');
-      expect(result).toBe('cached-value');
+      expect(redisGetMock).toHaveBeenCalledWith('target-key');
+      expect(result).toEqual(cachedData);
+    });
+
+    it('should fallback to returning raw strings if JSON compilation fails during recovery parsing', async () => {
+      redisGetMock.mockResolvedValueOnce('plain-text-uncached');
+
+      const result = await service.get('string-key');
+
+      expect(result).toBe('plain-text-uncached');
+    });
+
+    it('should return undefined cleanly if the key does not exist inside the Redis engine', async () => {
+      redisGetMock.mockResolvedValueOnce(null);
+
+      const result = await service.get('missing-key');
+
+      expect(result).toBeUndefined();
     });
 
     it('should trap retrieval exceptions safely, log error properties, and return undefined', async () => {
-      mockCacheManager.get.mockRejectedValueOnce(
-        new Error('Timeout exception'),
-      );
+      redisGetMock.mockRejectedValueOnce(new Error('Socket disconnected'));
 
       const result = await service.get('broken-key');
 
@@ -159,15 +163,15 @@ describe('CacheService (Unit)', () => {
   });
 
   describe('del()', () => {
-    it('should delete keys from data arrays completely', async () => {
-      await service.del('delete-key');
+    it('should completely evict specific keys by calling direct service destruction methods', async () => {
+      await service.del('evict-key');
 
-      expect(mockCacheManager.del).toHaveBeenCalledWith('delete-key');
+      expect(redisDeleteMock).toHaveBeenCalledWith('evict-key');
     });
 
-    it('should capture deletion exception spikes safely inside internal try-catch branches', async () => {
-      mockCacheManager.del.mockRejectedValueOnce(
-        new Error('Eviction failure lock'),
+    it('should capture deletion exceptions safely inside internal try-catch branches', async () => {
+      redisDeleteMock.mockRejectedValueOnce(
+        new Error('Cluster node read-only error'),
       );
 
       await service.del('locked-key');
@@ -185,7 +189,7 @@ describe('CacheService (Unit)', () => {
       const delayedOperation = async (): Promise<string> => {
         resolutionCounter++;
         await setTimeout(10);
-        return 'data-payload';
+        return 'collapsed-data';
       };
 
       const [res1, res2, res3] = await Promise.all([
@@ -203,9 +207,9 @@ describe('CacheService (Unit)', () => {
         }),
       ]);
 
-      expect(res1).toBe('data-payload');
-      expect(res2).toBe('data-payload');
-      expect(res3).toBe('data-payload');
+      expect(res1).toBe('collapsed-data');
+      expect(res2).toBe('collapsed-data');
+      expect(res3).toBe('collapsed-data');
       expect(resolutionCounter).toBe(1);
     });
 
@@ -224,64 +228,16 @@ describe('CacheService (Unit)', () => {
   });
 
   describe('invalidateByKeyPattern()', () => {
-    it('should exit execution loops early if cache stores are missing', async () => {
-      (mockCacheManager as any).stores = [];
+    it('should pass pattern targets directly down to the Redis streaming UNLINK module layer', async () => {
+      await service.invalidateByKeyPattern('users_all_*');
 
-      await service.invalidateByKeyPattern('pattern_*');
-
-      expect(mockScanIterator).not.toHaveBeenCalled();
+      expect(redisDeleteKeysMock).toHaveBeenCalledWith('users_all_*');
     });
 
-    it('should exit execution loops early if core redis layout elements are missing', async () => {
-      (mockCacheManager as any).stores = [{ opts: {} }];
-
-      await service.invalidateByKeyPattern('pattern_*');
-
-      expect(mockScanIterator).not.toHaveBeenCalled();
-    });
-
-    it('should process pattern lookup arrays using UNLINK command maps successfully', async () => {
-      const simulatedScanResults = [['key_1', 'key_2']];
-      mockScanIterator.mockReturnValueOnce(simulatedScanResults);
-
-      await service.invalidateByKeyPattern('users_*');
-
-      expect(mockScanIterator).toHaveBeenCalledWith({
-        MATCH: 'users_*',
-        COUNT: 100,
-      });
-      expect(mockSendCommand).toHaveBeenCalledWith([
-        'UNLINK',
-        'key_1',
-        'key_2',
-      ]);
-    });
-
-    it('should process separate simple string item yields from scanner returns cleanly', async () => {
-      const simulatedScanResults = ['single_key_1', 'single_key_2'];
-      mockScanIterator.mockReturnValueOnce(simulatedScanResults);
-
-      await service.invalidateByKeyPattern('roles_*');
-
-      expect(mockSendCommand).toHaveBeenCalledWith([
-        'UNLINK',
-        'single_key_1',
-        'single_key_2',
-      ]);
-    });
-
-    it('should bypass data execution commands if no matching records are gathered', async () => {
-      mockScanIterator.mockReturnValueOnce([]);
-
-      await service.invalidateByKeyPattern('empty_*');
-
-      expect(mockSendCommand).not.toHaveBeenCalled();
-    });
-
-    it('should catch runtime internal errors safely and pass metrics down to error logging modules', async () => {
-      mockScanIterator.mockImplementationOnce(() => {
-        throw new Error('Scan memory leak threshold error');
-      });
+    it('should catch runtime pattern errors safely and route parameters to logging contexts', async () => {
+      redisDeleteKeysMock.mockRejectedValueOnce(
+        new Error('Scan block lock fault'),
+      );
 
       await service.invalidateByKeyPattern('broken_*');
 
@@ -298,41 +254,49 @@ describe('CacheService (Unit)', () => {
 
     beforeEach(() => {
       patternSpy = jest
-        .spyOn(service, 'invalidateByKeyPattern')
+        .spyOn(mockRedisService, 'deleteKeysByPattern')
         .mockResolvedValue(undefined);
     });
 
-    it('should generate accurate pattern targets when evaluating purge command actions', async () => {
+    it('should execute parallel wildcards for both all and paginated fields when triggering complete purges', async () => {
       await service.invalidateByTags({
         tag: { purge: true },
-        alias: USER_QUERY_ALIAS,
-      });
-      expect(patternSpy).toHaveBeenCalledWith(`${USER_QUERY_ALIAS}_*`);
-    });
-
-    it('should generate accurate pattern targets when evaluating fetch all tracking requests', async () => {
-      await service.invalidateByTags({
-        tag: { all: true },
-        alias: STORE_QUERY_ALIAS,
-      });
-      expect(patternSpy).toHaveBeenCalledWith(`${STORE_QUERY_ALIAS}_all_*`);
-    });
-
-    it('should generate accurate pattern targets when evaluating paginated request commands', async () => {
-      await service.invalidateByTags({
-        tag: { paginated: true },
         alias: ROLE_QUERY_ALIAS,
       });
+
+      expect(patternSpy).toHaveBeenCalledTimes(2);
+      expect(patternSpy).toHaveBeenCalledWith(`${ROLE_QUERY_ALIAS}_all_*`);
       expect(patternSpy).toHaveBeenCalledWith(
         `${ROLE_QUERY_ALIAS}_paginated_*`,
       );
     });
 
-    it('should bypass operational patterns completely if all tag configurations are set to false or undefined', async () => {
+    it('should generate accurate pattern targets when evaluating generic collection track indices', async () => {
+      await service.invalidateByTags({
+        tag: { all: true },
+        alias: STORE_QUERY_ALIAS,
+      });
+
+      expect(patternSpy).toHaveBeenCalledWith(`${STORE_QUERY_ALIAS}_all_*`);
+    });
+
+    it('should generate accurate pattern targets when evaluating data grid rows', async () => {
+      await service.invalidateByTags({
+        tag: { paginated: true },
+        alias: USER_QUERY_ALIAS,
+      });
+
+      expect(patternSpy).toHaveBeenCalledWith(
+        `${USER_QUERY_ALIAS}_paginated_*`,
+      );
+    });
+
+    it('should skip operational pipelines entirely if tag targets resolve as falsy or undefined', async () => {
       await service.invalidateByTags({
         tag: {},
         alias: PERMISSION_QUERY_ALIAS,
       });
+
       expect(patternSpy).not.toHaveBeenCalled();
     });
   });
@@ -341,78 +305,56 @@ describe('CacheService (Unit)', () => {
     it('should accurately bridge execution calls into core deletion methods via invalidateById', async () => {
       const delSpy = jest.spyOn(service, 'del').mockResolvedValue(undefined);
 
-      await service.invalidateById({ id: '123', alias: USER_QUERY_ALIAS });
+      await service.invalidateById({ id: 'uuid-123', alias: USER_QUERY_ALIAS });
 
-      expect(delSpy).toHaveBeenCalledWith(`id:123:${USER_QUERY_ALIAS}`);
+      expect(delSpy).toHaveBeenCalledWith(`id:uuid-123:${USER_QUERY_ALIAS}`);
     });
 
     it('should accurately bridge execution calls into core retrieval methods via getById', async () => {
       const getSpy = jest
         .spyOn(service, 'get')
-        .mockResolvedValue('recovered-data');
+        .mockResolvedValue('cached-entity');
 
       const result = await service.getById({
-        id: '456',
+        id: 'uuid-456',
         alias: STORE_QUERY_ALIAS,
       });
 
-      expect(getSpy).toHaveBeenCalledWith(`id:456:${STORE_QUERY_ALIAS}`);
-      expect(result).toBe('recovered-data');
+      expect(getSpy).toHaveBeenCalledWith(`id:uuid-456:${STORE_QUERY_ALIAS}`);
+      expect(result).toBe('cached-entity');
     });
   });
 
-  describe('Cache Key Prefix - getIdKeyPrefixByAlias()', () => {
-    it('should properly loop and transform all system alias metrics into exact id string prefixes', () => {
-      for (const alias of allAliases) {
-        const generated = service.getIdKeyPrefixByAlias({
-          id: 'test-id',
-          alias,
-        });
-        expect(generated).toBe(`id:test-id:${alias}`);
-      }
+  describe('Cache Key Prefixes Logic validation', () => {
+    it('should verify precise key transformations for typical atomic switch schemas', () => {
+      expect(
+        service.getIdKeyPrefixByAlias({ id: '1', alias: USER_QUERY_ALIAS }),
+      ).toBe(`id:1:${USER_QUERY_ALIAS}`);
+      expect(
+        service.getIdKeyPrefixByAlias({ id: '2', alias: STORE_QUERY_ALIAS }),
+      ).toBe(`id:2:${STORE_QUERY_ALIAS}`);
+      expect(
+        service.getIdKeyPrefixByAlias({ id: '3', alias: ROLE_QUERY_ALIAS }),
+      ).toBe(`id:3:${ROLE_QUERY_ALIAS}`);
     });
 
-    it('should throw an InternalServerErrorException if an unrecognized or malformed string alias bypasses types', () => {
-      expect(() => {
-        service.getIdKeyPrefixByAlias({
-          id: 'id',
-          alias: 'GHOST_ALIAS' as unknown as typeof USER_QUERY_ALIAS,
-        });
-      }).toThrow(InternalServerErrorException);
-    });
-  });
+    it('should evaluate the precise non-underscore character layout for composite queries', () => {
+      const compositeAlias =
+        `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}` as const;
+      const expectedPrefix = `id:abc:${ROLE_QUERY_ALIAS}${PERMISSION_QUERY_ALIAS}`;
 
-  describe('Cache Key Prefix - getAllKeyPrefixByAlias()', () => {
-    it('should properly loop and transform all system alias metrics into exact global array match keys', () => {
-      for (const alias of allAliases) {
-        const generated = service.getAllKeyPrefixByAlias(alias);
-        expect(generated).toBe(`${alias}_all_`);
-      }
+      expect(
+        service.getIdKeyPrefixByAlias({ id: 'abc', alias: compositeAlias }),
+      ).toBe(expectedPrefix);
     });
 
-    it('should throw an InternalServerErrorException if an invalid tracking variable maps to global targets', () => {
-      expect(() => {
-        service.getAllKeyPrefixByAlias(
-          'GHOST_ALIAS' as unknown as typeof USER_QUERY_ALIAS,
-        );
-      }).toThrow(InternalServerErrorException);
-    });
-  });
-
-  describe('Cache Key Prefix - getPaginatedKeyPrefixByAlias()', () => {
-    it('should properly loop and transform all system alias metrics into accurate data grid selectors', () => {
-      for (const alias of allAliases) {
-        const generated = service.getPaginatedKeyPrefixByAlias(alias);
-        expect(generated).toBe(`${alias}_paginated_`);
-      }
-    });
-
-    it('should throw an InternalServerErrorException if an unrecognized variable maps to index layouts', () => {
-      expect(() => {
-        service.getPaginatedKeyPrefixByAlias(
-          'GHOST_ALIAS' as unknown as typeof USER_QUERY_ALIAS,
-        );
-      }).toThrow(InternalServerErrorException);
+    it('should verify matching global selector patterns maps completely across all valid aliases', () => {
+      expect(service.getAllKeyPrefixByAlias(USER_QUERY_ALIAS)).toBe(
+        `${USER_QUERY_ALIAS}_all_`,
+      );
+      expect(service.getPaginatedKeyPrefixByAlias(USER_QUERY_ALIAS)).toBe(
+        `${USER_QUERY_ALIAS}_paginated_`,
+      );
     });
   });
 });

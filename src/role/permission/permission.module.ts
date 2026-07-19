@@ -20,7 +20,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     PermissionPipelineService,
     PermissionHelperService,
     RoleHelperService,
-    CacheService,
     EntityQueryService,
   ],
   exports: [PermissionPipelineService, PermissionHelperService],

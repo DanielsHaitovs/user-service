@@ -50,7 +50,6 @@ describe('AuthController (e2e)', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    requireAuthSpy.mockReturnValue(true); // Reset to true before every case
 
     testUser = await createTestUser({
       userPipelineService,
@@ -70,7 +69,6 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('POST /v1/auth/login', () => {
-    // Scenario 1
     it('201 CREATED - should successfully authenticate valid credentials and issue a JWT token', async () => {
       const payload: AuthenticateDto = {
         email: testUser.email,
@@ -91,7 +89,6 @@ describe('AuthController (e2e)', () => {
       expect(typeof body.token).toBe('string');
     });
 
-    // Scenario 2
     it('401 UNAUTHORIZED - should reject handshakes with custom message if the email does not exist', async () => {
       const payload: AuthenticateDto = {
         email: 'ghost-account@example.com',
@@ -111,7 +108,6 @@ describe('AuthController (e2e)', () => {
       expect(body.message).toBe('Invalid credentials');
     });
 
-    // Scenario 3
     it('401 UNAUTHORIZED - should reject handshakes with standard exception if the password fails verification', async () => {
       const payload: AuthenticateDto = {
         email: testUser.email,
@@ -128,7 +124,6 @@ describe('AuthController (e2e)', () => {
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
     });
 
-    // Scenario 4
     it('401 UNAUTHORIZED - should block authentication if the account status is inactive', async () => {
       await updateTestUser({
         dataSource,
@@ -151,7 +146,6 @@ describe('AuthController (e2e)', () => {
       expect(body.message).toBe('User account is inactive');
     });
 
-    // Scenario 5
     it('401 UNAUTHORIZED - should block authentication if the email verification status is false', async () => {
       await updateTestUser({
         dataSource,
@@ -213,7 +207,6 @@ describe('AuthController (e2e)', () => {
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
     });
 
-    // Scenario 8
     it('400 BAD REQUEST - should throw bad request if required password parameter is missing', async () => {
       const payload = { email: testUser.email };
 

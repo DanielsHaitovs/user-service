@@ -1,4 +1,6 @@
+import { ROOT_ADMIN_PERMISSION } from '@/commonConst/permission.const';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
+import type { GetPermissionDto } from '@/permissionDto/permission.dto';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import { createTestPermissions } from '@/test/db/permission';
 import { validatePermissionResponseDto } from '@/test/validate/permission';
@@ -14,6 +16,8 @@ describe('PermissionPipelineService (Integration)', () => {
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
   let cacheSetSpy: jest.SpyInstance;
+  let cacheGetByIdSpy: jest.SpyInstance;
+  let rootPermission: GetPermissionDto;
 
   beforeAll(async () => {
     ({
@@ -22,15 +26,22 @@ describe('PermissionPipelineService (Integration)', () => {
       systemUserId,
       permissionPipelineService,
       cacheSetSpy,
+      cacheGetByIdSpy,
     } = await bootstrapTestApp());
 
     permissionPipelineService = moduleFixture.get<PermissionPipelineService>(
       PermissionPipelineService,
     );
+    rootPermission = await permissionPipelineService.getByCodeOrThrow(
+      ROOT_ADMIN_PERMISSION,
+    );
+    await permissionPipelineService.getByIdOrThrow(rootPermission.id);
   });
 
   beforeEach(() => {
     jest.clearAllMocks();
+    cacheSetSpy.mockClear();
+    cacheGetByIdSpy.mockClear();
   });
 
   afterAll(async () => {
@@ -65,6 +76,17 @@ describe('PermissionPipelineService (Integration)', () => {
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+    });
+    it('should retrieve admin permission from cache by id', async () => {
+      validatePermissionResponseDto({
+        response: await permissionPipelineService.getByIdOrThrow(
+          rootPermission.id,
+        ),
+        expected: rootPermission,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should throw EntityNotFoundError when looking up a missing permission', async () => {

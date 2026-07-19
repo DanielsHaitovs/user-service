@@ -4,22 +4,22 @@ import {
   ExecutionContext,
   HttpException,
   HttpStatus,
-  Inject,
   Injectable,
   Logger,
   NestInterceptor,
 } from '@nestjs/common';
 
 import { FastifyRequest } from 'fastify';
-import Redis from 'ioredis';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+
+import { RedisService } from '../base/service/redis.service';
 
 @Injectable()
 export class ResourceLockInterceptor implements NestInterceptor {
   private readonly logger = new Logger(ResourceLockInterceptor.name);
 
-  constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis) {}
+  constructor(private readonly redisService: RedisService) {}
 
   async intercept(
     context: ExecutionContext,
@@ -41,12 +41,10 @@ export class ResourceLockInterceptor implements NestInterceptor {
 
     const lockKey = `lock:role:${resourceId}`;
 
-    const acquiredLock = await this.redisClient.set(
+    const acquiredLock = await this.redisService.setUnique(
       lockKey,
       'PROCESSING',
-      'EX',
       3,
-      'NX',
     );
 
     if (acquiredLock === null) {
@@ -58,7 +56,7 @@ export class ResourceLockInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap(() => {
-        void this.redisClient.del(lockKey).catch((err: unknown) => {
+        void this.redisService.delete(lockKey).catch((err: unknown) => {
           const errorObj =
             typeof err === 'object' && err !== null
               ? (err as Record<string, unknown>)
@@ -89,7 +87,7 @@ export class ResourceLockInterceptor implements NestInterceptor {
         });
       }),
       catchError((error: unknown) => {
-        void this.redisClient.del(lockKey).catch((err: unknown) => {
+        void this.redisService.delete(lockKey).catch((err: unknown) => {
           const errorObj =
             typeof err === 'object' && err !== null
               ? (err as Record<string, unknown>)

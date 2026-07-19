@@ -5,7 +5,6 @@ import {
   ExecutionContext,
   HttpException,
   HttpStatus,
-  Inject,
   Injectable,
   Logger,
   NestInterceptor,
@@ -14,9 +13,10 @@ import { Reflector } from '@nestjs/core';
 
 import * as crypto from 'crypto';
 import { FastifyRequest } from 'fastify';
-import Redis from 'ioredis';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+
+import { RedisService } from '../base/service/redis.service';
 
 interface IdempotencyCache {
   status: 'PROCESSING' | 'COMPLETED';
@@ -29,7 +29,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
   constructor(
     private readonly reflector: Reflector,
-    @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+    private readonly redisService: RedisService,
   ) {}
 
   async intercept(
@@ -67,7 +67,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     const redisKey = `idempotency:${userId}:${payloadHash}`;
     const ttl = options.ttl ?? 5;
 
-    const existingLock = await this.redisClient.get(redisKey);
+    const existingLock = await this.redisService.get(redisKey);
 
     if (existingLock !== null) {
       const { status, response } = JSON.parse(existingLock) as IdempotencyCache;
@@ -82,12 +82,10 @@ export class IdempotencyInterceptor implements NestInterceptor {
       return of(response);
     }
 
-    const acquiredLock = await this.redisClient.set(
+    const acquiredLock = await this.redisService.setUnique(
       redisKey,
       JSON.stringify({ status: 'PROCESSING' }),
-      'EX',
       ttl,
-      'NX',
     );
 
     if (acquiredLock === null) {
@@ -99,14 +97,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap((responsePayload: unknown) => {
-        void this.redisClient
+        void this.redisService
           .set(
             redisKey,
             JSON.stringify({
               status: 'COMPLETED',
               response: responsePayload,
             }),
-            'EX',
             ttl,
           )
           .catch((err: unknown) => {
@@ -137,7 +134,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
           });
       }),
       catchError((error: unknown) => {
-        void this.redisClient.del(redisKey).catch((err: unknown) => {
+        void this.redisService.delete(redisKey).catch((err: unknown) => {
           const errorObj =
             typeof err === 'object' && err !== null
               ? (err as Record<string, unknown>)

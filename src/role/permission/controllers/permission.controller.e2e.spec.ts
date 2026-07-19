@@ -22,6 +22,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
+import { validatePermissionResponseDto } from '../../../../test/validate/permission';
+
 describe('PermissionController (e2e)', () => {
   let app: NestFastifyApplication;
   let dataSource: DataSource;
@@ -30,7 +32,7 @@ describe('PermissionController (e2e)', () => {
   let systemUserId: UUID;
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
-  let cacheGetSpy: jest.SpyInstance;
+  let cacheGetByIdSpy: jest.SpyInstance;
   let permission: Permission;
   let permission2: Permission;
   let userPipelineService: UserPipelineService;
@@ -51,7 +53,7 @@ describe('PermissionController (e2e)', () => {
       systemUserId,
       systemPermissions,
       cacheSetSpy,
-      cacheGetSpy,
+      cacheGetByIdSpy,
       userPipelineService,
       rolePipelineService,
       userRolePipelineService,
@@ -99,7 +101,7 @@ describe('PermissionController (e2e)', () => {
     );
 
     cacheSetSpy.mockClear();
-    cacheGetSpy.mockClear();
+    cacheGetByIdSpy.mockClear();
   });
 
   beforeEach(async () => {
@@ -126,7 +128,7 @@ describe('PermissionController (e2e)', () => {
     });
 
     cacheSetSpy.mockClear();
-    cacheGetSpy.mockClear();
+    cacheGetByIdSpy.mockClear();
   });
 
   afterAll(async () => {
@@ -134,7 +136,7 @@ describe('PermissionController (e2e)', () => {
   });
 
   describe('GET /v1/permission/id/:id', () => {
-    it('200 OK - should successfully fetch permission payload using a real authorized  root user token', async () => {
+    it('200 OK - should successfully fetch permission payload using a real authorized root user token', async () => {
       const headers = await loginTestUser({
         app,
         email: rootUser.email,
@@ -142,7 +144,7 @@ describe('PermissionController (e2e)', () => {
       });
 
       cacheSetSpy.mockClear();
-      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
 
       const response = await app.inject({
         method: 'GET',
@@ -153,10 +155,14 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.OK);
 
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', permission2.id);
-      expect(body).toHaveProperty('code', permission2.code);
+
+      validatePermissionResponseDto({
+        response: body,
+        expected: permission2,
+      });
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
     it('200 OK - should successfully fetch permission payload using a real authorized user token', async () => {
@@ -169,10 +175,14 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.OK);
 
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', permission.id);
-      expect(body).toHaveProperty('code', permission.code);
+
+      validatePermissionResponseDto({
+        response: body,
+        expected: permission,
+      });
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
     it('404 NOT FOUND - should throw entity exception when requested by a real authorized user', async () => {
@@ -190,7 +200,7 @@ describe('PermissionController (e2e)', () => {
         /Could not find any entity of type "Permission"/,
       );
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
     });
 
     it('400 BAD REQUEST - should fail validation pipe checks before hitting the controller logic', async () => {
@@ -202,7 +212,7 @@ describe('PermissionController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should block a real user request if their token lacks the systemic scope', async () => {
@@ -214,7 +224,7 @@ describe('PermissionController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.UNAUTHORIZED);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
     it('403 FORBIDDEN - should block a real user request if user does not have required permission', async () => {
       await unAssignPermissionFromRole({
@@ -230,6 +240,9 @@ describe('PermissionController (e2e)', () => {
         password: testUserPassword,
       });
 
+      cacheSetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+
       const response = await app.inject({
         method: 'GET',
         url: `/v1/permission/id/${permission.id}`,
@@ -237,7 +250,8 @@ describe('PermissionController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
   });
   describe('GET /v1/permission/code/:code', () => {
@@ -249,7 +263,7 @@ describe('PermissionController (e2e)', () => {
       });
 
       cacheSetSpy.mockClear();
-      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
 
       const response = await app.inject({
         method: 'GET',
@@ -260,10 +274,14 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.OK);
 
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', permission.id);
-      expect(body).toHaveProperty('code', permission.code);
+
+      validatePermissionResponseDto({
+        response: body,
+        expected: permission,
+      });
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
     it('200 OK - should successfully fetch permission payload using a real authorized user token', async () => {
       const response = await app.inject({
@@ -275,12 +293,15 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.OK);
 
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', permission.id);
-      expect(body).toHaveProperty('code', permission.code);
-      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(0);
-    });
 
+      validatePermissionResponseDto({
+        response: body,
+        expected: permission,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+    });
     it('404 NOT FOUND - should throw entity exception when requested by a real authorized user', async () => {
       const missingUuid = randomUUID();
       const response = await app.inject({
@@ -296,9 +317,8 @@ describe('PermissionController (e2e)', () => {
         /Could not find any entity of type "Permission"/,
       );
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
-
     it('403 FORBIDDEN - should block a real user request if their token lacks the systemic scope', async () => {
       const response = await app.inject({
         method: 'GET',
@@ -308,7 +328,7 @@ describe('PermissionController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.UNAUTHORIZED);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-      expect(cacheGetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
     it('403 FORBIDDEN - should block a real user request if user does not have required permission', async () => {
       await unAssignPermissionFromRole({
@@ -324,6 +344,9 @@ describe('PermissionController (e2e)', () => {
         password: testUserPassword,
       });
 
+      cacheSetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+
       const response = await app.inject({
         method: 'GET',
         url: `/v1/permission/code/${permission.code}`,
@@ -331,7 +354,8 @@ describe('PermissionController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
     });
   });
 });

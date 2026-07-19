@@ -26,14 +26,20 @@ export async function createTestRole({
   overrides = {},
   createdById,
   cacheSetSpy,
+  cacheInvalidateByTagsSpy,
   auditLogSpy,
 }: {
   rolePipelineService: RolePipelineService;
   overrides?: Partial<CreateRoleDto>;
   createdById: UUID;
   cacheSetSpy: jest.SpyInstance;
+  cacheInvalidateByTagsSpy: jest.SpyInstance;
   auditLogSpy: jest.SpyInstance;
 }): Promise<RoleResponseDto> {
+  cacheSetSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  auditLogSpy.mockClear();
+
   const generatedName = `${faker.person.jobArea()} ${faker.person.jobType()}`;
 
   const createDto = {
@@ -61,6 +67,7 @@ export async function createTestRole({
   expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
   cacheSetSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
   auditLogSpy.mockClear();
 
   return newRole;
@@ -155,6 +162,8 @@ export async function createTestRoleWithPermissions({
   cacheSetSpy,
   auditLogSpy,
   cacheInvalidateByIdSpy,
+  cacheInvalidateByTagsSpy,
+  cacheInvalidateByKeyPatternSpy,
 }: {
   rolePipelineService: RolePipelineService;
   role?: Partial<CreateRoleDto>;
@@ -163,16 +172,20 @@ export async function createTestRoleWithPermissions({
   cacheSetSpy: jest.SpyInstance;
   auditLogSpy: jest.SpyInstance;
   cacheInvalidateByIdSpy: jest.SpyInstance;
+  cacheInvalidateByTagsSpy: jest.SpyInstance;
+  cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 }): Promise<RoleResponseDto> {
   cacheSetSpy.mockClear();
   auditLogSpy.mockClear();
   cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
 
   const newRole = await createTestRole({
     rolePipelineService,
     overrides: role,
     createdById,
     cacheSetSpy,
+    cacheInvalidateByTagsSpy,
     auditLogSpy,
   });
 
@@ -193,12 +206,14 @@ export async function createTestRoleWithPermissions({
 
     expect(cacheSetSpy).toHaveBeenCalledTimes(1);
     expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+    expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     expect(auditLogSpy).toHaveBeenCalledTimes(1);
   }
 
   cacheSetSpy.mockClear();
   auditLogSpy.mockClear();
   cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
 
   return newRole;
 }

@@ -1,16 +1,15 @@
 import { JwtPayload } from '@/auth/auth.interface';
 import { EnvConfigService } from '@/config/env/env.config.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { Cache } from 'cache-manager';
+import { CacheService } from '../base/service/cache.service';
 
 @Injectable()
 export class AuthCacheService {
   private readonly key = 'auth_token';
   constructor(
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly cacheService: CacheService,
     private readonly jwtService: JwtService,
     private readonly envConfigService: EnvConfigService,
   ) {}
@@ -24,18 +23,18 @@ export class AuthCacheService {
   }): Promise<void> {
     const cacheKey = `${this.key}:${token}`;
 
-    await this.cacheManager.set(
-      cacheKey,
-      payload,
-      this.envConfigService.jwtExpiration * 1000,
-    );
+    await this.cacheService.set<JwtPayload>({
+      key: cacheKey,
+      value: payload,
+      ttl: this.envConfigService.jwtExpiration * 1000,
+    });
   }
 
   async get(token: string): Promise<JwtPayload> {
     try {
       const cacheKey = `${this.key}:${token}`;
 
-      const cachedPayload = await this.cacheManager.get<JwtPayload>(cacheKey);
+      const cachedPayload = await this.cacheService.get<JwtPayload>(cacheKey);
 
       if (cachedPayload) {
         return cachedPayload;
@@ -52,6 +51,6 @@ export class AuthCacheService {
   }
 
   async del(key: string): Promise<void> {
-    await this.cacheManager.del(key);
+    await this.cacheService.del(key);
   }
 }

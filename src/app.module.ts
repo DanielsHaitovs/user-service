@@ -14,16 +14,8 @@ import { RolesModule } from '@/role/role.module';
 import { StoreModule } from '@/store/store.module';
 import { SystemModule } from '@/system/system.module';
 import { UserModule } from '@/user/user.module';
-import { createKeyv } from '@keyv/redis';
 import { BullModule } from '@nestjs/bullmq';
-import { CacheModule } from '@nestjs/cache-manager';
-import {
-  Inject,
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  OnApplicationShutdown,
-} from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -33,7 +25,6 @@ import {
   PrometheusModule,
 } from '@willsoto/nestjs-prometheus';
 
-import Redis from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 
@@ -48,6 +39,7 @@ export const httpRequestDurationProvider = makeHistogramProvider({
   controllers: [],
   imports: [
     EnvConfigModule,
+    BaseModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [EnvConfigService],
@@ -56,6 +48,7 @@ export const httpRequestDurationProvider = makeHistogramProvider({
           host: configService.redisHost,
           port: configService.redisPort,
           password: configService.redisPassword,
+          tls: { rejectUnauthorized: false },
         },
       }),
     }),
@@ -122,20 +115,13 @@ export const httpRequestDurationProvider = makeHistogramProvider({
         entities: [`${__dirname}/**/*.entity{.ts,.js}`],
         migrations: [`${__dirname}/migrations/*{.ts,.js}`],
         autoLoadEntities: true,
+        ssl: false,
+        extra: {
+          max: 15,
+          connectionTimeoutMillis: 5000,
+        },
       }),
       inject: [EnvConfigService],
-    }),
-    CacheModule.registerAsync({
-      isGlobal: true,
-      inject: [EnvConfigService],
-      useFactory: (configService: EnvConfigService) => {
-        const redisUrl = `redis://:${configService.redisPassword}@${configService.redisHost}:${configService.redisPort.toString()}`;
-
-        return {
-          stores: [createKeyv(redisUrl)],
-          ttl: configService.userCacheTtl,
-        };
-      },
     }),
     PrometheusModule.registerAsync({
       controller: MetricsController,
@@ -150,24 +136,12 @@ export const httpRequestDurationProvider = makeHistogramProvider({
     UserModule,
     RolesModule,
     StoreModule,
-    BaseModule,
     AuthModule,
     SystemModule,
     // ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
   providers: [
     httpRequestDurationProvider,
-    {
-      provide: 'REDIS_CLIENT',
-      useFactory: (config: EnvConfigService) => {
-        return new Redis({
-          host: config.redisHost,
-          port: config.redisPort,
-          password: config.redisPassword,
-        });
-      },
-      inject: [EnvConfigService],
-    },
     {
       provide: APP_INTERCEPTOR,
       useClass: MetricsInterceptor,
@@ -181,16 +155,9 @@ export const httpRequestDurationProvider = makeHistogramProvider({
       useClass: ResourceLockInterceptor,
     },
   ],
-  exports: ['REDIS_CLIENT'],
 })
-export class AppModule implements NestModule, OnApplicationShutdown {
-  constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis) {}
-
+export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(TraceMiddleware).exclude('metrics').forRoutes('*');
-  }
-
-  async onApplicationShutdown(): Promise<void> {
-    await this.redisClient.quit();
   }
 }

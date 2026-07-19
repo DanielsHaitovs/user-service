@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: user-sys
+  name: user-sys
+spec:
+  type: NodePort # 👈 1. Add this line
+  ports:
+    - name: "3001"
+      port: 3001
+      targetPort: 3001
+      nodePort: 30000 # 👈 2. Add this line to open it to your host
+  selector:
+    io.kompose.service: user-sys

@@ -1,77 +1,163 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { AuthModule } from '@/auth/auth.module';
-import { DepartmentModule } from '@/department/department.module';
+import { BaseModule } from '@/base/base.module';
+import { MetricsController } from '@/base/metrics.controller';
+import { EnvConfigService } from '@/config/env/env.config.service';
+import { EnvConfigModule } from '@/config/env/env.module';
+import { Environment } from '@/config/env/env.validation';
+import { IdempotencyInterceptor } from '@/interceptors/idempotency.interceptor';
+import { MetricsInterceptor } from '@/interceptors/metrics.interceptor';
+import { ResourceLockInterceptor } from '@/interceptors/resource-lock.interceptor';
 import { TraceMiddleware } from '@/middleware/tracing.middleware';
 import { RolesModule } from '@/role/role.module';
+import { StoreModule } from '@/store/store.module';
+import { SystemModule } from '@/system/system.module';
 import { UserModule } from '@/user/user.module';
+import { BullModule } from '@nestjs/bullmq';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import {
+  makeHistogramProvider,
+  PrometheusModule,
+} from '@willsoto/nestjs-prometheus';
 
-import { AppController } from './modules/app.controller';
+import { LoggerModule } from 'nestjs-pino';
+import pino from 'pino';
+
+export const httpRequestDurationProvider = makeHistogramProvider({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+});
 
 @Module({
-  controllers: [AppController],
-  providers: [],
+  controllers: [],
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
+    EnvConfigModule,
+    BaseModule,
+    ScheduleModule.forRoot(),
+    BullModule.forRootAsync({
+      inject: [EnvConfigService],
+      useFactory: (configService: EnvConfigService) => ({
+        connection: {
+          host: configService.redisHost,
+          port: configService.redisPort,
+          password: configService.redisPassword,
+          tls: { rejectUnauthorized: false },
+        },
+      }),
+    }),
+    LoggerModule.forRootAsync({
+      inject: [EnvConfigService],
+      useFactory: (configService: EnvConfigService) => {
+        return {
+          pinoHttp: {
+            autoLogging: false,
+            level: 'trace',
+            serializers: {
+              req: () => undefined,
+              res: () => undefined,
+              err: pino.stdSerializers.err,
+            },
+            ...(configService.nodeEnv === Environment.Test ||
+            configService.nodeEnv === Environment.Development
+              ? {
+                  transport: {
+                    target: 'pino-pretty',
+                    options: {
+                      pid: true,
+                      colorize: true,
+                      singleLine: true,
+                      translateTime: 'SYS:mm/dd/yyyy, h:MM:ss TT',
+                      messageFormat: '[{context}] {msg}',
+                      ignore: 'hostname,context,req',
+                    },
+                  },
+                }
+              : {}),
+            ...(configService.nodeEnv !== Environment.Test
+              ? {
+                  stream: pino.destination({ sync: false, minLength: 4096 }),
+                }
+              : {}),
+          },
+        };
+      },
     }),
     ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      // eslint-disable-next-line sonarjs/function-return-type
-      useFactory: (configService: ConfigService): ThrottlerModuleOptions => {
-        const ttl = parseInt(
-          configService.get<string>('THROTTLE_TTL') ?? '60',
-          10,
-        );
-        const limit = parseInt(
-          configService.get<string>('THROTTLE_LIMIT') ?? '5',
-          10,
-        );
-
+      useFactory: (configService: EnvConfigService) => {
         return {
           throttlers: [
             {
-              ttl,
-              limit,
+              ttl: configService.throttleTtl,
+              limit: configService.throttleLimit,
             },
           ],
         };
       },
+      inject: [EnvConfigService],
     }),
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: (configService: EnvConfigService) => ({
         type: 'postgres',
-        host: configService.get('DATABASE_HOST') ?? 'localhost',
-        port: parseInt(
-          configService.get('USER_USER_DATABASE_PORT') ?? '5432',
-          10,
-        ),
-        username: configService.get('DATABASE_USERNAME') ?? 'postgres',
-        password: configService.get('DATABASE_PASSWORD') ?? 'postgres',
-        database: configService.get('USER_DATABASE_NAME') ?? 'postgres',
-        synchronize: configService.get('DATABASE_SYNCHRONIZE') === 'true',
-        logging: configService.get('DATABASE_LOGGING') === 'true',
+        host: configService.databaseHost,
+        port: configService.databasePort,
+        username: configService.databaseUsername,
+        password: configService.databasePassword,
+        database: configService.databaseName,
+        synchronize: configService.databaseSync,
+        logging: configService.databaseLogging ? 'all' : ['error'],
         entities: [`${__dirname}/**/*.entity{.ts,.js}`],
         migrations: [`${__dirname}/migrations/*{.ts,.js}`],
         autoLoadEntities: true,
+        ssl: false,
+        extra: {
+          max: 15,
+          connectionTimeoutMillis: 5000,
+        },
       }),
-      inject: [ConfigService],
+      inject: [EnvConfigService],
+    }),
+    PrometheusModule.registerAsync({
+      controller: MetricsController,
+      useFactory: () => ({
+        path: '/metrics',
+        global: true,
+        defaultMetrics: {
+          enabled: true,
+        },
+      }),
     }),
     UserModule,
     RolesModule,
-    DepartmentModule,
+    StoreModule,
     AuthModule,
+    SystemModule,
+    // ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
+  ],
+  providers: [
+    httpRequestDurationProvider,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: MetricsInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: IdempotencyInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResourceLockInterceptor,
+    },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(TraceMiddleware).forRoutes('*');
+    consumer.apply(TraceMiddleware).exclude('metrics').forRoutes('*');
   }
 }

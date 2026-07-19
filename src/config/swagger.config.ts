@@ -7,7 +7,9 @@ html, body {
   background-color: #0d1117 !important;
 }
 
-.swagger-ui * {
+.swagger-ui,
+.swagger-ui h1, .swagger-ui h2, .swagger-ui h3, .swagger-ui h4, .swagger-ui h5, .swagger-ui h6,
+.swagger-ui p, .swagger-ui span, .swagger-ui div, .swagger-ui label, .swagger-ui li {
   color: #f0f6fc !important;
 }
 
@@ -366,12 +368,15 @@ html, body {
  */
 export const swaggerSetupOptions = {
   swaggerOptions: {
+    url: '/users/api-json',
     persistAuthorization: true,
     docExpansion: 'none',
     filter: true,
+    operationsSorter: 'alpha',
     showRequestDuration: true,
   },
-  customSiteTitle: 'MakeEasyCommerce API Docs',
+  customSiteTitle: 'MEC • User API',
   customfavIcon: '/favicon.ico',
   customCss: SWAGGER_DARK_THEME_CSS,
+  useGlobalPrefix: true,
 };

@@ -1,0 +1,2 @@
+kubectl apply -f ./k8s/db/user-db-deployment.yaml -f ./k8s/db/user-db-service.yaml -f ./k8s/node/user-sys-deployment.yaml -f ./k8s/node/user-sys-hpa.yaml -f ./k8s/node/user-sys-service.yaml -n mec-app
+kubectl delete -f ./k8s/db/user-db-deployment.yaml -f ./k8s/db/user-db-service.yaml -f ./k8s/node/user-sys-deployment.yaml -f ./k8s/node/user-sys-hpa.yaml -f ./k8s/node/user-sys-service.yaml -n mec-app

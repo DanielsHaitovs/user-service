@@ -1,0 +1,60 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: user-sys
+  name: user-sys
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: user-sys
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert
+        kompose.version: 1.38.0 (HEAD)
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "3001"
+      labels:
+        io.kompose.service: user-sys
+    spec:
+      containers:
+        - args:
+            - npm
+            - run
+            - start:prod
+          env:
+            - name: NODE_OPTIONS
+              value: --max-old-space-size=2048 --max-semi-space-size=256
+            - name: REDIS_HOST
+              value: redis-cache
+            - name: UV_THREADPOOL_SIZE
+              value: "16"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://tempo:4318"
+          envFrom:
+            - configMapRef:
+                name: env
+          image: user_sys:latest
+          imagePullPolicy: Never
+          name: user-sys
+          ports:
+            - containerPort: 3001
+              protocol: TCP
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "3Gi"
+              cpu: "1000m"
+      restartPolicy: Always
+

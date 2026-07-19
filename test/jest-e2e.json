@@ -4,6 +4,8 @@
   "testEnvironment": "node",
   "moduleFileExtensions": ["js", "json", "ts"],
   "testRegex": ".e2e-spec.ts$",
+  "maxWorkers": 1,
+  "verbose": true,
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },

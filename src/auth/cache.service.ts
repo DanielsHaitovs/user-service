@@ -1,9 +1,8 @@
 import { JwtPayload } from '@/auth/auth.interface';
+import { CacheService } from '@/baseServices/cache.service';
 import { EnvConfigService } from '@/config/env/env.config.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-
-import { CacheService } from '../base/service/cache.service';
 
 @Injectable()
 export class AuthCacheService {

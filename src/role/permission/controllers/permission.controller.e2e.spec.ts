@@ -10,6 +10,7 @@ import { createTestPermissions } from '@/test/db/permission';
 import { loginTestUser } from '@/test/e2e/auth';
 import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
 import { initTestUser } from '@/test/pipeline/user';
+import { validatePermissionResponseDto } from '@/test/validate/permission';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserStorePipelineService } from '@/user/store.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
@@ -22,17 +23,19 @@ import type { TestingModule } from '@nestjs/testing';
 import { randomUUID, type UUID } from 'crypto';
 import type { DataSource } from 'typeorm';
 
-import { validatePermissionResponseDto } from '../../../../test/validate/permission';
-
 describe('PermissionController (e2e)', () => {
   let app: NestFastifyApplication;
   let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let authorizedHeader: Record<string, string>;
+  let authorizedRootHeader: Record<string, string>;
   let systemUserId: UUID;
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByTagsSpy: jest.SpyInstance;
+  let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
   let permission: Permission;
   let permission2: Permission;
   let userPipelineService: UserPipelineService;
@@ -54,6 +57,9 @@ describe('PermissionController (e2e)', () => {
       systemPermissions,
       cacheSetSpy,
       cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
       userPipelineService,
       rolePipelineService,
       userRolePipelineService,
@@ -92,9 +98,22 @@ describe('PermissionController (e2e)', () => {
       },
       systemPermissions: ['root_admin'],
       systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
     });
 
     rootUser = user;
+
+    authorizedRootHeader = await loginTestUser({
+      app,
+      email: rootUser.email,
+      password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+    });
 
     systemPermissions = systemPermissions.filter(
       (permission) => permission !== 'root_admin',
@@ -117,14 +136,22 @@ describe('PermissionController (e2e)', () => {
       },
       systemPermissions,
       systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
     });
 
     testUser = user;
     testRole = role;
+
     authorizedHeader = await loginTestUser({
       app,
       email: testUser.email,
       password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
     });
 
     cacheSetSpy.mockClear();
@@ -137,19 +164,10 @@ describe('PermissionController (e2e)', () => {
 
   describe('GET /v1/permission/id/:id', () => {
     it('200 OK - should successfully fetch permission payload using a real authorized root user token', async () => {
-      const headers = await loginTestUser({
-        app,
-        email: rootUser.email,
-        password: testUserPassword,
-      });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
-
       const response = await app.inject({
         method: 'GET',
         url: `/v1/permission/id/${permission2.id}`,
-        headers,
+        headers: authorizedRootHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);
@@ -234,14 +252,15 @@ describe('PermissionController (e2e)', () => {
         systemUserId,
       });
 
+      await userRolePipelineService.getPermissions(testUser.id);
+
       const headers = await loginTestUser({
         app,
         email: testUser.email,
         password: testUserPassword,
+        cacheSetSpy,
+        cacheGetByIdSpy,
       });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
 
       const response = await app.inject({
         method: 'GET',
@@ -256,19 +275,10 @@ describe('PermissionController (e2e)', () => {
   });
   describe('GET /v1/permission/code/:code', () => {
     it('200 OK - should successfully fetch permission payload using a real authorized  root user token', async () => {
-      const headers = await loginTestUser({
-        app,
-        email: rootUser.email,
-        password: testUserPassword,
-      });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
-
       const response = await app.inject({
         method: 'GET',
         url: `/v1/permission/code/${permission.code}`,
-        headers,
+        headers: authorizedRootHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);
@@ -338,10 +348,14 @@ describe('PermissionController (e2e)', () => {
         systemUserId,
       });
 
+      await userRolePipelineService.getPermissions(testUser.id);
+
       const headers = await loginTestUser({
         app,
         email: testUser.email,
         password: testUserPassword,
+        cacheSetSpy,
+        cacheGetByIdSpy,
       });
 
       cacheSetSpy.mockClear();

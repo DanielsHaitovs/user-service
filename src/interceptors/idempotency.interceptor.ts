@@ -1,3 +1,4 @@
+import { RedisService } from '@/baseServices/redis.service';
 import { IDEMPOTENCY_OPTIONS_KEY } from '@/commonDecorators/idempotent.decorator';
 import { getTraceId } from '@/utils/trace.util';
 import {
@@ -15,8 +16,6 @@ import * as crypto from 'crypto';
 import { FastifyRequest } from 'fastify';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-
-import { RedisService } from '../base/service/redis.service';
 
 interface IdempotencyCache {
   status: 'PROCESSING' | 'COMPLETED';
@@ -43,6 +42,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
     >();
 
     const { method, url, body } = request;
+
+    if (url.includes('login')) {
+      return next.handle();
+    }
+
     const traceId = getTraceId() ?? 'N/A';
 
     if (!['PUT', 'POST', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {

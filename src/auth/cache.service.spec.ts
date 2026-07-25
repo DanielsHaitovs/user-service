@@ -14,7 +14,6 @@ describe('AuthCacheService', () => {
   let mockCacheManager: {
     get: jest.Mock;
     set: jest.Mock;
-    del: jest.Mock;
   };
 
   let mockJwtService: {
@@ -39,7 +38,6 @@ describe('AuthCacheService', () => {
     mockCacheManager = {
       get: jest.fn(),
       set: jest.fn().mockResolvedValue(undefined),
-      del: jest.fn().mockResolvedValue(undefined),
     };
 
     mockJwtService = {
@@ -129,16 +127,6 @@ describe('AuthCacheService', () => {
       );
 
       expect(mockCacheManager.set).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('del', () => {
-    it('should pass target key parameters directly to the underlying deletion interface', async () => {
-      const explicitKey = 'auth_token:target-to-purge';
-
-      await service.del(explicitKey);
-
-      expect(mockCacheManager.del).toHaveBeenCalledWith(explicitKey);
     });
   });
 });

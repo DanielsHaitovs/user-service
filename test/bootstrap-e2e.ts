@@ -2,6 +2,7 @@ import { CacheService } from '@/baseServices/cache.service';
 import { EntityNotFoundFilter } from '@/common/error/entity-not-found.filter';
 import { COUNTRIES } from '@/commonConst/countries.const';
 import { EnvConfigService } from '@/config/env/env.config.service';
+import { Environment } from '@/config/env/env.validation';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import { RolePipelineService } from '@/role/role.pipeline';
 import { StorePipelineService } from '@/store/store.pipeline';
@@ -46,10 +47,10 @@ export interface BootstrappedApp {
 }
 
 export async function bootstrapTestApp(): Promise<BootstrappedApp> {
-  // process.env.USER_DATABASE_HOST = 'localhost';
-  // process.env.JWT_SECRET = 'your_jwt_secret';
-  // process.env.NODE_ENV = Environment.Test;
-  // process.env.REDIS_HOST = 'localhost';
+  process.env.USER_DATABASE_HOST = 'localhost';
+  process.env.JWT_SECRET = 'your_jwt_secret';
+  process.env.NODE_ENV = Environment.Test;
+  process.env.REDIS_HOST = 'localhost';
 
   const { AppModule } = await import('../src/app.module');
 

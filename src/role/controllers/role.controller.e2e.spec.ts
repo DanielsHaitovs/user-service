@@ -16,27 +16,22 @@ import {
   UPDATE_ROLE_ENDPOINT_PERMISSION,
 } from '@/system/const/role.const';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
-import { createTestRole } from '@/test/db/role';
-import { loginTestUser } from '@/test/e2e/auth';
-import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
+import { changePermissionsForTestUser, loginTestUser } from '@/test/e2e/auth';
+import { createTestRole } from '@/test/pipeline/role';
 import { initTestUser } from '@/test/pipeline/user';
+import { validateRoleResponseDto } from '@/test/validate/role';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserStorePipelineService } from '@/user/store.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
 import type { UserResponseDto } from '@/userDto/user.dto';
-import type { User } from '@/userEntities/user.entity';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { TestingModule } from '@nestjs/testing';
 
 import { randomUUID, type UUID } from 'crypto';
-import type { DataSource } from 'typeorm';
-
-import { validateRoleResponseDto } from '../../../test/validate/role';
 
 describe('RoleController (e2e)', () => {
   let app: NestFastifyApplication;
-  let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let authorizedHeader: Record<string, string>;
   let systemUserId: UUID;
@@ -74,7 +69,6 @@ describe('RoleController (e2e)', () => {
       userRolePipelineService,
       storePipelineService,
       userStorePipelineService,
-      dataSource,
     } = bootstrap);
     app = bootstrap.app as NestFastifyApplication;
 
@@ -96,6 +90,11 @@ describe('RoleController (e2e)', () => {
       },
       systemPermissions,
       systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
     });
 
     testUser = user;
@@ -104,14 +103,18 @@ describe('RoleController (e2e)', () => {
       app,
       email: testUser.email,
       password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
     });
 
     seedRole = await createTestRole({
-      dataSource,
+      rolePipelineService,
       overrides: {
         name: `SEED_ROLE_${randomUUID()}`,
-        createdBy: { id: systemUserId } as User,
       },
+      createdById: systemUserId,
+      cacheSetSpy,
+      cacheInvalidateByTagsSpy,
     });
 
     cacheSetSpy.mockClear();
@@ -142,26 +145,31 @@ describe('RoleController (e2e)', () => {
       expect(body.name).toBe(payload.name);
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('201 CREATED - should strip permissions down to empty array if user lacks permission to read permissions', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: READ_PERMISSION_ENDPOINT_PERMISSION,
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
-      cacheInvalidateByTagsSpy.mockClear();
 
       const payload = {
         name: `STRIPPED_ROLE_${randomUUID()}`,
@@ -176,27 +184,39 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+
+      const body = JSON.parse(response.payload);
+
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+      expect(body.permissions).toEqual([]);
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('201 CREATED - should strip permissions down to empty array if user lacks permission to assign permissions', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [ASSIGN_PERMISSION_TO_ROLE],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
-      cacheInvalidateByTagsSpy.mockClear();
 
       const payload = {
         name: `STRIPPED_ROLE_${randomUUID()}`,
@@ -211,27 +231,39 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+
+      const body = JSON.parse(response.payload);
+
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+      expect(body.permissions).toEqual([]);
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to create role', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [CREATE_ROLE],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
-      cacheInvalidateByTagsSpy.mockClear();
 
       const response = await app.inject({
         method: 'POST',
@@ -241,22 +273,39 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to read role', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_ROLE],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
       cacheSetSpy.mockClear();
@@ -272,7 +321,10 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to read role', async () => {
@@ -318,8 +370,11 @@ describe('RoleController (e2e)', () => {
         expected: seedRole,
       });
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should trigger exception mapping if the UUID does not point to an active record', async () => {
@@ -347,21 +402,24 @@ describe('RoleController (e2e)', () => {
     });
 
     it('403 BAD REQUEST - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_ROLE],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
 
       const response = await app.inject({
         method: 'GET',
@@ -395,17 +453,23 @@ describe('RoleController (e2e)', () => {
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks required search permissions', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_ROLE],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
       const response = await app.inject({
@@ -449,20 +513,23 @@ describe('RoleController (e2e)', () => {
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the required update scope', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: UPDATE_ROLE_ENDPOINT_PERMISSION,
         systemUserId,
-      });
-
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
-      cacheInvalidateByIdSpy.mockClear();
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
       const response = await app.inject({
@@ -506,22 +573,23 @@ describe('RoleController (e2e)', () => {
     });
 
     it('204 NO CONTENT - should process delete execution smoothly even if user lacks optional loose permissions', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
         systemUserId,
-      });
-
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
-      cacheInvalidateByIdSpy.mockClear();
-      cacheInvalidateByKeyPatternSpy.mockClear();
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
       const response = await app.inject({
@@ -550,24 +618,23 @@ describe('RoleController (e2e)', () => {
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks strict deletion scope permission', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: DELETE_ROLE_ENDPOINT_PERMISSION,
         systemUserId,
-      });
-
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
-      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
-
-      cacheInvalidateByIdSpy.mockClear();
-      cacheInvalidateByKeyPatternSpy.mockClear();
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
       const response = await app.inject({

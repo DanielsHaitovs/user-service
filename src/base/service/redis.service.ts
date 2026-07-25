@@ -24,7 +24,7 @@ export class RedisService
       autoResubscribe: true,
       maxRetriesPerRequest: 13,
       enableOfflineQueue: true,
-      tls: { rejectUnauthorized: false },
+      // tls: { rejectUnauthorized: false },
       retryStrategy: (times) => Math.min(times * 2000, 5000),
       reconnectOnError: (err) => err.message.startsWith('READONLY'),
     };

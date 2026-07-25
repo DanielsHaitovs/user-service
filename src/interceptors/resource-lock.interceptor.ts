@@ -1,3 +1,4 @@
+import { RedisService } from '@/baseServices/redis.service';
 import { getTraceId } from '@/utils/trace.util';
 import {
   CallHandler,
@@ -12,8 +13,6 @@ import {
 import { FastifyRequest } from 'fastify';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-
-import { RedisService } from '../base/service/redis.service';
 
 @Injectable()
 export class ResourceLockInterceptor implements NestInterceptor {
@@ -36,6 +35,10 @@ export class ResourceLockInterceptor implements NestInterceptor {
     }
 
     const { method, url } = request;
+
+    if (url.includes('login')) {
+      return next.handle();
+    }
 
     const traceId = getTraceId() ?? 'N/A';
 

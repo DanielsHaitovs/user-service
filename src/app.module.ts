@@ -48,7 +48,11 @@ export const httpRequestDurationProvider = makeHistogramProvider({
           host: configService.redisHost,
           port: configService.redisPort,
           password: configService.redisPassword,
-          tls: { rejectUnauthorized: false },
+          ...(configService.nodeEnv === Environment.Production && {
+            tls: {
+              rejectUnauthorized: true,
+            },
+          }),
         },
       }),
     }),

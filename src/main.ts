@@ -29,7 +29,9 @@ async function bootstrap(): Promise<void> {
 
   const envConfig = app.get(EnvConfigService);
 
-  app.setGlobalPrefix('users');
+  app.setGlobalPrefix('users', {
+    exclude: ['/'],
+  });
 
   app.enableVersioning({
     type: VersioningType.URI,
@@ -68,7 +70,6 @@ async function bootstrap(): Promise<void> {
     .addTag('Roles', 'Roles management operations')
     .addTag('Roles Permissions', 'Roles permissions management operations')
     .addTag('Permissions', 'Permissions management operations')
-    .addServer('/')
     .addBearerAuth(
       {
         type: 'http',
@@ -81,13 +82,9 @@ async function bootstrap(): Promise<void> {
       'JWT-auth',
     );
 
-  // if (envConfig.nodeEnv === 'development') {
-  //   config.addTag('Seed', 'Seed operations');
-  // }
-
   const document = SwaggerModule.createDocument(app, config.build());
 
-  SwaggerModule.setup('api', app, document, swaggerSetupOptions);
+  SwaggerModule.setup('docs/api', app, document, swaggerSetupOptions);
 
   const port = Number(envConfig.apiPort) || 3000;
 

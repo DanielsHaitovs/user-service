@@ -1,13 +1,12 @@
 import type { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
+import type { RolePipelineService } from '@/role/role.pipeline';
+import type { RoleResponseDto } from '@/roleDto/role.dto';
+import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
+import type { UserRolePipelineService } from '@/user/role.pipeline';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import type { UUID } from 'crypto';
-
-import type { RoleResponseDto } from '../../src/role/dto/role.dto';
-import type { RolePipelineService } from '../../src/role/role.pipeline';
-import type { UserRolePipelineService } from '../../src/user/role.pipeline';
-import { unAssignPermissionFromRole } from '../pipeline/rolePermissions';
 
 export async function loginTestUser({
   app,

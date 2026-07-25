@@ -287,7 +287,7 @@ export class RoleController {
 
   @Delete('id/:id')
   @Version('1')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @Permissions({
     required: DELETE_ROLE_ENDPOINT_PERMISSION,
     loose: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
@@ -323,7 +323,7 @@ export class RoleController {
     @Param('id', FetchRolePipe) role: FetchedRole,
     @CurrentUser() requestedByUser: JwtPayload,
     @GetClientMetadata() metadata: ClientMetadata,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const {
       canReadUserRoles,
       canUnassignUserFromRoles,
@@ -332,7 +332,7 @@ export class RoleController {
 
     const canDeleteAssignedRole = canReadUserRoles && canUnassignUserFromRoles;
 
-    await this.pipelineService.delete({
+    return await this.pipelineService.delete({
       role,
       canDeleteAssignedRole,
       requestedByUserId,

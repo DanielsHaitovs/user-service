@@ -10,8 +10,11 @@ import {
 } from '@/system/const/role.const';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import { createTestPermissions } from '@/test/db/permission';
-import { createTestRole, createTestRoleWithPermissions } from '@/test/db/role';
 import { changePermissionsForTestUser, loginTestUser } from '@/test/e2e/auth';
+import {
+  createTestRole,
+  createTestRoleWithPermissions,
+} from '@/test/pipeline/role';
 import { initTestUser } from '@/test/pipeline/user';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserStorePipelineService } from '@/user/store.pipeline';
@@ -156,26 +159,32 @@ describe('RolePermissionsController (e2e)', () => {
     });
 
     seedRole = await createTestRole({
-      dataSource,
+      rolePipelineService,
       overrides: {
         name: `SEED_PERMISSION_ROLE_${randomUUID()}`,
-        createdBy: { id: systemUserId } as User,
       },
+      createdById: systemUserId,
+      cacheSetSpy,
+      cacheInvalidateByTagsSpy,
     });
 
     seedRoleWithPermissions = await createTestRoleWithPermissions({
-      dataSource,
+      rolePipelineService,
+      createdById: systemUserId,
       role: {
         name: `SEED_PERMISSION_ROLE_WITH_PERMISSIONS_${randomUUID()}`,
-        createdBy: { id: systemUserId } as User,
       },
-      permissions: [
-        {
-          createdBy: { id: systemUserId } as User,
-          code: `SEED_PERMISSION_${randomUUID()}`,
-          name: `SEED_PERMISSION_${randomUUID()}`,
-        },
-      ],
+      permissions: await createTestPermissions({
+        dataSource,
+        permissions: [
+          { createdBy: { id: systemUserId } as User },
+          { createdBy: { id: systemUserId } as User },
+        ],
+      }),
+      cacheSetSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
     });
 
     cacheSetSpy.mockClear();
@@ -203,9 +212,10 @@ describe('RolePermissionsController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.CREATED);
       expect(response.body).toBe('');
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -222,7 +232,7 @@ describe('RolePermissionsController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.CREATED);
       expect(response.body).toBe('');
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);

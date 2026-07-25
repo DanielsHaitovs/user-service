@@ -140,9 +140,12 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+
       const body = JSON.parse(response.payload);
+
       expect(body).toHaveProperty('id');
       expect(body.name).toBe(payload.name);
+      expect(body.permissions).toEqual([]);
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
@@ -308,10 +311,6 @@ describe('RoleController (e2e)', () => {
         },
       });
 
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
-      cacheInvalidateByTagsSpy.mockClear();
-
       const response = await app.inject({
         method: 'POST',
         url: '/v1/role',
@@ -320,6 +319,14 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
@@ -327,7 +334,7 @@ describe('RoleController (e2e)', () => {
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to read role', async () => {
+    it('401 UNAUTHORIZED - should throw error if no authorization header is provided', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/v1/role',
@@ -336,8 +343,21 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.UNAUTHORIZED);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Unauthorized',
+          statusCode: 401,
+        }),
+      );
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should fail global validation rules if the incoming payload properties are malformed', async () => {
@@ -349,8 +369,22 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: [
+            'name must be a string',
+            'name must be longer than or equal to 5 characters',
+          ],
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -363,10 +397,9 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);
-      const body = JSON.parse(response.payload);
 
       validateRoleResponseDto({
-        response: body,
+        response: JSON.parse(response.payload),
         expected: seedRole,
       });
 
@@ -378,27 +411,56 @@ describe('RoleController (e2e)', () => {
     });
 
     it('404 NOT FOUND - should trigger exception mapping if the UUID does not point to an active record', async () => {
+      const randomId = randomUUID();
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/role/id/${randomUUID()}`,
+        url: `/v1/role/id/${randomId}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          message:
+            'Could not find any entity of type "Roles" matching: {\n' +
+            '    "where": {\n' +
+            `        "id": "${randomId}"\n` +
+            '    }\n' +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
+      const invalidId = 'invalid-uuid-string-format';
       const response = await app.inject({
         method: 'GET',
-        url: '/v1/role/id/invalid-uuid-string-format',
+        url: `/v1/role/id/${invalidId}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Validation failed (uuid is expected)',
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 BAD REQUEST - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
@@ -428,8 +490,19 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -450,6 +523,15 @@ describe('RoleController (e2e)', () => {
       const body = JSON.parse(response.payload);
       expect(body).toHaveProperty('data');
       expect(Array.isArray(body.data)).toBe(true);
+
+      const data = body.data as RoleResponseDto[];
+
+      data.forEach((role) => {
+        validateRoleResponseDto({
+          response: role,
+          expected: seedRole,
+        });
+      });
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks required search permissions', async () => {
@@ -479,6 +561,19 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -495,21 +590,41 @@ describe('RoleController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       expect(response.payload).toBe('true');
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should throw exception if FetchRolePipe fails to locate target role ID', async () => {
+      const randomId = randomUUID();
+
       const response = await app.inject({
         method: 'PATCH',
-        url: `/v1/role/${randomUUID()}/name`,
+        url: `/v1/role/${randomId}/name`,
         headers: authorizedHeader,
         payload: { name: 'NEW_NAME' },
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message:
+            'Could not find any entity of type "Roles" matching: {\n' +
+            `    "id": "${randomId}"\n` +
+            '}',
+          error: 'EntityNotFoundError',
+          statusCode: 404,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should intercept execution if user lacks the required update scope', async () => {
@@ -539,9 +654,19 @@ describe('RoleController (e2e)', () => {
         payload: { name: 'FORBIDDEN_NAME' },
       });
 
-      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should block requests with malformed update body strings', async () => {
@@ -553,26 +678,44 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: [
+            'name must be a string',
+            'name must be longer than or equal to 5 characters',
+          ],
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('DELETE /v1/role/id/:id', () => {
-    it('204 NO CONTENT - should successfully remove a role when strict and loose permissions are met', async () => {
+    it('200 OK - should successfully remove a role when strict and loose permissions are met', async () => {
       const response = await app.inject({
         method: 'DELETE',
         url: `/v1/role/id/${seedRole.id}`,
         headers: authorizedHeader,
       });
 
-      expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      expect(response.payload).toBe('true');
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('204 NO CONTENT - should process delete execution smoothly even if user lacks optional loose permissions', async () => {
+    it('200 OK - should process delete execution smoothly even if user lacks optional loose permissions', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
         systemUserId,
@@ -598,22 +741,40 @@ describe('RoleController (e2e)', () => {
         headers,
       });
 
-      expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      expect(response.payload).toBe('true');
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
 
     it('404 NOT FOUND - should throw exception if FetchRolePipe discovers target model is missing', async () => {
+      const randomId = randomUUID();
       const response = await app.inject({
         method: 'DELETE',
-        url: `/v1/role/id/${randomUUID()}`,
+        url: `/v1/role/id/${randomId}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message:
+            'Could not find any entity of type "Roles" matching: {\n' +
+            `    "id": "${randomId}"\n` +
+            '}',
+          error: 'EntityNotFoundError',
+          statusCode: 404,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
@@ -644,8 +805,19 @@ describe('RoleController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
-      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });

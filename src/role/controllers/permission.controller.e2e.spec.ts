@@ -1,5 +1,4 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords */
-import { CacheService } from '@/baseServices/cache.service';
 import type { RolePipelineService } from '@/role/role.pipeline';
 import type { RoleResponseDto } from '@/roleDto/role.dto';
 import type { StorePipelineService } from '@/store/store.pipeline';
@@ -16,6 +15,7 @@ import {
   createTestRoleWithPermissions,
 } from '@/test/pipeline/role';
 import { initTestUser } from '@/test/pipeline/user';
+import { validateRoleResponseDto } from '@/test/validate/role';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserStorePipelineService } from '@/user/store.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
@@ -76,8 +76,6 @@ describe('RolePermissionsController (e2e)', () => {
     } = bootstrap);
 
     app = bootstrap.app as NestFastifyApplication;
-
-    jest.spyOn(CacheService.prototype, 'invalidateByTags').mockResolvedValue();
 
     systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
 
@@ -235,6 +233,7 @@ describe('RolePermissionsController (e2e)', () => {
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -262,6 +261,7 @@ describe('RolePermissionsController (e2e)', () => {
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
@@ -285,9 +285,10 @@ describe('RolePermissionsController (e2e)', () => {
         }),
       );
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
@@ -330,6 +331,7 @@ describe('RolePermissionsController (e2e)', () => {
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
@@ -350,9 +352,10 @@ describe('RolePermissionsController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.CREATED);
       expect(response.body).toBe('');
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
     it('201 CREATED - should successfully execute unassigned routines and return created status code', async () => {
@@ -370,9 +373,10 @@ describe('RolePermissionsController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.CREATED);
       expect(response.body).toBe('');
 
-      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -387,6 +391,20 @@ describe('RolePermissionsController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          error: 'EntityNotFoundError',
+          message: expect.stringContaining(
+            'Could not find any entity of type "Roles"',
+          ),
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should block target requests if user context environment fails unassigned tokens', async () => {
@@ -418,6 +436,11 @@ describe('RolePermissionsController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -431,7 +454,16 @@ describe('RolePermissionsController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', seedRole.id);
+
+      validateRoleResponseDto({
+        response: body,
+        expected: seedRole,
+      });
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should forward database entity exceptions if the target resource does not exist', async () => {
@@ -442,6 +474,20 @@ describe('RolePermissionsController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          error: 'EntityNotFoundError',
+          message: expect.stringContaining(
+            'Could not find any entity of type "Roles"',
+          ),
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should fail verification at the gateway if the parameter violates ParseUUIDPipe structures', async () => {
@@ -452,6 +498,19 @@ describe('RolePermissionsController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Validation failed (uuid is expected)',
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should block lookups if request credentials lack role read permissions', async () => {
@@ -481,6 +540,19 @@ describe('RolePermissionsController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 });

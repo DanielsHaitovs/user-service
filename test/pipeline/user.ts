@@ -381,7 +381,7 @@ export async function initTestUser({
   expect(cacheSetSpy).toHaveBeenCalledTimes(3);
   expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
   expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
-  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
   expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
 
   cacheSetSpy.mockClear();

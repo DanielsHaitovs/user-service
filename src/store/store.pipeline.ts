@@ -87,6 +87,10 @@ export class StorePipelineService {
     const store = await this.createService.create({ createDto, createdById });
 
     await Promise.all([
+      this.cacheService.invalidateByTags({
+        tag: { purge: true },
+        alias: STORE_QUERY_ALIAS,
+      }),
       this.cacheService.set<StoreResponseDto>({
         key: this.cacheService.getIdKeyPrefixByAlias({
           id: store.id,

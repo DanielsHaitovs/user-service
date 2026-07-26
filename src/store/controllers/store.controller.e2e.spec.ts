@@ -1,5 +1,4 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords */
-import { CacheService } from '@/baseServices/cache.service';
 import {
   READ_USER_STORE,
   UNASSIGN_USER_STORE,
@@ -14,8 +13,7 @@ import {
   READ_STORE_ENDPOINT_PERMISSION,
 } from '@/system/const/store.const';
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
-import { loginTestUser } from '@/test/e2e/auth';
-import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
+import { changePermissionsForTestUser, loginTestUser } from '@/test/e2e/auth';
 import { initTestUser } from '@/test/pipeline/user';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserStorePipelineService } from '@/user/store.pipeline';
@@ -35,7 +33,10 @@ describe('StoreController (e2e)', () => {
   let systemUserId: UUID;
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
-  let cacheGetSpy: jest.SpyInstance;
+  let cacheGetByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByTagsSpy: jest.SpyInstance;
+  let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 
   let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
@@ -55,7 +56,10 @@ describe('StoreController (e2e)', () => {
       systemUserId,
       systemPermissions,
       cacheSetSpy,
-      cacheGetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
       userPipelineService,
       userRolePipelineService,
       rolePipelineService,
@@ -63,8 +67,6 @@ describe('StoreController (e2e)', () => {
       userStorePipelineService,
     } = bootstrap);
     app = bootstrap.app as NestFastifyApplication;
-
-    jest.spyOn(CacheService.prototype, 'invalidateByTags').mockResolvedValue();
 
     systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
   });
@@ -82,6 +84,11 @@ describe('StoreController (e2e)', () => {
       },
       systemPermissions,
       systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
     });
 
     testUser = user;
@@ -90,6 +97,8 @@ describe('StoreController (e2e)', () => {
       app,
       email: testUser.email,
       password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
     });
 
     seedStore = await storePipelineService.create({
@@ -106,7 +115,10 @@ describe('StoreController (e2e)', () => {
     });
 
     cacheSetSpy.mockClear();
-    cacheGetSpy.mockClear();
+    cacheGetByIdSpy.mockClear();
+    cacheInvalidateByIdSpy.mockClear();
+    cacheInvalidateByTagsSpy.mockClear();
+    cacheInvalidateByKeyPatternSpy.mockClear();
   });
 
   afterAll(async () => {
@@ -132,21 +144,36 @@ describe('StoreController (e2e)', () => {
       const body = JSON.parse(response.payload);
       expect(body).toHaveProperty('id');
       expect(body.name).toBe(payload.name);
+      expect(body.code).toBe(payload.code);
+      expect(body.viewCode).toBe(payload.viewCode);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should block store creation if user lacks strict permission scope', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: CREATE_STORE_ENDPOINT_PERMISSION,
         systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
-      const headers = await loginTestUser({
-        app,
-        email: testUser.email,
-        password: testUserPassword,
-      });
       const payload = { name: 'FORBIDDEN_STORE', code: 'F1', viewCode: 'V1' };
 
       const response = await app.inject({
@@ -157,6 +184,19 @@ describe('StoreController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should fail global validation pipes if input types are structurally malformed', async () => {
@@ -168,6 +208,29 @@ describe('StoreController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: [
+            'name must be shorter than or equal to 100 characters',
+            'name must be longer than or equal to 1 characters',
+            'name must be a string',
+            'code must be shorter than or equal to 100 characters',
+            'code must be longer than or equal to 1 characters',
+            'code must be a string',
+            'viewCode must be shorter than or equal to 100 characters',
+            'viewCode must be longer than or equal to 1 characters',
+            'viewCode must be a string',
+          ],
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -269,18 +332,25 @@ describe('StoreController (e2e)', () => {
     });
 
     it('403 FORBIDDEN - should drop connection requests if global view tokens are missing from context profiles', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: READ_STORE_ENDPOINT_PERMISSION,
         systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
-      const headers = await loginTestUser({
-        app,
-        email: testUser.email,
-        password: testUserPassword,
-      });
       const response = await app.inject({
         method: 'GET',
         url: '/v1/store',
@@ -354,17 +424,23 @@ describe('StoreController (e2e)', () => {
     });
 
     it('204 NO CONTENT - should successfully execute deletions even if loose metadata check scopes are removed', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_USER_STORE, UNASSIGN_USER_STORE],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
       const transientDeleteTarget = await storePipelineService.create({
@@ -390,18 +466,25 @@ describe('StoreController (e2e)', () => {
     });
 
     it('403 FORBIDDEN - should block operational cycles instantly if strict elimination rights are revoked', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: DELETE_STORE_ENDPOINT_PERMISSION,
         systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
       });
 
-      const headers = await loginTestUser({
-        app,
-        email: testUser.email,
-        password: testUserPassword,
-      });
       const response = await app.inject({
         method: 'DELETE',
         url: `/v1/store/${seedStore.id}`,

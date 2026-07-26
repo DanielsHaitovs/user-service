@@ -35,6 +35,7 @@ describe('StoreController (e2e)', () => {
   let systemUserId: UUID;
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
+  let cacheGetSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
   let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheInvalidateByTagsSpy: jest.SpyInstance;
@@ -59,6 +60,7 @@ describe('StoreController (e2e)', () => {
       systemUserId,
       systemPermissions,
       cacheSetSpy,
+      cacheGetSpy,
       cacheGetByIdSpy,
       cacheInvalidateByIdSpy,
       cacheInvalidateByTagsSpy,
@@ -147,6 +149,7 @@ describe('StoreController (e2e)', () => {
     });
 
     cacheSetSpy.mockClear();
+    cacheGetSpy.mockClear();
     cacheGetByIdSpy.mockClear();
     cacheInvalidateByIdSpy.mockClear();
     cacheInvalidateByTagsSpy.mockClear();
@@ -658,8 +661,100 @@ describe('StoreController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('data');
       expect(Array.isArray(body.data)).toBe(true);
+
+      const data = body.data as StoreResponseDto[];
+      expect(data.length).toBe(1);
+
+      data.forEach((store) => {
+        validateStoreResponseDto({ response: store, expected: seedStore });
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+    it('200 OK - should evaluate internal pagination grids using basic search parameter queries as root', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/store',
+        headers: authorizedRootHeader,
+        query: { page: '1', limit: '10', ids: [seedStore.id] },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      expect(Array.isArray(body.data)).toBe(true);
+
+      const data = body.data as StoreResponseDto[];
+      expect(data.length).toBe(1);
+
+      data.forEach((store) => {
+        validateStoreResponseDto({ response: store, expected: seedStore });
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('200 OK - should evaluate internal pagination grids using basic search parameter queries and cache the result', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/store',
+        headers: authorizedHeader,
+        query: { page: '1', limit: '10', ids: [seedStore.id] },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      expect(Array.isArray(body.data)).toBe(true);
+
+      const data = body.data as StoreResponseDto[];
+      expect(data.length).toBe(1);
+
+      data.forEach((store) => {
+        validateStoreResponseDto({ response: store, expected: seedStore });
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetSpy).toHaveBeenCalledTimes(2); // because it also performs auth token
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+
+      cacheSetSpy.mockClear();
+      cacheGetSpy.mockClear();
+
+      const cachedResponse = await app.inject({
+        method: 'GET',
+        url: '/v1/store',
+        headers: authorizedRootHeader,
+        query: { page: '1', limit: '10', ids: [seedStore.id] },
+      });
+
+      expect(cachedResponse.statusCode).toBe(HttpStatus.OK);
+      const cachedBody = JSON.parse(cachedResponse.payload);
+      expect(Array.isArray(body.data)).toBe(true);
+
+      const cachedData = cachedBody.data as StoreResponseDto[];
+      expect(cachedData.length).toBe(1);
+
+      cachedData.forEach((store) => {
+        validateStoreResponseDto({ response: store, expected: seedStore });
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetSpy).toHaveBeenCalledTimes(2); // because it also performs auth token
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should drop connection requests if global view tokens are missing from context profiles', async () => {
@@ -689,6 +784,19 @@ describe('StoreController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -823,6 +931,19 @@ describe('StoreController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 });

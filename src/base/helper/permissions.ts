@@ -8,7 +8,10 @@ import {
   UNASSIGN_USER_DEPARTMENT,
   UPDATE_DEPARTMENT,
 } from '@/commonConst/department.const';
-import { READ_PERMISSION } from '@/commonConst/permission.const';
+import {
+  READ_PERMISSION,
+  ROOT_ADMIN_PERMISSION,
+} from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CREATE_ROLE,
@@ -41,6 +44,10 @@ export function extractAccess(
   const { permissions, id } = createdByUser;
 
   function has(permission: string): boolean {
+    if (permissions.includes(ROOT_ADMIN_PERMISSION)) {
+      return true;
+    }
+
     return permissions.includes(permission);
   }
 

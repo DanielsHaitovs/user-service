@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords */
-import { CacheService } from '@/baseServices/cache.service';
+import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
   CREATE_ROLE,
@@ -34,6 +34,7 @@ describe('RoleController (e2e)', () => {
   let app: NestFastifyApplication;
   let moduleFixture: TestingModule;
   let authorizedHeader: Record<string, string>;
+  let authorizedRootHeader: Record<string, string>;
   let systemUserId: UUID;
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
@@ -50,6 +51,7 @@ describe('RoleController (e2e)', () => {
 
   const testUserPassword = 'TestPassword123!';
   let testUser: UserResponseDto;
+  let rootUser: UserResponseDto;
   let testRole: RoleResponseDto;
   let seedRole: RoleResponseDto;
 
@@ -72,7 +74,34 @@ describe('RoleController (e2e)', () => {
     } = bootstrap);
     app = bootstrap.app as NestFastifyApplication;
 
-    jest.spyOn(CacheService.prototype, 'invalidateByTags').mockResolvedValue();
+    const { user } = await initTestUser({
+      userPipelineService,
+      rolePipelineService,
+      userRolePipelineService,
+      storePipelineService,
+      userStorePipelineService,
+      overrides: {
+        password: testUserPassword,
+        isActive: true,
+      },
+      systemPermissions: ['root_admin'],
+      systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
+    });
+
+    rootUser = user;
+
+    authorizedRootHeader = await loginTestUser({
+      app,
+      email: rootUser.email,
+      password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+    });
 
     systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
   });
@@ -146,6 +175,130 @@ describe('RoleController (e2e)', () => {
       expect(body).toHaveProperty('id');
       expect(body.name).toBe(payload.name);
       expect(body.permissions).toEqual([]);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('201 CREATED - should successfully create a new role with permissions with all loose scopes satisfied', async () => {
+      const payload = {
+        name: `ROLE_${randomUUID()}`,
+        permissions: [READ_PERMISSION],
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/role',
+        headers: authorizedHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+
+      const body = JSON.parse(response.payload) as RoleResponseDto;
+
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+      expect(body.permissions).toHaveLength(1);
+
+      body.permissions.forEach((permission) => {
+        expect(permission.code).toBe(permission.code);
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('201 CREATED - should successfully create a new role as root', async () => {
+      const payload = {
+        name: `ROLE_${randomUUID()}`,
+        permissions: [],
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/role',
+        headers: authorizedRootHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+
+      const body = JSON.parse(response.payload);
+
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+      expect(body.permissions).toEqual([]);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('201 CREATED - should successfully create a new role with permissions as root', async () => {
+      const payload = {
+        name: `ROLE_${randomUUID()}`,
+        permissions: [READ_PERMISSION],
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/role',
+        headers: authorizedRootHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+
+      const body = JSON.parse(response.payload) as RoleResponseDto;
+
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+      expect(body.permissions).toHaveLength(1);
+
+      body.permissions.forEach((permission) => {
+        expect(permission.code).toBe(permission.code);
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('201 CREATED - should successfully create a new role with permissions', async () => {
+      const payload = {
+        name: `ROLE_${randomUUID()}`,
+        permissions: [READ_PERMISSION],
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/role',
+        headers: authorizedHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+
+      const body = JSON.parse(response.payload) as RoleResponseDto;
+
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+      expect(body.permissions).toHaveLength(1);
+
+      body.permissions.forEach((permission) => {
+        expect(permission.code).toBe(permission.code);
+      });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
@@ -389,6 +542,26 @@ describe('RoleController (e2e)', () => {
   });
 
   describe('GET /v1/role/id/:id', () => {
+    it('200 OK - should return target payload structure when looking up a valid role ID as root', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/role/id/${seedRole.id}`,
+        headers: authorizedRootHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+
+      validateRoleResponseDto({
+        response: JSON.parse(response.payload),
+        expected: seedRole,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
     it('200 OK - should return target payload structure when looking up a valid role ID', async () => {
       const response = await app.inject({
         method: 'GET',
@@ -463,7 +636,7 @@ describe('RoleController (e2e)', () => {
       expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('403 BAD REQUEST - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
+    it('403 FORBIDDEN - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_ROLE],
         systemUserId,
@@ -512,6 +685,32 @@ describe('RoleController (e2e)', () => {
         method: 'GET',
         url: `/v1/role`,
         headers: authorizedHeader,
+        query: {
+          page: '1',
+          limit: '10',
+          ids: [seedRole.id],
+        },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      expect(body).toHaveProperty('data');
+      expect(Array.isArray(body.data)).toBe(true);
+
+      const data = body.data as RoleResponseDto[];
+
+      data.forEach((role) => {
+        validateRoleResponseDto({
+          response: role,
+          expected: seedRole,
+        });
+      });
+    });
+    it('200 OK - should return a list of roles matching query criteria as root', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/role`,
+        headers: authorizedRootHeader,
         query: {
           page: '1',
           limit: '10',
@@ -585,6 +784,26 @@ describe('RoleController (e2e)', () => {
         method: 'PATCH',
         url: `/v1/role/${seedRole.id}/name`,
         headers: authorizedHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      expect(response.payload).toBe('true');
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('200 OK - should successfully update an existing role name and return true as root', async () => {
+      const payload = { name: `UPDATED_NAME_${randomUUID()}` };
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/role/${seedRole.id}/name`,
+        headers: authorizedRootHeader,
         payload,
       });
 
@@ -703,6 +922,22 @@ describe('RoleController (e2e)', () => {
         method: 'DELETE',
         url: `/v1/role/id/${seedRole.id}`,
         headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      expect(response.payload).toBe('true');
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+    });
+    it('200 OK - should successfully remove a role as root', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/role/id/${seedRole.id}`,
+        headers: authorizedRootHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);

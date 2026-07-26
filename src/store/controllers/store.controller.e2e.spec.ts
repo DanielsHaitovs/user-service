@@ -15,6 +15,7 @@ import {
 import { bootstrapTestApp } from '@/test/bootstrap-e2e';
 import { changePermissionsForTestUser, loginTestUser } from '@/test/e2e/auth';
 import { initTestUser } from '@/test/pipeline/user';
+import { validateStoreResponseDto } from '@/test/validate/store';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserStorePipelineService } from '@/user/store.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
@@ -30,6 +31,7 @@ describe('StoreController (e2e)', () => {
   let app: NestFastifyApplication;
   let moduleFixture: TestingModule;
   let authorizedHeader: Record<string, string>;
+  let authorizedRootHeader: Record<string, string>;
   let systemUserId: UUID;
   let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
@@ -46,6 +48,7 @@ describe('StoreController (e2e)', () => {
 
   const testUserPassword = 'TestPassword123!';
   let testUser: UserResponseDto;
+  let rootUser: UserResponseDto;
   let testRole: RoleResponseDto;
   let seedStore: StoreResponseDto;
 
@@ -67,6 +70,35 @@ describe('StoreController (e2e)', () => {
       userStorePipelineService,
     } = bootstrap);
     app = bootstrap.app as NestFastifyApplication;
+
+    const { user } = await initTestUser({
+      userPipelineService,
+      rolePipelineService,
+      userRolePipelineService,
+      storePipelineService,
+      userStorePipelineService,
+      overrides: {
+        password: testUserPassword,
+        isActive: true,
+      },
+      systemPermissions: ['root_admin'],
+      systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
+    });
+
+    rootUser = user;
+
+    authorizedRootHeader = await loginTestUser({
+      app,
+      email: rootUser.email,
+      password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+    });
 
     systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
   });
@@ -126,6 +158,33 @@ describe('StoreController (e2e)', () => {
   });
 
   describe('POST /v1/store', () => {
+    it('201 CREATED - should successfully create a new store with unique attributes as root', async () => {
+      const payload = {
+        name: `STORE_${randomUUID()}`,
+        code: `CODE_${randomUUID().substring(0, 8)}`,
+        viewCode: `VIEW_${randomUUID().substring(0, 8)}`,
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/store',
+        headers: authorizedRootHeader,
+        payload,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+      const body = JSON.parse(response.payload);
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe(payload.name);
+      expect(body.code).toBe(payload.code);
+      expect(body.viewCode).toBe(payload.viewCode);
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
     it('201 CREATED - should successfully create a new store with unique attributes', async () => {
       const payload = {
         name: `STORE_${randomUUID()}`,
@@ -235,6 +294,25 @@ describe('StoreController (e2e)', () => {
   });
 
   describe('GET /v1/store/id/:id', () => {
+    it('200 OK - should locate and return the target store data by its unique ID record as root', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/id/${seedStore.id}`,
+        headers: authorizedRootHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+
+      validateStoreResponseDto({ response: body, expected: seedStore });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
     it('200 OK - should locate and return the target store data by its unique ID record', async () => {
       const response = await app.inject({
         method: 'GET',
@@ -244,17 +322,85 @@ describe('StoreController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', seedStore.id);
+
+      validateStoreResponseDto({ response: body, expected: seedStore });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('403 FORBIDDEN - should block access to store records if user lacks strict permission scope', async () => {
+      const headers = await changePermissionsForTestUser({
+        permissionsToUnassign: READ_STORE_ENDPOINT_PERMISSION,
+        systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/id/${seedStore.id}`,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should throw entity missing exception for a valid unassigned UUID format', async () => {
+      const randomId = randomUUID();
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/store/id/${randomUUID()}`,
+        url: `/v1/store/id/${randomId}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          message:
+            'Could not find any entity of type "Store" matching: {\n' +
+            '    "where": {\n' +
+            `        "id": "${randomId}"\n` +
+            '    }\n' +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should halt execution at the gateway via ParseUUIDPipe checks if structure is invalid', async () => {
@@ -265,10 +411,42 @@ describe('StoreController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Validation failed (uuid is expected)',
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('GET /v1/store/code/:code', () => {
+    it('200 OK - should successfully fetch store properties as root', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/code/${seedStore.code}`,
+        headers: authorizedRootHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+
+      validateStoreResponseDto({ response: body, expected: seedStore });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
     it('200 OK - should successfully fetch store properties matching string code paths', async () => {
       const response = await app.inject({
         method: 'GET',
@@ -278,21 +456,107 @@ describe('StoreController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('code', seedStore.code);
+
+      validateStoreResponseDto({ response: body, expected: seedStore });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('403 FORBIDDEN - should block access to store records if user lacks strict permission scope', async () => {
+      const headers = await changePermissionsForTestUser({
+        permissionsToUnassign: READ_STORE_ENDPOINT_PERMISSION,
+        systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/code/${seedStore.code}`,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should map an error payload if string code cannot be located in storage', async () => {
+      const randomCode = `GHOST_CODE_${randomUUID()}`;
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/store/code/GHOST_CODE_${randomUUID()}`,
+        url: `/v1/store/code/${randomCode}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          message:
+            'Could not find any entity of type "Store" matching: {\n' +
+            '    "where": {\n' +
+            `        "code": "${randomCode}"\n` +
+            '    }\n' +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('GET /v1/store/viewCode/:viewCode', () => {
+    it('200 OK - should find target store payloads using public custom viewCode strings by root', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/viewCode/${seedStore.viewCode}`,
+        headers: authorizedRootHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      validateStoreResponseDto({ response: body, expected: seedStore });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
     it('200 OK - should find target store payloads using public custom viewCode strings', async () => {
       const response = await app.inject({
         method: 'GET',
@@ -302,17 +566,84 @@ describe('StoreController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('viewCode', seedStore.viewCode);
+      validateStoreResponseDto({ response: body, expected: seedStore });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('403 FORBIDDEN - should block access to store records if user lacks strict permission scope', async () => {
+      const headers = await changePermissionsForTestUser({
+        permissionsToUnassign: READ_STORE_ENDPOINT_PERMISSION,
+        systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.id,
+          email: testUser.email,
+          password: testUserPassword,
+        },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/store/viewCode/${seedStore.viewCode}`,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: 403,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should flag exceptions if custom viewCode records do not exist', async () => {
+      const randomCode = `GHOST_VIEW_${randomUUID()}`;
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/store/viewCode/GHOST_VIEW_${randomUUID()}`,
+        url: `/v1/store/viewCode/${randomCode}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          message:
+            'Could not find any entity of type "Store" matching: {\n' +
+            '    "where": {\n' +
+            `        "viewCode": "${randomCode}"\n` +
+            '    }\n' +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 

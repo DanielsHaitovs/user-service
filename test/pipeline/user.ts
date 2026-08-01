@@ -422,11 +422,12 @@ export async function initTestUser({
   ]);
 
   await userRolePipelineService.getPermissions(user.id);
+  await userStorePipelineService.getAssignedStores(user.id);
 
   expect(cacheSetSpy).toHaveBeenCalledTimes(3);
-  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(4);
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(5);
   expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(3);
-  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
   expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
 
   cacheSetSpy.mockClear();

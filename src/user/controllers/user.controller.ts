@@ -1,5 +1,5 @@
 import { JwtPayload } from '@/auth/auth.interface';
-import { extractAccess } from '@/base/helper/permissions';
+import { extractAccess } from '@/baseHelper/permissions';
 import { FetchFullUserPipe, FullUser } from '@/common/pipes/full-user.pipe';
 import { FetchedUser, FetchUserPipe } from '@/common/pipes/user.pipe';
 import {

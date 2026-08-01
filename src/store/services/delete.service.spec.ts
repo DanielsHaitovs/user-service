@@ -1,4 +1,4 @@
-import { deletedResults } from '@/base/helper/delete';
+import { deletedResults } from '@/baseHelper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import type { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
@@ -12,7 +12,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { QueryFailedError } from 'typeorm';
 
-jest.mock('@/base/helper/delete', () => ({
+jest.mock('@/baseHelper/delete', () => ({
   deletedResults: jest.fn(),
 }));
 

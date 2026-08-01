@@ -6,8 +6,14 @@ import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { GetUserDto } from '@/user/dto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
-import { Injectable, type PipeTransform } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  type PipeTransform,
+} from '@nestjs/common';
 
+import { isUUID } from 'class-validator';
 import { UUID } from 'crypto';
 
 export interface UserWithRoles {
@@ -24,10 +30,20 @@ export class FetchUserRolesPipe
     private readonly cacheService: CacheService,
   ) {}
 
-  async transform(value: UUID): Promise<UserWithRoles> {
+  async transform(value: string): Promise<UserWithRoles> {
+    if (!value || !isUUID(value)) {
+      throw new BadRequestException({
+        message: ['each value in roleIds must be a UUID'],
+        error: 'Bad Request',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const userId = value as UUID;
+
     const [user, roles] = await Promise.all([
-      this.getUser(value),
-      this.getUserRoles(value),
+      this.getUser(userId),
+      this.getUserRoles(userId),
     ]);
 
     return { user, roles };

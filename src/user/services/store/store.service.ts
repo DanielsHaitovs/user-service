@@ -151,7 +151,7 @@ export class UserStoresService {
   }): Promise<boolean> {
     const { storeIds: incomingStoreIds } = data;
 
-    await this.validatePayload({ storeIds: incomingStoreIds });
+    await this.storeHelperService.checkIfManyExistOrThrow(incomingStoreIds);
 
     const alreadyAssignedIds = new Set(assignedStores.map((store) => store.id));
 
@@ -201,7 +201,7 @@ export class UserStoresService {
 
     const { storeIds: storeIdsToRevoke } = data;
 
-    await this.validatePayload({ storeIds: storeIdsToRevoke });
+    await this.storeHelperService.checkIfManyExistOrThrow(storeIdsToRevoke);
 
     const alreadyAssignedIds = new Set(assignedStores.map((store) => store.id));
 
@@ -255,13 +255,5 @@ export class UserStoresService {
     );
 
     return stores;
-  }
-
-  private async validatePayload({
-    storeIds,
-  }: {
-    storeIds?: UUID[] | undefined;
-  }): Promise<void> {
-    await this.storeHelperService.checkIfManyExistOrThrow(storeIds);
   }
 }

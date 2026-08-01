@@ -1,5 +1,5 @@
 import { JwtPayload } from '@/auth/auth.interface';
-import { extractAccess } from '@/base/helper/permissions';
+import { extractAccess } from '@/baseHelper/permissions';
 import {
   EXAMPLE_STORE_CODE,
   EXAMPLE_STORE_ID,

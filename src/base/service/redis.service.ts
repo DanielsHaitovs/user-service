@@ -142,6 +142,17 @@ export class RedisService
     }
   }
 
+  async flushAll(): Promise<void> {
+    try {
+      await this.client.flushall();
+      this.logger.log('Successfully flushed all Redis keys.');
+    } catch (error) {
+      this.logger.error(
+        `Failed to flush all Redis keys: ${JSON.stringify(error)}`,
+      );
+    }
+  }
+
   private printSystemData(message: string): void {
     const uptimeSeconds = process.uptime();
     const memoryUsage = Object.fromEntries(

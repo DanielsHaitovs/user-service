@@ -1,25 +1,19 @@
-/* eslint-disable sonarjs/no-hardcoded-passwords */
 import type { RolePipelineService } from '@/role/role.pipeline';
 import type { RoleResponseDto } from '@/roleDto/role.dto';
-import type { StorePipelineService } from '@/store/store.pipeline';
 import {
   ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
   READ_ROLE_WITH_PERMISSIONS_ENDPOINT_PERMISSION,
   UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
 } from '@/system/const/role.const';
-import { bootstrapTestApp } from '@/test/bootstrap-e2e';
+import { bootstrapTestApp, type TestUser } from '@/test/bootstrap-e2e';
 import { createTestPermissions } from '@/test/db/permission';
-import { changePermissionsForTestUser, loginTestUser } from '@/test/e2e/auth';
+import { changePermissionsForTestUser } from '@/test/e2e/auth';
 import {
   createTestRole,
   createTestRoleWithPermissions,
 } from '@/test/pipeline/role';
-import { initTestUser } from '@/test/pipeline/user';
 import { validateRoleResponseDto } from '@/test/validate/role';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
-import type { UserStorePipelineService } from '@/user/store.pipeline';
-import type { UserPipelineService } from '@/user/user.pipeline';
-import type { UserResponseDto } from '@/userDto/user.dto';
 import type { User } from '@/userEntities/user.entity';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -35,23 +29,17 @@ describe('RolePermissionsController (e2e)', () => {
   let authorizedHeader: Record<string, string>;
   let authorizedRootHeader: Record<string, string>;
   let systemUserId: UUID;
-  let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
   let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheInvalidateByTagsSpy: jest.SpyInstance;
   let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 
-  let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
   let userRolePipelineService: UserRolePipelineService;
-  let storePipelineService: StorePipelineService;
-  let userStorePipelineService: UserStorePipelineService;
 
-  const testUserPassword = 'TestPassword123!';
-  let testUser: UserResponseDto;
-  let rootUser: UserResponseDto;
-  let testRole: RoleResponseDto;
+  let testUserPassword: string;
+  let testUser: TestUser;
   let seedRole: RoleResponseDto;
   let seedRoleWithPermissions: RoleResponseDto;
   let targetPermissionCode: string;
@@ -61,23 +49,21 @@ describe('RolePermissionsController (e2e)', () => {
     ({
       moduleFixture,
       systemUserId,
-      systemPermissions,
+      testUser,
+      authorizedHeader,
+      authorizedRootHeader,
+      testUserPassword,
       cacheSetSpy,
       cacheGetByIdSpy,
       cacheInvalidateByIdSpy,
       cacheInvalidateByTagsSpy,
       cacheInvalidateByKeyPatternSpy,
-      userPipelineService,
       rolePipelineService,
       userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
       dataSource,
     } = bootstrap);
 
     app = bootstrap.app as NestFastifyApplication;
-
-    systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
 
     const [seededPermission] = await createTestPermissions({
       dataSource,
@@ -90,35 +76,6 @@ describe('RolePermissionsController (e2e)', () => {
 
     targetPermissionCode = seededPermission.code;
 
-    const { user } = await initTestUser({
-      userPipelineService,
-      rolePipelineService,
-      userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
-      overrides: {
-        password: testUserPassword,
-        isActive: true,
-      },
-      systemPermissions: ['root_admin'],
-      systemUserId,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-      cacheInvalidateByIdSpy,
-      cacheInvalidateByTagsSpy,
-      cacheInvalidateByKeyPatternSpy,
-    });
-
-    rootUser = user;
-
-    authorizedRootHeader = await loginTestUser({
-      app,
-      email: rootUser.email,
-      password: testUserPassword,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-    });
-
     cacheSetSpy.mockClear();
     cacheGetByIdSpy.mockClear();
     cacheInvalidateByIdSpy.mockClear();
@@ -127,35 +84,6 @@ describe('RolePermissionsController (e2e)', () => {
   });
 
   beforeEach(async () => {
-    const { user, role } = await initTestUser({
-      userPipelineService,
-      rolePipelineService,
-      userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
-      overrides: {
-        password: testUserPassword,
-        isActive: true,
-      },
-      systemPermissions,
-      systemUserId,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-      cacheInvalidateByIdSpy,
-      cacheInvalidateByTagsSpy,
-      cacheInvalidateByKeyPatternSpy,
-    });
-
-    testUser = user;
-    testRole = role;
-    authorizedHeader = await loginTestUser({
-      app,
-      email: testUser.email,
-      password: testUserPassword,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-    });
-
     seedRole = await createTestRole({
       rolePipelineService,
       overrides: {
@@ -295,10 +223,11 @@ describe('RolePermissionsController (e2e)', () => {
     it('403 FORBIDDEN - should intercept execution if user context lacks assignment permissions', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -306,8 +235,8 @@ describe('RolePermissionsController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -411,10 +340,11 @@ describe('RolePermissionsController (e2e)', () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign:
           UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -422,8 +352,8 @@ describe('RolePermissionsController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -516,10 +446,11 @@ describe('RolePermissionsController (e2e)', () => {
     it('403 FORBIDDEN - should block lookups if request credentials lack role read permissions', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: READ_ROLE_WITH_PERMISSIONS_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -527,8 +458,8 @@ describe('RolePermissionsController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });

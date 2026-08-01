@@ -103,6 +103,10 @@ export class UserRolePipelineService {
         id: userId,
         alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
       }),
+      this.cacheService.invalidateByTags({
+        alias: USER_ROLE_QUERY_ALIAS,
+        tag: { purge: true },
+      }),
     ]);
 
     const assignedRoles = await this.getAssignedRoles(userId);
@@ -154,6 +158,10 @@ export class UserRolePipelineService {
       this.cacheService.invalidateById({
         id: userId,
         alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateByTags({
+        alias: USER_ROLE_QUERY_ALIAS,
+        tag: { purge: true },
       }),
     ]);
 

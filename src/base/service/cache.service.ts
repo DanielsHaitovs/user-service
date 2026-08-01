@@ -252,4 +252,13 @@ export class CacheService {
         );
     }
   }
+
+  async flushAll(): Promise<void> {
+    try {
+      await this.redisService.flushAll();
+    } catch (e) {
+      const error = e as Error;
+      this.logService.error(`Failed to flush all cache: ${error.message}`);
+    }
+  }
 }

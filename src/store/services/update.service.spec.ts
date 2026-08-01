@@ -1,4 +1,4 @@
-import { updatedResults } from '@/base/helper/update';
+import { updatedResults } from '@/baseHelper/update';
 import type { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import { UpdateService } from '@/storeServices/update.service';
@@ -11,7 +11,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { randomUUID } from 'crypto';
 
-jest.mock('@/base/helper/update', () => ({
+jest.mock('@/baseHelper/update', () => ({
   updatedResults: jest.fn(),
 }));
 

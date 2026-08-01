@@ -1,4 +1,4 @@
-import { deletedResults } from '@/base/helper/delete';
+import { deletedResults } from '@/baseHelper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
@@ -71,13 +71,13 @@ export class DeleteService {
     id: UUID;
     canDeleteAssignedStore: boolean;
   }): Promise<void> {
-    const userRoles = await this.userStoreRepository.find({
+    const userStores = await this.userStoreRepository.find({
       where: { store: { id } },
       take: 1,
       skip: 0,
     });
 
-    if (userRoles.length > 0) {
+    if (userStores.length > 0) {
       if (!canDeleteAssignedStore) {
         throw new UnprocessableEntityException(
           'Store cannot be deleted because it is currently assigned to one or more users. Please unassign the store from all users before attempting to delete it.',

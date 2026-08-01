@@ -1,4 +1,3 @@
-/* eslint-disable sonarjs/no-hardcoded-passwords */
 import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
@@ -9,21 +8,16 @@ import {
 } from '@/commonConst/role.const';
 import type { RolePipelineService } from '@/role/role.pipeline';
 import type { RoleResponseDto } from '@/roleDto/role.dto';
-import type { StorePipelineService } from '@/store/store.pipeline';
 import { READ_PERMISSION_ENDPOINT_PERMISSION } from '@/system/const/permission.const';
 import {
   DELETE_ROLE_ENDPOINT_PERMISSION,
   UPDATE_ROLE_ENDPOINT_PERMISSION,
 } from '@/system/const/role.const';
-import { bootstrapTestApp } from '@/test/bootstrap-e2e';
-import { changePermissionsForTestUser, loginTestUser } from '@/test/e2e/auth';
+import { bootstrapTestApp, type TestUser } from '@/test/bootstrap-e2e';
+import { changePermissionsForTestUser } from '@/test/e2e/auth';
 import { createTestRole } from '@/test/pipeline/role';
-import { initTestUser } from '@/test/pipeline/user';
 import { validateRoleResponseDto } from '@/test/validate/role';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
-import type { UserStorePipelineService } from '@/user/store.pipeline';
-import type { UserPipelineService } from '@/user/user.pipeline';
-import type { UserResponseDto } from '@/userDto/user.dto';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { TestingModule } from '@nestjs/testing';
@@ -36,23 +30,17 @@ describe('RoleController (e2e)', () => {
   let authorizedHeader: Record<string, string>;
   let authorizedRootHeader: Record<string, string>;
   let systemUserId: UUID;
-  let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
   let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheInvalidateByTagsSpy: jest.SpyInstance;
   let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 
-  let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
   let userRolePipelineService: UserRolePipelineService;
-  let storePipelineService: StorePipelineService;
-  let userStorePipelineService: UserStorePipelineService;
 
-  const testUserPassword = 'TestPassword123!';
-  let testUser: UserResponseDto;
-  let rootUser: UserResponseDto;
-  let testRole: RoleResponseDto;
+  let testUserPassword: string;
+  let testUser: TestUser;
   let seedRole: RoleResponseDto;
 
   beforeAll(async () => {
@@ -60,82 +48,22 @@ describe('RoleController (e2e)', () => {
     ({
       moduleFixture,
       systemUserId,
-      systemPermissions,
+      testUser,
+      testUserPassword,
+      authorizedHeader,
+      authorizedRootHeader,
       cacheSetSpy,
       cacheGetByIdSpy,
       cacheInvalidateByIdSpy,
       cacheInvalidateByTagsSpy,
       cacheInvalidateByKeyPatternSpy,
-      userPipelineService,
       rolePipelineService,
       userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
     } = bootstrap);
     app = bootstrap.app as NestFastifyApplication;
-
-    const { user } = await initTestUser({
-      userPipelineService,
-      rolePipelineService,
-      userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
-      overrides: {
-        password: testUserPassword,
-        isActive: true,
-      },
-      systemPermissions: ['root_admin'],
-      systemUserId,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-      cacheInvalidateByIdSpy,
-      cacheInvalidateByTagsSpy,
-      cacheInvalidateByKeyPatternSpy,
-    });
-
-    rootUser = user;
-
-    authorizedRootHeader = await loginTestUser({
-      app,
-      email: rootUser.email,
-      password: testUserPassword,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-    });
-
-    systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
   });
 
   beforeEach(async () => {
-    const { user, role } = await initTestUser({
-      userPipelineService,
-      rolePipelineService,
-      userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
-      overrides: {
-        password: testUserPassword,
-        isActive: true,
-      },
-      systemPermissions,
-      systemUserId,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-      cacheInvalidateByIdSpy,
-      cacheInvalidateByTagsSpy,
-      cacheInvalidateByKeyPatternSpy,
-    });
-
-    testUser = user;
-    testRole = role;
-    authorizedHeader = await loginTestUser({
-      app,
-      email: testUser.email,
-      password: testUserPassword,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-    });
-
     seedRole = await createTestRole({
       rolePipelineService,
       overrides: {
@@ -310,10 +238,11 @@ describe('RoleController (e2e)', () => {
     it('201 CREATED - should strip permissions down to empty array if user lacks permission to read permissions', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: READ_PERMISSION_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -321,8 +250,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -357,10 +286,11 @@ describe('RoleController (e2e)', () => {
     it('201 CREATED - should strip permissions down to empty array if user lacks permission to assign permissions', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [ASSIGN_PERMISSION_TO_ROLE],
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -368,8 +298,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -404,10 +334,11 @@ describe('RoleController (e2e)', () => {
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to create role', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [CREATE_ROLE],
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -415,8 +346,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -433,7 +364,7 @@ describe('RoleController (e2e)', () => {
         expect.objectContaining({
           message: 'Invalid token',
           error: 'Forbidden',
-          statusCode: 403,
+          statusCode: HttpStatus.FORBIDDEN,
         }),
       );
 
@@ -447,10 +378,11 @@ describe('RoleController (e2e)', () => {
     it('403 FORBIDDEN - should intercept execution if user lacks the primary strict operational permission to read role', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_ROLE],
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -458,8 +390,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -476,7 +408,7 @@ describe('RoleController (e2e)', () => {
         expect.objectContaining({
           message: 'Invalid token',
           error: 'Forbidden',
-          statusCode: 403,
+          statusCode: HttpStatus.FORBIDDEN,
         }),
       );
 
@@ -529,7 +461,37 @@ describe('RoleController (e2e)', () => {
             'name must be longer than or equal to 5 characters',
           ],
           error: 'Bad Request',
-          statusCode: 400,
+          statusCode: HttpStatus.BAD_REQUEST,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('422 NOT FOUND - should fail if the incoming payload contains permission codes that do not exist in the system', async () => {
+      const roleName = `ROLE_${randomUUID()}`;
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/role',
+        headers: authorizedHeader,
+        payload: {
+          name: roleName,
+          permissions: ['permission-code-does-not-exist'],
+        },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message:
+            'The following permission codes do not exist: permission-code-does-not-exist',
+          error: 'Unprocessable Entity',
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
         }),
       );
 
@@ -594,7 +556,7 @@ describe('RoleController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
       expect(JSON.parse(response.body)).toEqual(
         expect.objectContaining({
-          statusCode: 404,
+          statusCode: HttpStatus.NOT_FOUND,
           message:
             'Could not find any entity of type "Roles" matching: {\n' +
             '    "where": {\n' +
@@ -625,7 +587,7 @@ describe('RoleController (e2e)', () => {
         expect.objectContaining({
           message: 'Validation failed (uuid is expected)',
           error: 'Bad Request',
-          statusCode: 400,
+          statusCode: HttpStatus.BAD_REQUEST,
         }),
       );
 
@@ -639,10 +601,11 @@ describe('RoleController (e2e)', () => {
     it('403 FORBIDDEN - should halt request early via ParseUUIDPipe checks if identifier structure is invalid', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_ROLE],
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -650,8 +613,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -667,7 +630,7 @@ describe('RoleController (e2e)', () => {
         expect.objectContaining({
           message: 'Invalid token',
           error: 'Forbidden',
-          statusCode: 403,
+          statusCode: HttpStatus.FORBIDDEN,
         }),
       );
 
@@ -736,10 +699,11 @@ describe('RoleController (e2e)', () => {
     it('403 FORBIDDEN - should intercept execution if user lacks required search permissions', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_ROLE],
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -747,8 +711,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -764,7 +728,7 @@ describe('RoleController (e2e)', () => {
         expect.objectContaining({
           message: 'Invalid token',
           error: 'Forbidden',
-          statusCode: 403,
+          statusCode: HttpStatus.FORBIDDEN,
         }),
       );
 
@@ -835,7 +799,7 @@ describe('RoleController (e2e)', () => {
             `    "id": "${randomId}"\n` +
             '}',
           error: 'EntityNotFoundError',
-          statusCode: 404,
+          statusCode: HttpStatus.NOT_FOUND,
         }),
       );
 
@@ -849,10 +813,11 @@ describe('RoleController (e2e)', () => {
     it('403 FORBIDDEN - should intercept execution if user lacks the required update scope', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: UPDATE_ROLE_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -860,8 +825,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -877,7 +842,7 @@ describe('RoleController (e2e)', () => {
         expect.objectContaining({
           message: 'Invalid token',
           error: 'Forbidden',
-          statusCode: 403,
+          statusCode: HttpStatus.FORBIDDEN,
         }),
       );
 
@@ -904,7 +869,7 @@ describe('RoleController (e2e)', () => {
             'name must be longer than or equal to 5 characters',
           ],
           error: 'Bad Request',
-          statusCode: 400,
+          statusCode: HttpStatus.BAD_REQUEST,
         }),
       );
 
@@ -953,10 +918,11 @@ describe('RoleController (e2e)', () => {
     it('200 OK - should process delete execution smoothly even if user lacks optional loose permissions', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -964,8 +930,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -1002,7 +968,7 @@ describe('RoleController (e2e)', () => {
             `    "id": "${randomId}"\n` +
             '}',
           error: 'EntityNotFoundError',
-          statusCode: 404,
+          statusCode: HttpStatus.NOT_FOUND,
         }),
       );
 
@@ -1016,10 +982,11 @@ describe('RoleController (e2e)', () => {
     it('403 FORBIDDEN - should intercept execution if user lacks strict deletion scope permission', async () => {
       const headers = await changePermissionsForTestUser({
         permissionsToUnassign: DELETE_ROLE_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
         rolePipelineService,
         userRolePipelineService,
-        testRole,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
         cacheInvalidateByIdSpy,
@@ -1027,8 +994,8 @@ describe('RoleController (e2e)', () => {
         cacheInvalidateByKeyPatternSpy,
         app,
         testUser: {
-          id: testUser.id,
-          email: testUser.email,
+          id: testUser.user.id,
+          email: testUser.user.email,
           password: testUserPassword,
         },
       });
@@ -1045,7 +1012,7 @@ describe('RoleController (e2e)', () => {
         expect.objectContaining({
           message: 'Invalid token',
           error: 'Forbidden',
-          statusCode: 403,
+          statusCode: HttpStatus.FORBIDDEN,
         }),
       );
 

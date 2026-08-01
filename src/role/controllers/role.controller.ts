@@ -1,5 +1,5 @@
 import { JwtPayload } from '@/auth/auth.interface';
-import { extractAccess } from '@/base/helper/permissions';
+import { extractAccess } from '@/baseHelper/permissions';
 import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,

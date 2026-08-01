@@ -1,4 +1,4 @@
-import { deletedResults } from '@/base/helper/delete';
+import { deletedResults } from '@/baseHelper/delete';
 import { FullUser } from '@/common/pipes/full-user.pipe';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';

@@ -5,11 +5,16 @@ import { EnvConfigService } from '@/config/env/env.config.service';
 import { Environment } from '@/config/env/env.validation';
 import { PermissionPipelineService } from '@/permission/permission.pipeline';
 import { RolePipelineService } from '@/role/role.pipeline';
+import type { RoleResponseDto } from '@/roleDto/role.dto';
 import { StorePipelineService } from '@/store/store.pipeline';
+import type { StoreResponseDto } from '@/storeDto/store.dto';
 import { SystemIdentityService } from '@/system/identity.service';
+import { loginTestUser } from '@/test/e2e/auth';
+import { initTestUser } from '@/test/pipeline/user';
 import { UserRolePipelineService } from '@/user/role.pipeline';
 import { UserStorePipelineService } from '@/user/store.pipeline';
 import { UserPipelineService } from '@/user/user.pipeline';
+import type { UserResponseDto } from '@/userDto/user.dto';
 import {
   type INestApplication,
   ValidationPipe,
@@ -24,6 +29,12 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { UUID } from 'crypto';
 import { DataSource } from 'typeorm';
 
+export interface TestUser {
+  user: UserResponseDto;
+  role: RoleResponseDto;
+  store: StoreResponseDto;
+}
+
 export interface BootstrappedApp {
   app: INestApplication;
   moduleFixture: TestingModule;
@@ -37,6 +48,7 @@ export interface BootstrappedApp {
   userRolePipelineService: UserRolePipelineService;
   userStorePipelineService: UserStorePipelineService;
   userPipelineService: UserPipelineService;
+  cacheService: CacheService;
   cacheGetByIdSpy: jest.SpyInstance;
   cacheSetSpy: jest.SpyInstance;
   cacheGetSpy: jest.SpyInstance;
@@ -44,6 +56,12 @@ export interface BootstrappedApp {
   cacheInvalidateByTagsSpy: jest.SpyInstance;
   cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
   countries: typeof COUNTRIES;
+  rootUser: TestUser;
+  testUser: TestUser;
+  targetUser: TestUser;
+  testUserPassword: string;
+  authorizedRootHeader: Record<string, string>;
+  authorizedHeader: Record<string, string>;
 }
 
 export async function bootstrapTestApp(): Promise<BootstrappedApp> {
@@ -82,6 +100,7 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   const dataSource = app.get(DataSource);
   const envConfigService = app.get(EnvConfigService);
   const systemService = app.get(SystemIdentityService);
+  const cacheService = app.get(CacheService);
 
   // if (dataSource.isInitialized) {
   //   await dataSource.synchronize(true);
@@ -121,12 +140,74 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
     'invalidateByKeyPattern',
   );
 
+  // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+  const testUserPassword = 'TestPassword123!';
+  const rootUser = await initTestUser({
+    userPipelineService,
+    rolePipelineService,
+    userRolePipelineService,
+    storePipelineService,
+    userStorePipelineService,
+    overrides: {
+      password: testUserPassword,
+      isActive: true,
+    },
+    systemPermissions: ['root_admin'],
+    systemUserId,
+    cacheSetSpy,
+    cacheGetByIdSpy,
+    cacheInvalidateByIdSpy,
+    cacheInvalidateByTagsSpy,
+    cacheInvalidateByKeyPatternSpy,
+  });
+
+  const listOfNonRootSystemPermissions = systemPermissions.filter(
+    (p) => p !== 'root_admin',
+  );
+
+  const testUser = await initTestUser({
+    userPipelineService,
+    rolePipelineService,
+    userRolePipelineService,
+    storePipelineService,
+    userStorePipelineService,
+    overrides: {
+      password: testUserPassword,
+      isActive: true,
+    },
+    systemPermissions: listOfNonRootSystemPermissions,
+    systemUserId,
+    cacheSetSpy,
+    cacheGetByIdSpy,
+    cacheInvalidateByIdSpy,
+    cacheInvalidateByTagsSpy,
+    cacheInvalidateByKeyPatternSpy,
+  });
+
+  const targetUser = await initTestUser({
+    userPipelineService,
+    rolePipelineService,
+    userRolePipelineService,
+    storePipelineService,
+    userStorePipelineService,
+    overrides: {
+      password: testUserPassword,
+      isActive: true,
+    },
+    systemPermissions: listOfNonRootSystemPermissions,
+    systemUserId,
+    cacheSetSpy,
+    cacheGetByIdSpy,
+    cacheInvalidateByIdSpy,
+    cacheInvalidateByTagsSpy,
+    cacheInvalidateByKeyPatternSpy,
+  });
+
   return {
     app,
     moduleFixture,
     dataSource,
     systemUserId,
-    systemPermissions,
     envConfigService,
     rolePipelineService,
     permissionPipelineService,
@@ -134,6 +215,7 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
     userRolePipelineService,
     userStorePipelineService,
     userPipelineService,
+    cacheService,
     cacheGetByIdSpy,
     cacheSetSpy,
     cacheGetSpy,
@@ -141,5 +223,24 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
     cacheInvalidateByTagsSpy,
     cacheInvalidateByKeyPatternSpy,
     countries: COUNTRIES,
+    rootUser,
+    testUser,
+    targetUser,
+    testUserPassword,
+    authorizedRootHeader: await loginTestUser({
+      app,
+      email: rootUser.user.email,
+      password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+    }),
+    authorizedHeader: await loginTestUser({
+      app,
+      email: testUser.user.email,
+      password: testUserPassword,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+    }),
+    systemPermissions: listOfNonRootSystemPermissions,
   };
 }

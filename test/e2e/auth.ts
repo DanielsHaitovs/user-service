@@ -1,7 +1,10 @@
 import type { AuthenticateDto, AuthenticateResponseDto } from '@/auth/auth.dto';
 import type { RolePipelineService } from '@/role/role.pipeline';
 import type { RoleResponseDto } from '@/roleDto/role.dto';
-import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
+import {
+  assignPermissionToRole,
+  unAssignPermissionFromRole,
+} from '@/test/pipeline/rolePermissions';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -55,6 +58,7 @@ export async function loginTestUser({
 
 export async function changePermissionsForTestUser({
   permissionsToUnassign,
+  permissionsToAssign,
   systemUserId,
   rolePipelineService,
   userRolePipelineService,
@@ -68,6 +72,7 @@ export async function changePermissionsForTestUser({
   testUser,
 }: {
   permissionsToUnassign: string[];
+  permissionsToAssign: string[];
   systemUserId: UUID;
   rolePipelineService: RolePipelineService;
   userRolePipelineService: UserRolePipelineService;
@@ -92,19 +97,44 @@ export async function changePermissionsForTestUser({
   cacheInvalidateByTagsSpy.mockClear();
   cacheInvalidateByKeyPatternSpy.mockClear();
 
-  await unAssignPermissionFromRole({
-    rolePipelineService,
-    testRole,
-    permissionsToUnassign,
-    systemUserId,
-    cacheSetSpy,
-    cacheGetByIdSpy,
-    cacheInvalidateByIdSpy,
-    cacheInvalidateByTagsSpy,
-    cacheInvalidateByKeyPatternSpy,
-  });
+  if (permissionsToUnassign.length > 0) {
+    await unAssignPermissionFromRole({
+      rolePipelineService,
+      testRole,
+      permissionsToUnassign,
+      systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
+    });
+  }
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
+
+  if (permissionsToAssign.length > 0) {
+    await assignPermissionToRole({
+      rolePipelineService,
+      testRole,
+      permissionsToAssign,
+      systemUserId,
+      cacheSetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
+      cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
+    });
+  }
 
   await userRolePipelineService.getPermissions(testUser.id);
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
 
   const headers = await loginTestUser({
     app,

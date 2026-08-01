@@ -1,20 +1,11 @@
-/* eslint-disable sonarjs/no-hardcoded-passwords */
-import { CacheService } from '@/baseServices/cache.service';
 import type { Permission } from '@/permissionEntities/permissions.entity';
 import type { RolePipelineService } from '@/role/role.pipeline';
-import type { RoleResponseDto } from '@/roleDto/role.dto';
-import type { StorePipelineService } from '@/store/store.pipeline';
 import { READ_PERMISSION_ENDPOINT_PERMISSION } from '@/system/const/permission.const';
-import { bootstrapTestApp } from '@/test/bootstrap-e2e';
+import { bootstrapTestApp, type TestUser } from '@/test/bootstrap-e2e';
 import { createTestPermissions } from '@/test/db/permission';
-import { loginTestUser } from '@/test/e2e/auth';
-import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
-import { initTestUser } from '@/test/pipeline/user';
+import { changePermissionsForTestUser } from '@/test/e2e/auth';
 import { validatePermissionResponseDto } from '@/test/validate/permission';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
-import type { UserStorePipelineService } from '@/user/store.pipeline';
-import type { UserPipelineService } from '@/user/user.pipeline';
-import type { UserResponseDto } from '@/userDto/user.dto';
 import type { User } from '@/userEntities/user.entity';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -30,7 +21,6 @@ describe('PermissionController (e2e)', () => {
   let authorizedHeader: Record<string, string>;
   let authorizedRootHeader: Record<string, string>;
   let systemUserId: UUID;
-  let systemPermissions: string[];
   let cacheSetSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
   let cacheInvalidateByIdSpy: jest.SpyInstance;
@@ -38,15 +28,10 @@ describe('PermissionController (e2e)', () => {
   let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
   let permission: Permission;
   let permission2: Permission;
-  let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
   let userRolePipelineService: UserRolePipelineService;
-  let storePipelineService: StorePipelineService;
-  let userStorePipelineService: UserStorePipelineService;
-  const testUserPassword = 'TestPassword123!';
-  let testUser: UserResponseDto;
-  let rootUser: UserResponseDto;
-  let testRole: RoleResponseDto;
+  let testUserPassword: string;
+  let testUser: TestUser;
 
   beforeAll(async () => {
     const bootstrap = await bootstrapTestApp();
@@ -54,20 +39,19 @@ describe('PermissionController (e2e)', () => {
       dataSource,
       moduleFixture,
       systemUserId,
-      systemPermissions,
+      authorizedHeader,
+      authorizedRootHeader,
+      testUser,
+      testUserPassword,
       cacheSetSpy,
       cacheGetByIdSpy,
       cacheInvalidateByIdSpy,
       cacheInvalidateByTagsSpy,
       cacheInvalidateByKeyPatternSpy,
-      userPipelineService,
       rolePipelineService,
       userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
     } = bootstrap);
     app = bootstrap.app as NestFastifyApplication;
-    jest.spyOn(CacheService.prototype, 'invalidateByTags').mockResolvedValue();
 
     const permissions = await createTestPermissions({
       dataSource,
@@ -86,76 +70,19 @@ describe('PermissionController (e2e)', () => {
     permission = permissions[0];
     permission2 = permissions[1];
 
-    const { user } = await initTestUser({
-      userPipelineService,
-      rolePipelineService,
-      userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
-      overrides: {
-        password: testUserPassword,
-        isActive: true,
-      },
-      systemPermissions: ['root_admin'],
-      systemUserId,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-      cacheInvalidateByIdSpy,
-      cacheInvalidateByTagsSpy,
-      cacheInvalidateByKeyPatternSpy,
-    });
-
-    rootUser = user;
-
-    authorizedRootHeader = await loginTestUser({
-      app,
-      email: rootUser.email,
-      password: testUserPassword,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-    });
-
-    systemPermissions = systemPermissions.filter(
-      (permission) => permission !== 'root_admin',
-    );
-
     cacheSetSpy.mockClear();
     cacheGetByIdSpy.mockClear();
+    cacheInvalidateByIdSpy.mockClear();
+    cacheInvalidateByTagsSpy.mockClear();
+    cacheInvalidateByKeyPatternSpy.mockClear();
   });
 
-  beforeEach(async () => {
-    const { user, role } = await initTestUser({
-      userPipelineService,
-      rolePipelineService,
-      userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
-      overrides: {
-        password: testUserPassword,
-        isActive: true,
-      },
-      systemPermissions,
-      systemUserId,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-      cacheInvalidateByIdSpy,
-      cacheInvalidateByTagsSpy,
-      cacheInvalidateByKeyPatternSpy,
-    });
-
-    testUser = user;
-    testRole = role;
-
-    authorizedHeader = await loginTestUser({
-      app,
-      email: testUser.email,
-      password: testUserPassword,
-      cacheSetSpy,
-      cacheGetByIdSpy,
-    });
-
+  beforeEach(() => {
     cacheSetSpy.mockClear();
     cacheGetByIdSpy.mockClear();
+    cacheInvalidateByIdSpy.mockClear();
+    cacheInvalidateByTagsSpy.mockClear();
+    cacheInvalidateByKeyPatternSpy.mockClear();
   });
 
   afterAll(async () => {
@@ -181,6 +108,9 @@ describe('PermissionController (e2e)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('200 OK - should successfully fetch permission payload using a real authorized user token', async () => {
@@ -201,6 +131,9 @@ describe('PermissionController (e2e)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should throw entity exception when requested by a real authorized user', async () => {
@@ -219,6 +152,9 @@ describe('PermissionController (e2e)', () => {
       );
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should fail validation pipe checks before hitting the controller logic', async () => {
@@ -231,6 +167,9 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should block a real user request if their token lacks the systemic scope', async () => {
@@ -243,23 +182,29 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.UNAUTHORIZED);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
     it('403 FORBIDDEN - should block a real user request if user does not have required permission', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: READ_PERMISSION_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
-      });
-
-      await userRolePipelineService.getPermissions(testUser.id);
-
-      const headers = await loginTestUser({
-        app,
-        email: testUser.email,
-        password: testUserPassword,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
       });
 
       const response = await app.inject({
@@ -271,6 +216,9 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
   describe('GET /v1/permission/code/:code', () => {
@@ -292,6 +240,9 @@ describe('PermissionController (e2e)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
     it('200 OK - should successfully fetch permission payload using a real authorized user token', async () => {
       const response = await app.inject({
@@ -311,6 +262,9 @@ describe('PermissionController (e2e)', () => {
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
     it('404 NOT FOUND - should throw entity exception when requested by a real authorized user', async () => {
       const missingUuid = randomUUID();
@@ -328,6 +282,9 @@ describe('PermissionController (e2e)', () => {
       );
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
     it('403 FORBIDDEN - should block a real user request if their token lacks the systemic scope', async () => {
       const response = await app.inject({
@@ -339,27 +296,30 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.UNAUTHORIZED);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
     it('403 FORBIDDEN - should block a real user request if user does not have required permission', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: READ_PERMISSION_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
-      });
-
-      await userRolePipelineService.getPermissions(testUser.id);
-
-      const headers = await loginTestUser({
-        app,
-        email: testUser.email,
-        password: testUserPassword,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
         cacheSetSpy,
         cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
       });
-
-      cacheSetSpy.mockClear();
-      cacheGetByIdSpy.mockClear();
 
       const response = await app.inject({
         method: 'GET',
@@ -370,6 +330,9 @@ describe('PermissionController (e2e)', () => {
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 });

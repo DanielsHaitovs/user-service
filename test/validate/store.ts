@@ -1,4 +1,7 @@
-import type { StoreResponseDto } from '@/storeDto/store.dto';
+import type {
+  GetRelatedStoreDto,
+  StoreResponseDto,
+} from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 
 import type { UUID } from 'crypto';
@@ -43,10 +46,13 @@ export function validateStoreResponseDto({
   response,
   expected,
 }: {
-  response: StoreResponseDto;
+  response: StoreResponseDto | GetRelatedStoreDto | undefined;
   expected: Partial<StoreResponseDto> | undefined;
 }): void {
   if (expected == undefined) return;
+  if (response == undefined) {
+    throw new Error('Response is undefined but expected is defined');
+  }
 
   expect(response).toBeDefined();
   expect(response.id).toBeDefined();

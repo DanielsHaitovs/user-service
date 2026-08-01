@@ -1,4 +1,4 @@
-import { updatedResults } from '@/base/helper/update';
+import { updatedResults } from '@/baseHelper/update';
 import { GetRoleDto, UpdateRoleDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';

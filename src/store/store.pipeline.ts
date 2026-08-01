@@ -131,6 +131,16 @@ export class StorePipelineService {
           id: store.id,
           alias: STORE_QUERY_ALIAS,
         }),
+        this.cacheService.invalidateByTags({
+          tag: { purge: true },
+          alias: STORE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateByTags({
+          tag: {
+            purge: true,
+          },
+          alias: USER_STORES_QUERY_ALIAS,
+        }),
         this.auditService.sendLog({
           userId: requestedByUserId,
           action: StoreAction.UPDATE,

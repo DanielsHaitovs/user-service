@@ -16,16 +16,22 @@ export async function createTestStore({
   overrides = {},
   createdById,
   cacheSetSpy,
+  cacheInvalidateByTagsSpy,
   auditLogSpy,
 }: {
   storePipelineService: StorePipelineService;
   overrides?: Partial<CreateStoreDto>;
   createdById: UUID;
   cacheSetSpy: jest.SpyInstance;
-  auditLogSpy: jest.SpyInstance;
+  cacheInvalidateByTagsSpy: jest.SpyInstance;
+  auditLogSpy?: jest.SpyInstance;
 }): Promise<StoreResponseDto> {
   cacheSetSpy.mockClear();
-  auditLogSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+
+  if (auditLogSpy) {
+    auditLogSpy.mockClear();
+  }
 
   const uuid = randomUUID();
 
@@ -55,10 +61,15 @@ export async function createTestStore({
   });
 
   expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-  expect(auditLogSpy).toHaveBeenCalledTimes(1);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
 
+  cacheInvalidateByTagsSpy.mockClear();
   cacheSetSpy.mockClear();
-  auditLogSpy.mockClear();
+
+  if (auditLogSpy) {
+    expect(auditLogSpy).toHaveBeenCalledTimes(1);
+    auditLogSpy.mockClear();
+  }
 
   return store;
 }

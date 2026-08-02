@@ -1,21 +1,31 @@
-import type { GetRoleDto, RoleResponseDto } from '@/roleDto/role.dto';
+import type {
+  GetRelatedRoleDto,
+  GetRoleDto,
+  RoleResponseDto,
+} from '@/roleDto/role.dto';
 import { validatePermissionResponseDto } from '@/test/validate/permission';
 
 export function validateRoleResponseDto({
   response,
   expected,
 }: {
-  response: GetRoleDto | RoleResponseDto;
+  response: GetRoleDto | RoleResponseDto | GetRelatedRoleDto | undefined;
   expected?: Partial<GetRoleDto> | undefined;
 }): void {
+  if (expected === undefined) return;
+
+  if (response === undefined) {
+    throw new Error('Response is undefined, but expected a defined response.');
+  }
+
   expect(response).toBeDefined();
   expect(response.id).toBeDefined();
 
-  if (expected?.id != undefined) {
+  if (expected.id != undefined) {
     expect(response.id).toBe(expected.id);
   }
 
-  if (expected?.name != undefined) {
+  if (expected.name != undefined) {
     expect(response.name).toBe(expected.name);
   }
 }

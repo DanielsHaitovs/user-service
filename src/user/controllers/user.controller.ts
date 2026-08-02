@@ -133,19 +133,15 @@ export class UserController {
   ): Promise<UserResponseDto> {
     const {
       canAssignUserToRoles,
-      canReadRoles,
-      canReadUserRoles,
       canAssignUserToStore,
-      canReadStore,
-      canReadUserStore,
       id: createdById,
     } = extractAccess(requestedByUser);
 
-    if (!canAssignUserToRoles || !canReadRoles || !canReadUserRoles) {
+    if (!canAssignUserToRoles) {
       createDto.roleIds = [];
     }
 
-    if (!canAssignUserToStore || !canReadStore || !canReadUserStore) {
+    if (!canAssignUserToStore) {
       createDto.storeIds = [];
     }
 

@@ -1,10 +1,13 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords */
 import { COUNTRIES } from '@/commonConst/countries.const';
 import { ASSIGN_USER_ROLE } from '@/commonConst/role.const';
+import { ASSIGN_USER_STORE } from '@/commonConst/store.const';
 import type { RolePipelineService } from '@/role/role.pipeline';
+import { CREATE_USER_ENDPOINT_PERMISSION } from '@/system/const/user.const';
 import { bootstrapTestApp, type TestUser } from '@/test/bootstrap-e2e';
 import { changePermissionsForTestUser } from '@/test/e2e/auth';
 import { createTestUser } from '@/test/pipeline/user';
+import { validateUserResponseDto } from '@/test/validate/user';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
 import type { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
@@ -13,10 +16,6 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { TestingModule } from '@nestjs/testing';
 
 import { randomUUID, type UUID } from 'crypto';
-
-import { validateUserResponseDto } from '../../../test/validate/user';
-import { ASSIGN_USER_STORE } from '../../common/const/store.const';
-import { CREATE_USER_ENDPOINT_PERMISSION } from '../../system/const/user.const';
 
 describe('UserController (e2e)', () => {
   let app: NestFastifyApplication;

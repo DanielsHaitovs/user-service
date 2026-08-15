@@ -48,6 +48,7 @@ export class PermissionsGuard implements CanActivate {
 
       if (!payload) {
         const token = extractBearerFromHeader(request);
+
         if (token === undefined) {
           throw new ForbiddenException('No token provided');
         }

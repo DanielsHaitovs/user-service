@@ -9,12 +9,28 @@ export async function unAssignPermissionFromRole({
   permissionsToUnassign,
   testRole,
   systemUserId,
+  cacheSetSpy,
+  cacheGetByIdSpy,
+  cacheInvalidateByIdSpy,
+  cacheInvalidateByTagsSpy,
+  cacheInvalidateByKeyPatternSpy,
 }: {
   rolePipelineService: RolePipelineService;
   permissionsToUnassign: string[];
   testRole: RoleResponseDto;
   systemUserId: UUID;
+  cacheSetSpy: jest.SpyInstance;
+  cacheGetByIdSpy: jest.SpyInstance;
+  cacheInvalidateByIdSpy: jest.SpyInstance;
+  cacheInvalidateByTagsSpy: jest.SpyInstance;
+  cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 }): Promise<void> {
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
+
   await rolePipelineService.unassignPermissionsFromRole({
     unassignPayload: {
       permissionCodes: permissionsToUnassign,
@@ -26,19 +42,47 @@ export async function unAssignPermissionFromRole({
       userAgent: faker.internet.userAgent(),
     },
   });
+
+  expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
 }
 
-export async function assignPermissionFromRole({
+export async function assignPermissionToRole({
   rolePipelineService,
   permissionsToAssign,
   testRole,
   systemUserId,
+  cacheSetSpy,
+  cacheGetByIdSpy,
+  cacheInvalidateByIdSpy,
+  cacheInvalidateByTagsSpy,
+  cacheInvalidateByKeyPatternSpy,
 }: {
   rolePipelineService: RolePipelineService;
   permissionsToAssign: string[];
   testRole: RoleResponseDto;
   systemUserId: UUID;
+  cacheSetSpy: jest.SpyInstance;
+  cacheGetByIdSpy: jest.SpyInstance;
+  cacheInvalidateByIdSpy: jest.SpyInstance;
+  cacheInvalidateByTagsSpy: jest.SpyInstance;
+  cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 }): Promise<void> {
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
+
   await rolePipelineService.assignPermissionsToRole({
     assignPayload: {
       permissionCodes: permissionsToAssign,
@@ -50,4 +94,16 @@ export async function assignPermissionFromRole({
       userAgent: faker.internet.userAgent(),
     },
   });
+
+  expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
 }

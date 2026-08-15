@@ -1,11 +1,17 @@
-import { CacheService } from '@/base/service/cache.service';
+import { CacheService } from '@/baseServices/cache.service';
 import { PERMISSION_QUERY_ALIAS } from '@/commonConst/permission.const';
 import { ROLE_QUERY_ALIAS } from '@/commonConst/role.const';
 import { RoleResponseDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';
-import { Injectable, type PipeTransform } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  type PipeTransform,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { isUUID } from 'class-validator';
 import { UUID } from 'crypto';
 import { Repository } from 'typeorm';
 
@@ -21,9 +27,18 @@ export class FetchRolePermissionsPipe
     private readonly cacheService: CacheService,
   ) {}
 
-  async transform(value: UUID): Promise<FetchedRole> {
+  async transform(value: string): Promise<FetchedRole> {
+    if (!value || !isUUID(value)) {
+      throw new BadRequestException({
+        message: 'role id must be a UUID',
+        error: 'Bad Request',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const roleId = value as UUID;
     const cachedRole = await this.cacheService.getById<FetchedRole>({
-      id: value,
+      id: roleId,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
 
@@ -32,7 +47,7 @@ export class FetchRolePermissionsPipe
     }
 
     const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
-      id: value,
+      id: roleId,
       alias: `${ROLE_QUERY_ALIAS}_${PERMISSION_QUERY_ALIAS}`,
     });
 
@@ -40,7 +55,7 @@ export class FetchRolePermissionsPipe
       key: cacheKey,
       operation: async () => {
         const role = await this.rolesRepository.findOneOrFail({
-          where: { id: value },
+          where: { id: roleId },
           relations: ['permissions'],
         });
 

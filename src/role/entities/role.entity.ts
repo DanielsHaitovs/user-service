@@ -14,6 +14,7 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
+  Relation,
   Unique,
 } from 'typeorm';
 
@@ -27,7 +28,7 @@ export class Roles extends MecBaseEntity {
   name: string;
 
   @OneToMany(() => UserRoles, (userRole) => userRole.role)
-  userRoles: UserRoles[];
+  userRoles: Relation<UserRoles[]>;
 
   @ManyToMany(() => Permission, (permission) => permission.roles)
   @JoinTable({
@@ -35,11 +36,11 @@ export class Roles extends MecBaseEntity {
     joinColumn: { name: 'role_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
   })
-  permissions: Permission[];
+  permissions: Relation<Permission[]>;
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })
-  createdBy: User;
+  createdBy: Relation<User>;
 
   constructor(
     id: UUID,

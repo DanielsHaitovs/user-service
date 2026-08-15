@@ -57,10 +57,16 @@ export class UserStorePipelineService {
       return;
     }
 
-    await this.cacheService.invalidateById({
-      id: userId,
-      alias: USER_STORES_QUERY_ALIAS,
-    });
+    await Promise.all([
+      this.cacheService.invalidateById({
+        id: userId,
+        alias: USER_STORES_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateByTags({
+        alias: USER_STORES_QUERY_ALIAS,
+        tag: { purge: true },
+      }),
+    ]);
 
     const assignedStores = await this.getAssignedStores(userId);
 
@@ -103,10 +109,16 @@ export class UserStorePipelineService {
       return;
     }
 
-    await this.cacheService.invalidateById({
-      id: userId,
-      alias: USER_STORES_QUERY_ALIAS,
-    });
+    await Promise.all([
+      this.cacheService.invalidateById({
+        id: userId,
+        alias: USER_STORES_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateByTags({
+        alias: USER_STORES_QUERY_ALIAS,
+        tag: { purge: true },
+      }),
+    ]);
 
     const assignedStores = await this.getAssignedStores(userId);
 

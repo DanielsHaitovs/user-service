@@ -35,6 +35,7 @@
       "@/shared/*": ["src/shared/*"],
       "@/baseInterface/*": ["src/base/interface/*"],
       "@/baseDto/*": ["src/base/dto/*"],
+      "@/baseHelper/*": ["src/base/helper/*"],
       "@/base/*": ["src/base/*"],
       "@/baseServices/*": ["src/base/service/*"],
       "@/middleware/*": ["src/middleware/*"],

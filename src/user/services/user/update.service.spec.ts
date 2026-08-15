@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-spread */
-import { updatedResults } from '@/base/helper/update';
+import { updatedResults } from '@/baseHelper/update';
 import { SystemIdentityService } from '@/system/identity.service';
 import type { GetUserDto, UpdateUserDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';
@@ -12,7 +12,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import type { UpdateResult } from 'typeorm';
 
-jest.mock('@/base/helper/update', () => ({
+jest.mock('@/baseHelper/update', () => ({
   updatedResults: jest.fn(),
 }));
 

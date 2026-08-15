@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/todo-tag */
-import { updatedResults } from '@/base/helper/update';
+import { updatedResults } from '@/baseHelper/update';
 import { SystemIdentityService } from '@/system/identity.service';
 import { GetUserDto, UpdateUserDto } from '@/userDto/user.dto';
 import { User } from '@/userEntities/user.entity';

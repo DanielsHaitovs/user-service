@@ -1,5 +1,5 @@
 import { JwtPayload } from '@/auth/auth.interface';
-import { extractAccess } from '@/base/helper/permissions';
+import { extractAccess } from '@/baseHelper/permissions';
 import { READ_PERMISSION } from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
@@ -14,6 +14,7 @@ import {
   GetClientMetadata,
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
+import { ResourceLock } from '@/commonDecorators/resource-lock.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
 import { FetchedRole, FetchRolePipe } from '@/commonPipes/role.pipe';
@@ -75,6 +76,8 @@ export class RoleController {
     required: CREATE_ROLE_ENDPOINT_PERMISSION,
     loose: [ASSIGN_PERMISSION_TO_ROLE, READ_PERMISSION],
   })
+  @Idempotent()
+  @ResourceLock('role', { paramKey: 'name', ttl: 5 })
   @ApiBody({
     description: 'Role creation data',
     type: CreateRoleDto,
@@ -124,7 +127,6 @@ export class RoleController {
   @ApiConflictResponse({
     description: 'Conflict - A role with the same name already exists',
   })
-  @Idempotent()
   async create(
     @Body()
     createDto: CreateRoleDto,
@@ -229,6 +231,8 @@ export class RoleController {
   @Permissions({
     required: UPDATE_ROLE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('role', { paramKey: 'id', ttl: 5 })
   @ApiOkResponse({
     description: 'Role name successfully updated',
     type: Boolean,
@@ -270,7 +274,6 @@ export class RoleController {
     description: 'Role id to update',
     example: EXAMPLE_USER_ID,
   })
-  @Idempotent()
   async updateName(
     @Param('id', FetchRolePipe) role: FetchedRole,
     @Body() updateDto: UpdateRoleDto,
@@ -287,11 +290,13 @@ export class RoleController {
 
   @Delete('id/:id')
   @Version('1')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @Permissions({
     required: DELETE_ROLE_ENDPOINT_PERMISSION,
     loose: [READ_USER_ROLE, UNASSIGN_USER_ROLE],
   })
+  @Idempotent()
+  @ResourceLock('role', { paramKey: 'id', ttl: 5 })
   @ApiParam({
     name: 'id',
     type: String,
@@ -318,12 +323,11 @@ export class RoleController {
     description: 'Role successfully deleted',
     type: Boolean,
   })
-  @Idempotent()
   async delete(
     @Param('id', FetchRolePipe) role: FetchedRole,
     @CurrentUser() requestedByUser: JwtPayload,
     @GetClientMetadata() metadata: ClientMetadata,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const {
       canReadUserRoles,
       canUnassignUserFromRoles,
@@ -332,7 +336,7 @@ export class RoleController {
 
     const canDeleteAssignedRole = canReadUserRoles && canUnassignUserFromRoles;
 
-    await this.pipelineService.delete({
+    return await this.pipelineService.delete({
       role,
       canDeleteAssignedRole,
       requestedByUserId,

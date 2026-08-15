@@ -3,19 +3,19 @@ import { Roles } from '@/roleEntities/role.entity';
 import { User } from '@/userEntities/user.entity';
 
 import { UUID } from 'crypto';
-import { Entity, Index, ManyToOne } from 'typeorm';
+import { Entity, Index, ManyToOne, Relation } from 'typeorm';
 
 @Entity('userRoles')
 @Index('IX_USER_ROLES', ['user', 'role'])
 export class UserRoles extends MecBaseEntity {
   @ManyToOne(() => Roles, (role) => role.userRoles)
-  role: Roles;
+  role: Relation<Roles>;
 
   @ManyToOne(() => User, (user) => user.userRoles)
-  user: User;
+  user: Relation<User>;
 
   @ManyToOne(() => User, { nullable: true })
-  assignedBy: User;
+  assignedBy: Relation<User>;
 
   constructor(
     id: UUID,

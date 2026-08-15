@@ -8,14 +8,19 @@ import {
   UNASSIGN_USER_DEPARTMENT,
   UPDATE_DEPARTMENT,
 } from '@/commonConst/department.const';
-import { READ_PERMISSION } from '@/commonConst/permission.const';
+import {
+  READ_PERMISSION,
+  ROOT_ADMIN_PERMISSION,
+} from '@/commonConst/permission.const';
 import {
   ASSIGN_PERMISSION_TO_ROLE,
+  ASSIGN_USER_ROLE,
   CREATE_ROLE,
   DELETE_ROLE,
   READ_ROLE,
   READ_USER_ROLE,
   UNASSIGN_PERMISSION_FROM_ROLE,
+  UNASSIGN_USER_ROLE,
   UPDATE_ROLE,
 } from '@/commonConst/role.const';
 import {
@@ -41,6 +46,10 @@ export function extractAccess(
   const { permissions, id } = createdByUser;
 
   function has(permission: string): boolean {
+    if (permissions.includes(ROOT_ADMIN_PERMISSION)) {
+      return true;
+    }
+
     return permissions.includes(permission);
   }
 
@@ -73,12 +82,28 @@ export function extractAccess(
     canDeleteUsers: has(DELETE_USER),
     // user roles
     canReadUserRoles: has(READ_USER_ROLE),
-    canAssignUserToRoles: has(UPDATE_USER),
-    canUnassignUserFromRoles: has(UPDATE_USER),
+    canAssignUserToRoles:
+      has(ASSIGN_USER_ROLE) &&
+      has(READ_ROLE) &&
+      has(READ_USER) &&
+      has(READ_USER_ROLE),
+    canUnassignUserFromRoles:
+      has(UNASSIGN_USER_ROLE) &&
+      has(READ_ROLE) &&
+      has(READ_USER) &&
+      has(READ_USER_ROLE),
     // user store
-    canReadUserStore: has(READ_USER_STORE),
+    canReadUserStore:
+      has(READ_USER) &&
+      has(READ_STORE) &&
+      has(READ_USER_STORE) &&
+      has(ASSIGN_USER_STORE),
     canAssignUserToStore: has(ASSIGN_USER_STORE),
-    canUnassignUserFromStore: has(UNASSIGN_USER_STORE),
+    canUnassignUserFromStore:
+      has(READ_USER) &&
+      has(READ_STORE) &&
+      has(READ_USER_STORE) &&
+      has(UNASSIGN_USER_STORE),
     // user department
     canReadUserDepartments: has(READ_USER_DEPARTMENT),
     canAssignUserToDepartments: has(ASSIGN_USER_DEPARTMENT),

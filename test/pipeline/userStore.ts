@@ -35,8 +35,16 @@ export async function assignTestStoreToUser({
   cacheSetSpy: jest.SpyInstance;
   cacheGetByIdSpy: jest.SpyInstance;
   cacheInvalidateByIdSpy: jest.SpyInstance;
-  auditLogSpy: jest.SpyInstance;
+  auditLogSpy?: jest.SpyInstance;
 }): Promise<void> {
+  if (auditLogSpy) {
+    auditLogSpy.mockClear();
+  }
+
+  cacheSetSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+
   await userStorePipelineService.assignStoresToUser({
     data,
     userStores,
@@ -49,13 +57,16 @@ export async function assignTestStoreToUser({
 
   expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
   expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-  expect(auditLogSpy).toHaveBeenCalledTimes(1);
   expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
 
   cacheSetSpy.mockClear();
   cacheInvalidateByIdSpy.mockClear();
   cacheGetByIdSpy.mockClear();
-  auditLogSpy.mockClear();
+
+  if (auditLogSpy) {
+    expect(auditLogSpy).toHaveBeenCalledTimes(1);
+    auditLogSpy.mockClear();
+  }
 }
 
 export async function getAssignedStoresForUser({

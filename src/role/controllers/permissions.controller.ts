@@ -5,6 +5,7 @@ import {
   GetClientMetadata,
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
+import { ResourceLock } from '@/commonDecorators/resource-lock.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
@@ -60,6 +61,8 @@ export class RolePermissionsController {
   @Permissions({
     required: ASSIGN_PERMISSION_TO_ROLE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('rolePermissions', { paramKey: 'roleId', ttl: 5 })
   @ApiParam({
     name: 'roleId',
     type: String,
@@ -100,7 +103,6 @@ export class RolePermissionsController {
       },
     },
   })
-  @Idempotent()
   async assign(
     @Body()
     assignPayload: PermissionsToRoleDto,
@@ -122,6 +124,8 @@ export class RolePermissionsController {
   @Permissions({
     required: UNASSIGN_PERMISSION_FROM_ROLE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('rolePermissions', { paramKey: 'roleId', ttl: 5 })
   @ApiParam({
     name: 'roleId',
     type: String,
@@ -162,7 +166,6 @@ export class RolePermissionsController {
       },
     },
   })
-  @Idempotent()
   async unAssign(
     @Body()
     unassignPayload: PermissionsToRoleDto,

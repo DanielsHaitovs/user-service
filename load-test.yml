@@ -33,9 +33,9 @@ scenarios:
   - name: "Fetch User by ID"
     flow:
       - get:
-          url: "/v1/user/id/4990d65a-d00f-447d-a0f9-6d73ab297523"
+          url: "/v1/user/id/1001a536-1716-430e-9ece-4cfb83cd80f7"
           headers:
-            authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQ5OTBkNjVhLWQwMGYtNDQ3ZC1hMGY5LTZkNzNhYjI5NzUyMyIsImVtYWlsIjoic3lzdGVtQG1lY1NlcnZpY2UuY29tIiwicGVybWlzc2lvbnMiOlsicm9vdF9hZG1pbiJdLCJpYXQiOjE3ODA5MTkwMjIsImV4cCI6MTc4MDkyMjYyMn0.xD4KkK726fctMtGYnA6_3IxTssNLnwOHwzmeXjz9oWA"
+            authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY1NDU3OWE3LWIyN2MtNGM3MS05MGIwLTIwMzFjYWU4N2U1OCIsImVtYWlsIjoic3lzdGVtQG1lY1NlcnZpY2UuY29tIiwicGVybWlzc2lvbnMiOlsicm9vdF9hZG1pbiJdLCJzdG9yZXMiOltdLCJpYXQiOjE3ODY0Nzg2OTcsImV4cCI6MTc4NjQ4MjI5N30.KADQX7C4MNHcbilWjQOXUvbTjUXyRK3-CdaqS4LQnvU"
             
           expect:
             - statusCode: 200

@@ -1,4 +1,4 @@
-import { updatedResults } from '@/base/helper/update';
+import { updatedResults } from '@/baseHelper/update';
 import { GetStoreDto, UpdateStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
 import {

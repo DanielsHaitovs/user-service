@@ -1,11 +1,11 @@
 import { CacheService } from '@/baseServices/cache.service';
 import { UserAction } from '@/common/enum/action.enum';
-import { UserWithRoles } from '@/common/pipes/userRoles.pipe';
 import {
   USER_ROLE_PERMISSIONS_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/commonConst/role.const';
 import { ClientMetadata } from '@/commonDecorators/meta.decorator';
+import { UserWithRoles } from '@/commonPipes/userRoles.pipe';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { AuditProducerService } from '@/user/services/audit.service';
 import {
@@ -103,6 +103,10 @@ export class UserRolePipelineService {
         id: userId,
         alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
       }),
+      this.cacheService.invalidateByTags({
+        alias: USER_ROLE_QUERY_ALIAS,
+        tag: { purge: true },
+      }),
     ]);
 
     const assignedRoles = await this.getAssignedRoles(userId);
@@ -154,6 +158,10 @@ export class UserRolePipelineService {
       this.cacheService.invalidateById({
         id: userId,
         alias: USER_ROLE_PERMISSIONS_QUERY_ALIAS,
+      }),
+      this.cacheService.invalidateByTags({
+        alias: USER_ROLE_QUERY_ALIAS,
+        tag: { purge: true },
       }),
     ]);
 

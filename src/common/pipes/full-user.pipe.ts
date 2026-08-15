@@ -9,8 +9,14 @@ import { GetUserDto } from '@/user/dto/user.dto';
 import { User } from '@/userEntities/user.entity';
 import { UserRoles } from '@/userEntities/userRoles.entity';
 import { UserStores } from '@/userEntities/userStores.entity';
-import { Injectable, type PipeTransform } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  type PipeTransform,
+} from '@nestjs/common';
 
+import { isUUID } from 'class-validator';
 import { UUID } from 'crypto';
 
 export interface FullUser {
@@ -28,11 +34,21 @@ export class FetchFullUserPipe
     private readonly cacheService: CacheService,
   ) {}
 
-  async transform(value: UUID): Promise<FullUser> {
+  async transform(value: string): Promise<FullUser> {
+    if (!value || !isUUID(value)) {
+      throw new BadRequestException({
+        message: 'user id must be a UUID',
+        error: 'Bad Request',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const userId = value as UUID;
+
     const [user, stores, roles] = await Promise.all([
-      this.getUser(value),
-      this.getUserStores(value),
-      this.getUserRoles(value),
+      this.getUser(userId),
+      this.getUserStores(userId),
+      this.getUserRoles(userId),
     ]);
 
     return { user, stores, roles };

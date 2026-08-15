@@ -1,4 +1,4 @@
-import { deletedResults } from '@/base/helper/delete';
+import { deletedResults } from '@/baseHelper/delete';
 import { pgErrorStatusCodes } from '@/commonConst/database.const';
 import { GetRoleDto } from '@/roleDto/role.dto';
 import { Roles } from '@/roleEntities/role.entity';

@@ -22,6 +22,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  Relation,
   Unique,
 } from 'typeorm';
 
@@ -101,14 +102,14 @@ export class User extends MecBaseEntity {
   twoFactorSecret: string;
 
   @OneToMany(() => UserRoles, (userRole) => userRole.user)
-  userRoles: UserRoles[];
+  userRoles: Relation<UserRoles[]>;
 
   @OneToMany(() => UserStores, (userStore) => userStore.user)
-  userStores: UserStores[];
+  userStores: Relation<UserStores[]>;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'createdBy' })
-  createdBy: User;
+  createdBy: Relation<User>;
 
   constructor(
     id: UUID,

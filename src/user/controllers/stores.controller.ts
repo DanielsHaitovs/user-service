@@ -9,8 +9,10 @@ import {
   GetClientMetadata,
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
+import { ResourceLock } from '@/commonDecorators/resource-lock.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
+import { GetRelatedStoreDto } from '@/storeDto/store.dto';
 import {
   ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   READ_USER_STORE_ENDPOINT_PERMISSION,
@@ -31,6 +33,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Version,
@@ -73,6 +76,8 @@ export class UserStoresController {
   @Permissions({
     required: ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('userStore', { paramKey: 'id', ttl: 5 })
   @ApiParam({
     name: 'id',
     type: String,
@@ -105,7 +110,6 @@ export class UserStoresController {
   @ApiOkResponse({
     description: 'Stores successfully assigned to the user',
   })
-  @Idempotent()
   async assign(
     @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() assignDto: AssignStoresToUserDto,
@@ -126,6 +130,8 @@ export class UserStoresController {
   @Permissions({
     required: UNASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('userStore', { paramKey: 'id', ttl: 5 })
   @ApiParam({
     name: 'id',
     type: String,
@@ -158,7 +164,6 @@ export class UserStoresController {
   @ApiOkResponse({
     description: 'Stores successfully unassigned from the user',
   })
-  @Idempotent()
   async unassign(
     @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() unassignDto: UnassignStoresFromUserDto,
@@ -203,5 +208,48 @@ export class UserStoresController {
     @Query() query: UserStoresQueryRequest,
   ): Promise<UserStoresListResponseDto> {
     return await this.userStorePipelineService.getStores(query);
+  }
+
+  @Get('assigned/:id')
+  @Version('1')
+  @HttpCode(HttpStatus.OK)
+  @Permissions({
+    required: READ_USER_STORE_ENDPOINT_PERMISSION,
+  })
+  @ApiOperation({
+    summary: 'Searches for user stores by user ID',
+    description: 'Searches for user stores by user unique identifiers',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid query parameters for searching user permissions',
+    examples: {
+      'Invalid userId format': {
+        summary: 'Invalid userId format',
+        value: {
+          userId: '12345-invalid-uuid',
+        },
+      },
+      'Missing userId': {
+        summary: 'Missing required userId parameter',
+        value: {},
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Returns a list of user stores matching the provided user ID',
+    type: GetRelatedStoreDto,
+    isArray: true,
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'User unique identifier - must be a valid UUID',
+    example: EXAMPLE_USER_ID,
+  })
+  async findAssignedStoresByUserId(
+    @Param('id', ParseUUIDPipe) userId: UUID,
+  ): Promise<GetRelatedStoreDto[]> {
+    return await this.userStorePipelineService.getAssignedStores(userId);
   }
 }

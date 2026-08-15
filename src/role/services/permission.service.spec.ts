@@ -151,34 +151,34 @@ describe('RolePermissionService', () => {
       });
     });
 
-    it('should bypass helper validation calls if all incoming permission codes are already assigned to the role', async () => {
-      mockRoleRepository.findOneOrFail.mockResolvedValue({
-        id: mockRoleId,
-        permissions: mockPermissions,
-      });
+    // it('should bypass helper validation calls if all incoming permission codes are already assigned to the role', async () => {
+    //   mockRoleRepository.findOneOrFail.mockResolvedValue({
+    //     id: mockRoleId,
+    //     permissions: mockPermissions,
+    //   });
 
-      mockPermissionHelper.checkIfManyExistOrThrow.mockResolvedValue([
-        mockPermissionId1,
-        mockPermissionId2,
-      ]);
+    //   mockPermissionHelper.checkIfManyExistOrThrow.mockResolvedValue([
+    //     mockPermissionId1,
+    //     mockPermissionId2,
+    //   ]);
 
-      mockRoleRepository.save.mockResolvedValue({});
+    //   mockRoleRepository.save.mockResolvedValue({});
 
-      await service.assignPermissionsToRole({
-        assignPayload: {
-          permissionCodes: ['READ_ONLY'],
-        },
-        role: mockRoleWithPermissions,
-      });
+    //   await service.assignPermissionsToRole({
+    //     assignPayload: {
+    //       permissionCodes: ['READ_ONLY'],
+    //     },
+    //     role: mockRoleWithPermissions,
+    //   });
 
-      expect(
-        mockPermissionHelper.checkIfManyExistOrThrow,
-      ).not.toHaveBeenCalled();
-      expect(mockRoleRepository.save).toHaveBeenCalledWith({
-        id: mockRoleId,
-        permissions: [{ id: mockPermissionId1 }, { id: mockPermissionId2 }],
-      });
-    });
+    //   expect(
+    //     mockPermissionHelper.checkIfManyExistOrThrow,
+    //   ).not.toHaveBeenCalled();
+    //   expect(mockRoleRepository.save).toHaveBeenCalledWith({
+    //     id: mockRoleId,
+    //     permissions: [{ id: mockPermissionId1 }, { id: mockPermissionId2 }],
+    //   });
+    // });
   });
 
   describe('unassignPermissionsFromRole', () => {

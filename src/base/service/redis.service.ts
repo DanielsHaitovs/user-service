@@ -24,7 +24,7 @@ export class RedisService
       autoResubscribe: true,
       maxRetriesPerRequest: 13,
       enableOfflineQueue: true,
-      tls: { rejectUnauthorized: false },
+      // tls: { rejectUnauthorized: false },
       retryStrategy: (times) => Math.min(times * 2000, 5000),
       reconnectOnError: (err) => err.message.startsWith('READONLY'),
     };
@@ -139,6 +139,17 @@ export class RedisService
       this.logger.error(err);
     } finally {
       await this.client.quit();
+    }
+  }
+
+  async flushAll(): Promise<void> {
+    try {
+      await this.client.flushall();
+      this.logger.log('Successfully flushed all Redis keys.');
+    } catch (error) {
+      this.logger.error(
+        `Failed to flush all Redis keys: ${JSON.stringify(error)}`,
+      );
     }
   }
 

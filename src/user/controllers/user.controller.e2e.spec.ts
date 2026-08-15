@@ -1,5 +1,4 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords */
-import { CacheService } from '@/baseServices/cache.service';
 import { COUNTRIES } from '@/commonConst/countries.const';
 import {
   ASSIGN_USER_ROLE,
@@ -14,21 +13,21 @@ import {
   UNASSIGN_USER_STORE,
 } from '@/commonConst/store.const';
 import type { RolePipelineService } from '@/role/role.pipeline';
-import type { RoleResponseDto } from '@/roleDto/role.dto';
-import type { StorePipelineService } from '@/store/store.pipeline';
-import type { StoreResponseDto } from '@/storeDto/store.dto';
 import {
   CREATE_USER_ENDPOINT_PERMISSION,
   DELETE_USER_ENDPOINT_PERMISSION,
 } from '@/system/const/user.const';
-import { bootstrapTestApp } from '@/test/bootstrap-e2e';
-import { loginTestUser } from '@/test/e2e/auth';
-import { unAssignPermissionFromRole } from '@/test/pipeline/rolePermissions';
-import { createTestUser, initTestUser } from '@/test/pipeline/user';
+import { bootstrapTestApp, type TestUser } from '@/test/bootstrap-e2e';
+import { changePermissionsForTestUser } from '@/test/e2e/auth';
+import { createTestUser } from '@/test/pipeline/user';
+import { validateUserResponseDto } from '@/test/validate/user';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
-import type { UserStorePipelineService } from '@/user/store.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
-import type { UserResponseDto } from '@/userDto/user.dto';
+import type {
+  CreateUserDto,
+  UserListResponseDto,
+  UserResponseDto,
+} from '@/userDto/user.dto';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { TestingModule } from '@nestjs/testing';
@@ -39,79 +38,79 @@ describe('UserController (e2e)', () => {
   let app: NestFastifyApplication;
   let moduleFixture: TestingModule;
   let authorizedHeader: Record<string, string>;
+  let authorizedRootHeader: Record<string, string>;
   let systemUserId: UUID;
-  let systemPermissions: string[];
+
   let cacheSetSpy: jest.SpyInstance;
   let cacheGetSpy: jest.SpyInstance;
+  let cacheGetByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheInvalidateByTagsSpy: jest.SpyInstance;
+  let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 
   let userPipelineService: UserPipelineService;
   let rolePipelineService: RolePipelineService;
   let userRolePipelineService: UserRolePipelineService;
-  let storePipelineService: StorePipelineService;
-  let userStorePipelineService: UserStorePipelineService;
 
-  const testUserPassword = 'TestPassword123!';
-  let testUser: UserResponseDto;
-  let testRole: RoleResponseDto;
-  let testStore: StoreResponseDto;
-  let seededTargetUser: UserResponseDto;
+  let testUserPassword: string;
+  let testUser: TestUser;
+  let seedUser: UserResponseDto;
+
+  const createUserPayload: Partial<CreateUserDto> = {
+    firstName: 'E2E',
+    lastName: 'User',
+    email: `${randomUUID()}@example.com`,
+    password: 'testPassword123!',
+    phone: '+1234567890',
+    country: COUNTRIES.US,
+    dateOfBirth: new Date('1990-01-01'),
+    twoFactorSecret: 'secretTwoFactor',
+    roleIds: [],
+    storeIds: [],
+  };
 
   beforeAll(async () => {
     const bootstrap = await bootstrapTestApp();
     ({
       moduleFixture,
       systemUserId,
-      systemPermissions,
+      testUser,
+      testUserPassword,
+      authorizedHeader,
+      authorizedRootHeader,
       cacheSetSpy,
       cacheGetSpy,
+      cacheGetByIdSpy,
+      cacheInvalidateByIdSpy,
       cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
       userPipelineService,
       userRolePipelineService,
       rolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
     } = bootstrap);
     app = bootstrap.app as NestFastifyApplication;
-
-    jest.spyOn(CacheService.prototype, 'invalidateByTags').mockResolvedValue();
-
-    systemPermissions = systemPermissions.filter((p) => p !== 'root_admin');
+    createUserPayload.roleIds = [testUser.role.id];
+    createUserPayload.storeIds = [testUser.store.id];
   });
 
   beforeEach(async () => {
-    const { user, role, store } = await initTestUser({
+    seedUser = await createTestUser({
       userPipelineService,
-      rolePipelineService,
-      userRolePipelineService,
-      storePipelineService,
-      userStorePipelineService,
       overrides: {
+        email: `${randomUUID()}@target-e2e.com`,
         password: testUserPassword,
-        isActive: true,
       },
-      systemPermissions,
-      systemUserId,
-    });
-
-    testUser = user;
-    testRole = role;
-    testStore = store;
-    authorizedHeader = await loginTestUser({
-      app,
-      email: testUser.email,
-      password: testUserPassword,
-    });
-
-    seededTargetUser = await createTestUser({
-      userPipelineService,
-      overrides: { email: `${randomUUID()}@target-e2e.com` },
       createdById: systemUserId,
     });
 
+    createUserPayload.email = `${randomUUID()}@example.com`;
+
     cacheSetSpy.mockClear();
     cacheGetSpy.mockClear();
+    cacheGetByIdSpy.mockClear();
+    cacheInvalidateByIdSpy.mockClear();
     cacheInvalidateByTagsSpy.mockClear();
+    cacheInvalidateByKeyPatternSpy.mockClear();
   });
 
   afterAll(async () => {
@@ -119,136 +118,213 @@ describe('UserController (e2e)', () => {
   });
 
   describe('POST /v1/user', () => {
-    it('201 CREATED - should successfully create a new user when strict and loose tokens exist', async () => {
-      const payload = {
-        firstName: 'E2E',
-        lastName: 'User',
-        email: `${randomUUID()}@example.com`,
-        password: 'Password123!',
-        phone: '+1234567890',
-        country: COUNTRIES.US,
-        dateOfBirth: '1990-01-01',
-        twoFactorSecret: 'secretTwoFactor',
-        roleIds: [testRole.id],
-        storeIds: [testStore.id],
-      };
+    it('201 CREATED - should successfully create a new user when strict and loose tokens exist as a root', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/user',
+        headers: authorizedRootHeader,
+        payload: createUserPayload,
+      });
 
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+      const body = JSON.parse(response.payload) as UserResponseDto;
+      expect(body).toHaveProperty('id');
+      expect(body.email).toBe(createUserPayload.email);
+      expect(body.firstName).toBe(createUserPayload.firstName);
+      expect(body.lastName).toBe(createUserPayload.lastName);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+      expect(body.userRoles).toHaveLength(1);
+      expect(body.userStores).toHaveLength(1);
+
+      body.userRoles?.forEach((userRole) => {
+        expect(userRole.role).toBeDefined();
+        expect(userRole.role?.id).toBe(testUser.role.id);
+      });
+
+      body.userStores?.forEach((userStore) => {
+        expect(userStore.store).toBeDefined();
+        expect(userStore.store?.id).toBe(testUser.store.id);
+      });
+    });
+
+    it('201 CREATED - should successfully create a new user when strict and loose tokens exist', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/v1/user',
         headers: authorizedHeader,
-        payload,
+        payload: createUserPayload,
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
-      const body = JSON.parse(response.payload);
+      const body = JSON.parse(response.payload) as UserResponseDto;
       expect(body).toHaveProperty('id');
-      expect(body.email).toBe(payload.email);
+      expect(body.email).toBe(createUserPayload.email);
+      expect(body.firstName).toBe(createUserPayload.firstName);
+      expect(body.lastName).toBe(createUserPayload.lastName);
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+
+      expect(body.userRoles).toHaveLength(1);
+      expect(body.userStores).toHaveLength(1);
+
+      body.userRoles?.forEach((userRole) => {
+        expect(userRole.role).toBeDefined();
+        expect(userRole.role?.id).toBe(testUser.role.id);
+      });
+
+      body.userStores?.forEach((userStore) => {
+        expect(userStore.store).toBeDefined();
+        expect(userStore.store?.id).toBe(testUser.store.id);
+      });
     });
 
-    it('201 CREATED - should strip role configurations from payload data if loose role verification components are missing', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+    it('201 CREATED - should strip role configurations from payload data if user lack loose permissions to assign role to user', async () => {
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [ASSIGN_USER_ROLE],
+        permissionsToAssign: [],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
       });
-
-      cacheSetSpy.mockClear();
-      cacheInvalidateByTagsSpy.mockClear();
-
-      const payload = {
-        firstName: 'Stripped',
-        lastName: 'Role',
-        email: `${randomUUID()}@example.com`,
-        password: 'Password123!',
-        dateOfBirth: '1990-01-01',
-        twoFactorSecret: 'secretTwoFactor',
-        country: COUNTRIES.US,
-        roleIds: [testRole.id],
-      };
 
       const response = await app.inject({
         method: 'POST',
         url: '/v1/user',
         headers,
-        payload,
+        payload: createUserPayload,
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+      const body = JSON.parse(response.payload) as UserResponseDto;
+      expect(body).toHaveProperty('id');
+      expect(body.email).toBe(createUserPayload.email);
+      expect(body.firstName).toBe(createUserPayload.firstName);
+      expect(body.lastName).toBe(createUserPayload.lastName);
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+
+      expect(body.userRoles).toBeUndefined();
+      expect(body.userStores).toHaveLength(1);
+
+      body.userStores?.forEach((userStore) => {
+        expect(userStore.store).toBeDefined();
+        expect(userStore.store?.id).toBe(testUser.store.id);
+      });
     });
 
-    it('201 CREATED - should strip store associations from incoming properties if loose store evaluation scopes are missing', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+    it('201 CREATED - should strip store configurations from payload data if user lack loose permissions to assign store to user', async () => {
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [ASSIGN_USER_STORE],
+        permissionsToAssign: [],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
       });
-
-      cacheSetSpy.mockClear();
-      cacheInvalidateByTagsSpy.mockClear();
-
-      const payload = {
-        firstName: 'Stripped',
-        lastName: 'Store',
-        email: `${randomUUID()}@example.com`,
-        password: 'Password123!',
-        country: COUNTRIES.US,
-        dateOfBirth: '1990-01-01',
-        twoFactorSecret: 'secretTwoFactor',
-        storeIds: [testStore.id],
-      };
 
       const response = await app.inject({
         method: 'POST',
         url: '/v1/user',
         headers,
-        payload,
+        payload: createUserPayload,
       });
 
       expect(response.statusCode).toBe(HttpStatus.CREATED);
+      const body = JSON.parse(response.payload) as UserResponseDto;
+      expect(body).toHaveProperty('id');
+      expect(body.email).toBe(createUserPayload.email);
+      expect(body.firstName).toBe(createUserPayload.firstName);
+      expect(body.lastName).toBe(createUserPayload.lastName);
       expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+
+      expect(body.userRoles).toHaveLength(1);
+      expect(body.userStores).toBeUndefined();
+
+      body.userRoles?.forEach((userRole) => {
+        expect(userRole.role).toBeDefined();
+        expect(userRole.role?.id).toBe(testUser.role.id);
+      });
     });
 
     it('403 FORBIDDEN - should block route access if core creation permissions are missing from account context scopes', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: CREATE_USER_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
       });
 
-      const headers = await loginTestUser({
-        app,
-        email: testUser.email,
-        password: testUserPassword,
-      });
       const response = await app.inject({
         method: 'POST',
         url: '/v1/user',
         headers,
-        payload: { name: 'Forbidden' },
+        payload: createUserPayload,
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: HttpStatus.FORBIDDEN,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should drop connection parameters via ValidationPipe if input schemas are malformed', async () => {
@@ -261,29 +337,130 @@ describe('UserController (e2e)', () => {
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
     });
+
+    it('422 Unprocessable role ids - Should throw error if received payload contains role id that does not exist', async () => {
+      const randomRoleId = randomUUID();
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/user',
+        headers: authorizedHeader,
+        payload: {
+          ...createUserPayload,
+          roleIds: [randomRoleId],
+        },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: `Failed to validate role. The following role ids do not exist: ${randomRoleId}`,
+          error: 'Unprocessable Entity',
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('422 Unprocessable store ids - Should throw error if received payload contains store id that does not exist', async () => {
+      const randomStoreId = randomUUID();
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/user',
+        headers: authorizedHeader,
+        payload: {
+          ...createUserPayload,
+          storeIds: [randomStoreId],
+        },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: `Failed to validate store. The following store ids do not exist: ${randomStoreId}`,
+          error: 'Unprocessable Entity',
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
   });
 
   describe('GET /v1/user/id/:id', () => {
-    it('200 OK - should locate and return targeted account information fields by their unique ID reference mapping', async () => {
+    it('200 OK - Should find user by its id as root', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/user/id/${seededTargetUser.id}`,
+        url: `/v1/user/id/${seedUser.id}`,
+        headers: authorizedRootHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      validateUserResponseDto({
+        response: body,
+        expected: seedUser,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+    it('200 OK - Should find user by its id', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/user/id/${seedUser.id}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('id', seededTargetUser.id);
+      validateUserResponseDto({
+        response: body,
+        expected: seedUser,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should issue standard error data templates if target identifier parameter cannot be matched', async () => {
+      const randomId = randomUUID();
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/user/id/${randomUUID()}`,
+        url: `/v1/user/id/${randomId}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: HttpStatus.NOT_FOUND,
+          message:
+            'Could not find any entity of type "User" matching: {\n' +
+            '    "where": {\n' +
+            `        "id": "${randomId}"\n` +
+            '    }\n' +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('400 BAD REQUEST - should fail execution tracking early via ParseUUIDPipe rules if string format is invalid', async () => {
@@ -294,30 +471,88 @@ describe('UserController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Validation failed (uuid is expected)',
+          error: 'Bad Request',
+          statusCode: HttpStatus.BAD_REQUEST,
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
-
   describe('GET /v1/user/email/:email', () => {
-    it('200 OK - should successfully fetch active profiles matched by precise string values matching records', async () => {
+    it('200 OK - Should find user by its email as root', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/user/email/${seededTargetUser.email}`,
+        url: `/v1/user/email/${seedUser.email}`,
+        headers: authorizedRootHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload);
+      validateUserResponseDto({
+        response: body,
+        expected: seedUser,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+    it('200 OK - Should find user by its email', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/user/email/${seedUser.email}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       const body = JSON.parse(response.payload);
-      expect(body).toHaveProperty('email', seededTargetUser.email);
+      validateUserResponseDto({
+        response: body,
+        expected: seedUser,
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
-    it("404 NOT FOUND - should return entity missing states if lookup targets don't point to active assets", async () => {
+    it('404 NOT FOUND - should issue standard error data templates if target identifier parameter cannot be matched', async () => {
+      const randomId = randomUUID();
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/user/email/ghost-account-lookup@example.com`,
+        url: `/v1/user/email/${randomId}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: HttpStatus.NOT_FOUND,
+          message:
+            'Could not find any entity of type "User" matching: {\n' +
+            '    "where": {\n' +
+            `        "email": "${randomId}"\n` +
+            '    }\n' +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -327,13 +562,34 @@ describe('UserController (e2e)', () => {
         method: 'GET',
         url: '/v1/user',
         headers: authorizedHeader,
-        query: { page: '1', limit: '5' },
+        query: {
+          page: '1',
+          limit: '5',
+          sortOrder: 'ASC',
+          sortField: 'createdAt',
+          ids: [seedUser.id],
+        },
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);
-      const body = JSON.parse(response.payload);
+      const body = JSON.parse(response.payload) as UserListResponseDto;
       expect(body).toHaveProperty('data');
       expect(Array.isArray(body.data)).toBe(true);
+
+      const { data } = body;
+      data.forEach((user) => {
+        validateUserResponseDto({
+          response: user,
+          expected: seedUser,
+        });
+      });
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -345,24 +601,71 @@ describe('UserController (e2e)', () => {
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/v1/user/${seededTargetUser.id}`,
+        url: `/v1/user/${seedUser.id}`,
         headers: authorizedHeader,
         payload,
       });
 
       expect(response.statusCode).toBe(HttpStatus.OK);
       expect(response.payload).toBe('true');
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should abort operational chains if FetchUserPipe discovers user assets are missing', async () => {
+      const randomId = randomUUID();
       const response = await app.inject({
         method: 'PATCH',
-        url: `/v1/user/${randomUUID()}`,
+        url: `/v1/user/${randomId}`,
         headers: authorizedHeader,
         payload: { firstName: 'Ghost' },
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message:
+            'Could not find any entity of type "User" matching: {\n' +
+            `    "id": "${randomId}"\n` +
+            '}',
+          error: 'EntityNotFoundError',
+          statusCode: HttpStatus.NOT_FOUND,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('404 NOT FOUND - should abort operational chains if FetchUserPipe discovers user assets are missing', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/user/${seedUser.id}`,
+        headers: authorizedHeader,
+        payload: { email: 'Ghost' },
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: ['email must be an email'],
+          error: 'Bad Request',
+          statusCode: HttpStatus.BAD_REQUEST,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
@@ -374,6 +677,13 @@ describe('UserController (e2e)', () => {
         createdById: systemUserId,
       });
 
+      cacheSetSpy.mockClear();
+      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+      cacheInvalidateByIdSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
+      cacheInvalidateByKeyPatternSpy.mockClear();
+
       const response = await app.inject({
         method: 'DELETE',
         url: `/v1/user/${deleteUserTarget.id}`,
@@ -381,12 +691,15 @@ describe('UserController (e2e)', () => {
       });
 
       expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
-    it('204 NO CONTENT - should securely complete deletion cycles even if loose relational removal authorization is absent', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+    it('204 NO CONTENT - should securely complete deletion cycles even if loose relational removal authorization is absent and user is not assigned to store or role', async () => {
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: [
           READ_ROLE,
           READ_USER_ROLE,
@@ -395,60 +708,105 @@ describe('UserController (e2e)', () => {
           READ_USER_STORE,
           UNASSIGN_USER_STORE,
         ],
+        permissionsToAssign: [],
         systemUserId,
-      });
-
-      const headers = await loginTestUser({
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
         app,
-        email: testUser.email,
-        password: testUserPassword,
-      });
-
-      const deleteUserTarget = await createTestUser({
-        userPipelineService,
-        overrides: { email: `${randomUUID()}@loose-transient-delete.com` },
-        createdById: systemUserId,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
       });
 
       const response = await app.inject({
         method: 'DELETE',
-        url: `/v1/user/${deleteUserTarget.id}`,
+        url: `/v1/user/${seedUser.id}`,
         headers,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('404 NOT FOUND - should cancel deletion pipeline requests if FetchFullUserPipe unmasks an empty identifier', async () => {
+      const randomId = randomUUID();
       const response = await app.inject({
         method: 'DELETE',
-        url: `/v1/user/${randomUUID()}`,
+        url: `/v1/user/${randomId}`,
         headers: authorizedHeader,
       });
 
       expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: HttpStatus.NOT_FOUND,
+          message:
+            'Could not find any entity of type "User" matching: {\n' +
+            `    "userId": "${randomId}"\n` +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('403 FORBIDDEN - should restrict execution routines instantly if strict core deletion scopes are missing', async () => {
-      await unAssignPermissionFromRole({
-        rolePipelineService,
-        testRole,
+      const headers = await changePermissionsForTestUser({
         permissionsToUnassign: DELETE_USER_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
         systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
       });
 
-      const headers = await loginTestUser({
-        app,
-        email: testUser.email,
-        password: testUserPassword,
-      });
       const response = await app.inject({
         method: 'DELETE',
-        url: `/v1/user/${seededTargetUser.id}`,
+        url: `/v1/user/${seedUser.id}`,
         headers,
       });
 
       expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: HttpStatus.FORBIDDEN,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 });

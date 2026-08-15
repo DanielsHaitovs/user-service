@@ -68,6 +68,13 @@ export class RolePermissionService {
       ...permissions.flatMap((p) => p.id),
     ] as UUID[];
 
+    if (
+      permissionIds.length === 0 ||
+      permissionIds.length === permissions.length
+    ) {
+      return;
+    }
+
     await this.roleRepository.save({
       id: role.id,
       permissions: permissionIds.map((id) => {

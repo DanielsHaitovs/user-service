@@ -293,6 +293,11 @@ export async function initTestUser({
   systemPermissions,
   systemUserId,
   overrides = {},
+  cacheSetSpy,
+  cacheGetByIdSpy,
+  cacheInvalidateByIdSpy,
+  cacheInvalidateByTagsSpy,
+  cacheInvalidateByKeyPatternSpy,
 }: {
   userPipelineService: UserPipelineService;
   rolePipelineService: RolePipelineService;
@@ -302,16 +307,39 @@ export async function initTestUser({
   systemPermissions: string[];
   systemUserId: UUID;
   overrides?: Partial<CreateUserDto>;
+  cacheSetSpy: jest.SpyInstance;
+  cacheGetByIdSpy: jest.SpyInstance;
+  cacheInvalidateByIdSpy: jest.SpyInstance;
+  cacheInvalidateByTagsSpy: jest.SpyInstance;
+  cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 }): Promise<{
   user: UserResponseDto;
   role: RoleResponseDto;
   store: StoreResponseDto;
 }> {
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
+
   const user = await createTestUser({
     userPipelineService,
     overrides,
     createdById: systemUserId,
   });
+
+  expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
+  expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
 
   const [role, store] = await Promise.all([
     rolePipelineService.create({
@@ -350,6 +378,18 @@ export async function initTestUser({
     }),
   ]);
 
+  expect(cacheSetSpy).toHaveBeenCalledTimes(3);
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+  expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(3);
+  expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
+
   await Promise.all([
     userRolePipelineService.assignRolesToUser({
       userRoles: {
@@ -380,6 +420,21 @@ export async function initTestUser({
       },
     }),
   ]);
+
+  await userRolePipelineService.getPermissions(user.id);
+  await userStorePipelineService.getAssignedStores(user.id);
+
+  expect(cacheSetSpy).toHaveBeenCalledTimes(3);
+  expect(cacheGetByIdSpy).toHaveBeenCalledTimes(5);
+  expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(3);
+  expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+  expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+
+  cacheSetSpy.mockClear();
+  cacheGetByIdSpy.mockClear();
+  cacheInvalidateByIdSpy.mockClear();
+  cacheInvalidateByTagsSpy.mockClear();
+  cacheInvalidateByKeyPatternSpy.mockClear();
 
   return { user, role, store };
 }

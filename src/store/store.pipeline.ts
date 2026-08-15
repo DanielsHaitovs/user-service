@@ -87,6 +87,10 @@ export class StorePipelineService {
     const store = await this.createService.create({ createDto, createdById });
 
     await Promise.all([
+      this.cacheService.invalidateByTags({
+        tag: { purge: true },
+        alias: STORE_QUERY_ALIAS,
+      }),
       this.cacheService.set<StoreResponseDto>({
         key: this.cacheService.getIdKeyPrefixByAlias({
           id: store.id,
@@ -126,6 +130,16 @@ export class StorePipelineService {
         this.cacheService.invalidateById({
           id: store.id,
           alias: STORE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateByTags({
+          tag: { purge: true },
+          alias: STORE_QUERY_ALIAS,
+        }),
+        this.cacheService.invalidateByTags({
+          tag: {
+            purge: true,
+          },
+          alias: USER_STORES_QUERY_ALIAS,
         }),
         this.auditService.sendLog({
           userId: requestedByUserId,

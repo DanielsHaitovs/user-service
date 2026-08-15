@@ -11,6 +11,7 @@ import {
   JoinColumn,
   ManyToMany,
   ManyToOne,
+  Relation,
   Unique,
 } from 'typeorm';
 
@@ -32,11 +33,11 @@ export class Permission extends MecBaseEntity {
   name: string;
 
   @ManyToMany(() => Roles, (role) => role.permissions)
-  roles: Roles[];
+  roles: Relation<Roles[]>;
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })
-  createdBy: User;
+  createdBy: Relation<User>;
 
   constructor(
     id: UUID,

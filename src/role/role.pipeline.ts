@@ -154,11 +154,13 @@ export class RolePipelineService {
     role,
     metadata,
     requestedByUserId,
+    // token,
   }: {
     assignPayload: PermissionsToRoleDto;
     role: RoleResponseDto;
     requestedByUserId: UUID;
     metadata: ClientMetadata;
+    // token: string;
   }): Promise<void> {
     const { permissionCodes } = assignPayload;
 

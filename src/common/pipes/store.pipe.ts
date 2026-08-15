@@ -1,10 +1,16 @@
-import { CacheService } from '@/base/service/cache.service';
+import { CacheService } from '@/baseServices/cache.service';
 import { STORE_QUERY_ALIAS } from '@/commonConst/store.const';
 import { GetStoreDto } from '@/storeDto/store.dto';
 import { Store } from '@/storeEntities/store.entity';
-import { Injectable, type PipeTransform } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  type PipeTransform,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { isUUID } from 'class-validator';
 import { UUID } from 'crypto';
 import { Repository } from 'typeorm';
 
@@ -20,18 +26,28 @@ export class FetchStorePipe
     private readonly cacheService: CacheService,
   ) {}
 
-  async transform(value: UUID): Promise<GetStoreDto> {
-    const cachedRole = await this.cacheService.getById<GetStoreDto>({
-      id: value,
+  async transform(value: string): Promise<GetStoreDto> {
+    if (!value || !isUUID(value)) {
+      throw new BadRequestException({
+        message: 'store id must be a UUID',
+        error: 'Bad Request',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const storeId = value as UUID;
+
+    const cachedStore = await this.cacheService.getById<GetStoreDto>({
+      id: storeId,
       alias: STORE_QUERY_ALIAS,
     });
 
-    if (cachedRole) {
-      return cachedRole;
+    if (cachedStore) {
+      return cachedStore;
     }
 
     const cacheKey = this.cacheService.getIdKeyPrefixByAlias({
-      id: value,
+      id: storeId,
       alias: STORE_QUERY_ALIAS,
     });
 
@@ -39,7 +55,7 @@ export class FetchStorePipe
       key: cacheKey,
       operation: async () => {
         const role = await this.storeRepository.findOneByOrFail({
-          id: value,
+          id: storeId,
         });
 
         await this.cacheService.set<GetStoreDto>({

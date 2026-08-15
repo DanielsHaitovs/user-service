@@ -34,11 +34,12 @@ export async function createTestRole({
   createdById: UUID;
   cacheSetSpy: jest.SpyInstance;
   cacheInvalidateByTagsSpy: jest.SpyInstance;
-  auditLogSpy: jest.SpyInstance;
+  auditLogSpy?: jest.SpyInstance | undefined;
 }): Promise<RoleResponseDto> {
   cacheSetSpy.mockClear();
   cacheInvalidateByTagsSpy.mockClear();
-  auditLogSpy.mockClear();
+
+  if (auditLogSpy) auditLogSpy.mockClear();
 
   const generatedName = `${faker.person.jobArea()} ${faker.person.jobType()}`;
 
@@ -64,11 +65,14 @@ export async function createTestRole({
   });
 
   expect(cacheSetSpy).toHaveBeenCalledTimes(2);
-  expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+  if (auditLogSpy) {
+    expect(auditLogSpy).toHaveBeenCalledTimes(1);
+    auditLogSpy.mockClear();
+  }
 
   cacheSetSpy.mockClear();
   cacheInvalidateByTagsSpy.mockClear();
-  auditLogSpy.mockClear();
 
   return newRole;
 }
@@ -169,14 +173,18 @@ export async function createTestRoleWithPermissions({
   role?: Partial<CreateRoleDto>;
   permissions?: GetPermissionDto[];
   createdById: UUID;
+  auditLogSpy?: jest.SpyInstance;
   cacheSetSpy: jest.SpyInstance;
-  auditLogSpy: jest.SpyInstance;
   cacheInvalidateByIdSpy: jest.SpyInstance;
   cacheInvalidateByTagsSpy: jest.SpyInstance;
   cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
 }): Promise<RoleResponseDto> {
   cacheSetSpy.mockClear();
-  auditLogSpy.mockClear();
+
+  if (auditLogSpy) {
+    auditLogSpy.mockClear();
+  }
+
   cacheInvalidateByIdSpy.mockClear();
   cacheInvalidateByKeyPatternSpy.mockClear();
 
@@ -207,11 +215,14 @@ export async function createTestRoleWithPermissions({
     expect(cacheSetSpy).toHaveBeenCalledTimes(1);
     expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
     expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(1);
-    expect(auditLogSpy).toHaveBeenCalledTimes(1);
+
+    if (auditLogSpy) {
+      expect(auditLogSpy).toHaveBeenCalledTimes(1);
+      auditLogSpy.mockClear();
+    }
   }
 
   cacheSetSpy.mockClear();
-  auditLogSpy.mockClear();
   cacheInvalidateByIdSpy.mockClear();
   cacheInvalidateByKeyPatternSpy.mockClear();
 

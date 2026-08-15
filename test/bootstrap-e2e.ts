@@ -69,6 +69,8 @@ export async function bootstrapTestApp(): Promise<BootstrappedApp> {
   process.env.JWT_SECRET = 'your_jwt_secret';
   process.env.NODE_ENV = Environment.Test;
   process.env.REDIS_HOST = 'localhost';
+  // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+  process.env.USER_PASSWORD_SALT_ROUNDS = '1';
 
   const { AppModule } = await import('../src/app.module');
 

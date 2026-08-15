@@ -9,6 +9,7 @@ import {
   GetClientMetadata,
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
+import { ResourceLock } from '@/commonDecorators/resource-lock.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
 import { GetRelatedStoreDto } from '@/storeDto/store.dto';
@@ -75,6 +76,8 @@ export class UserStoresController {
   @Permissions({
     required: ASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('userStore', { paramKey: 'id', ttl: 5 })
   @ApiParam({
     name: 'id',
     type: String,
@@ -107,7 +110,6 @@ export class UserStoresController {
   @ApiOkResponse({
     description: 'Stores successfully assigned to the user',
   })
-  @Idempotent()
   async assign(
     @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() assignDto: AssignStoresToUserDto,
@@ -128,6 +130,8 @@ export class UserStoresController {
   @Permissions({
     required: UNASSIGN_USER_STORE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('userStore', { paramKey: 'id', ttl: 5 })
   @ApiParam({
     name: 'id',
     type: String,
@@ -160,7 +164,6 @@ export class UserStoresController {
   @ApiOkResponse({
     description: 'Stores successfully unassigned from the user',
   })
-  @Idempotent()
   async unassign(
     @Param('id', FetchUserStoresPipe) userStores: UserWithStores,
     @Body() unassignDto: UnassignStoresFromUserDto,

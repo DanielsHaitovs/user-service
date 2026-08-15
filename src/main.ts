@@ -123,7 +123,17 @@ async function bootstrap(): Promise<void> {
       return;
     }
 
-    logger.error('FATAL UNCAUGHT EXCEPTION:', err);
+    logger.warn('FATAL UNCAUGHT EXCEPTION:', err);
+    process.exit(1);
+  });
+
+  process.on('uncaughtException', (err) => {
+    logger.warn('Uncaught Exception:', err);
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.warn('Unhandled Rejection at:', promise, 'reason:', reason);
     process.exit(1);
   });
 }

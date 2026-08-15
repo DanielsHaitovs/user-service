@@ -105,7 +105,6 @@ export class UserStorePipelineService {
       assignedStores: stores,
     });
 
-    console.log('Unassign result:', result);
     if (!result) {
       return;
     }

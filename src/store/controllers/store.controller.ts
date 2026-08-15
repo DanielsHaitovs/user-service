@@ -13,6 +13,7 @@ import {
   GetClientMetadata,
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
+import { ResourceLock } from '@/commonDecorators/resource-lock.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
 import { FetchedStore, FetchStorePipe } from '@/commonPipes/store.pipe';
@@ -74,6 +75,8 @@ export class StoreController {
   @Permissions({
     required: CREATE_STORE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('store', { paramKey: 'storeCode', ttl: 5 })
   @ApiOperation({
     summary: 'Create a new store',
     description: 'Creates a new store with the provided information.',
@@ -121,7 +124,6 @@ export class StoreController {
     description:
       'Internal Server Error - An unexpected error occurred while creating the store',
   })
-  @Idempotent()
   async create(
     @Body()
     createDto: CreateStoreDto,
@@ -314,6 +316,8 @@ export class StoreController {
   @Permissions({
     required: UPDATE_STORE_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('store', { paramKey: 'id', ttl: 5 })
   @ApiOperation({
     summary: 'Update store',
     description: 'Updates the name, code or viewCode of an existing store.',
@@ -363,7 +367,6 @@ export class StoreController {
     description: 'Store successfully updated',
     type: Boolean,
   })
-  @Idempotent()
   async update(
     @Param('id', FetchStorePipe) store: FetchedStore,
     @Body() updateDto: UpdateStoreDto,
@@ -385,6 +388,8 @@ export class StoreController {
     required: DELETE_STORE_ENDPOINT_PERMISSION,
     loose: [READ_USER_STORE, UNASSIGN_USER_STORE],
   })
+  @Idempotent()
+  @ResourceLock('store', { paramKey: 'id', ttl: 5 })
   @ApiOperation({
     summary: 'Delete store',
     description:
@@ -403,7 +408,6 @@ export class StoreController {
   @ApiNotFoundResponse({
     description: 'Store with the specified ID was not found',
   })
-  @Idempotent()
   async delete(
     @Param('id', FetchStorePipe) store: FetchedStore,
     @CurrentUser() requestedByUser: JwtPayload,

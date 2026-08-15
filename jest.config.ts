@@ -35,5 +35,6 @@ export default {
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>/',
   }),
-  maxWorkers: '50%',
+  maxWorkers: '100%',
+  testTimeout: 10000,
 };

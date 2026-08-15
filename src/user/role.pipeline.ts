@@ -1,11 +1,11 @@
 import { CacheService } from '@/baseServices/cache.service';
 import { UserAction } from '@/common/enum/action.enum';
-import { UserWithRoles } from '@/common/pipes/userRoles.pipe';
 import {
   USER_ROLE_PERMISSIONS_QUERY_ALIAS,
   USER_ROLE_QUERY_ALIAS,
 } from '@/commonConst/role.const';
 import { ClientMetadata } from '@/commonDecorators/meta.decorator';
+import { UserWithRoles } from '@/commonPipes/userRoles.pipe';
 import { GetRelatedRoleDto } from '@/roleDto/role.dto';
 import { AuditProducerService } from '@/user/services/audit.service';
 import {

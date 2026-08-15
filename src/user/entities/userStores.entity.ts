@@ -3,19 +3,19 @@ import { Store } from '@/storeEntities/store.entity';
 import { User } from '@/userEntities/user.entity';
 
 import { UUID } from 'crypto';
-import { Entity, Index, ManyToOne } from 'typeorm';
+import { Entity, Index, ManyToOne, Relation } from 'typeorm';
 
 @Entity('userStores')
 @Index('IX_USER_STORES', ['user', 'store'])
 export class UserStores extends MecBaseEntity {
   @ManyToOne(() => Store, (store) => store.userStores)
-  store: Store;
+  store: Relation<Store>;
 
   @ManyToOne(() => User, (user) => user.userStores)
-  user: User;
+  user: Relation<User>;
 
   @ManyToOne(() => User, { nullable: true })
-  assignedBy: User;
+  assignedBy: Relation<User>;
 
   constructor(
     id: UUID,

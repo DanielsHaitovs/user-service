@@ -1,4 +1,8 @@
 import { RedisService } from '@/baseServices/redis.service';
+import {
+  RESOURCE_LOCK_KEY,
+  ResourceLockOptions,
+} from '@/commonDecorators/resource-lock.decorator';
 import { getTraceId } from '@/utils/trace.util';
 import {
   CallHandler,
@@ -9,6 +13,7 @@ import {
   Logger,
   NestInterceptor,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
 import { FastifyRequest } from 'fastify';
 import { Observable, throwError } from 'rxjs';
@@ -18,104 +23,92 @@ import { catchError, tap } from 'rxjs/operators';
 export class ResourceLockInterceptor implements NestInterceptor {
   private readonly logger = new Logger(ResourceLockInterceptor.name);
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly redisService: RedisService,
+  ) {}
 
   async intercept(
     context: ExecutionContext,
     next: CallHandler,
   ): Promise<Observable<unknown>> {
-    const request = context
-      .switchToHttp()
-      .getRequest<FastifyRequest<{ Params: { id?: string } }>>();
+    const httpContext = context.switchToHttp();
+    const request =
+      httpContext.getRequest<
+        FastifyRequest<{ Params: Record<string, string | undefined> }>
+      >();
 
-    const { id: resourceId } = request.params;
+    const { method, url, params } = request;
 
-    if (resourceId == undefined) {
+    const options = this.reflector.getAllAndOverride<
+      ResourceLockOptions | undefined
+    >(RESOURCE_LOCK_KEY, [context.getHandler(), context.getClass()]);
+
+    if (options === undefined) {
       return next.handle();
     }
 
-    const { method, url } = request;
+    if ('GET' === method.toUpperCase()) {
+      return next.handle();
+    }
 
-    if (url.includes('login')) {
+    const paramKey = options.paramKey ?? 'id';
+    const resourceId = params[paramKey];
+
+    if (typeof resourceId !== 'string' || resourceId.trim() === '') {
       return next.handle();
     }
 
     const traceId = getTraceId() ?? 'N/A';
-
-    const lockKey = `lock:role:${resourceId}`;
+    const lockKey = `lock:${options.name}:${resourceId.trim()}`;
+    const ttl = options.ttl ?? 3;
 
     const acquiredLock = await this.redisService.setUnique(
       lockKey,
       'PROCESSING',
-      3,
+      ttl,
     );
 
     if (acquiredLock === null) {
       throw new HttpException(
-        'This resource is currently locked by another update process. Please wait a moment and retry.',
+        `Resource '${options.name}' (${resourceId}) is currently being updated. Please try again.`,
         HttpStatus.LOCKED,
       );
     }
 
     return next.handle().pipe(
       tap(() => {
-        void this.redisService.delete(lockKey).catch((err: unknown) => {
-          const errorObj =
-            typeof err === 'object' && err !== null
-              ? (err as Record<string, unknown>)
-              : {};
-
-          const message =
-            typeof errorObj.message === 'string'
-              ? errorObj.message
-              : JSON.stringify(errorObj);
-
-          const status =
-            typeof errorObj.status === 'number' ||
-            typeof errorObj.status === 'string'
-              ? errorObj.status
-              : 'N/A';
-
-          const stack =
-            typeof errorObj.stack === 'string' ? errorObj.stack : '';
-
-          this.logger.error(
-            {
-              trace: `[Trace: ${traceId}] !! ${method} ${url} | Status: ${status.toString()}`,
-              error: message,
-            },
-            stack,
-            'Request Error Response',
-          );
-        });
+        this.releaseLock(lockKey, traceId, method, url);
       }),
       catchError((error: unknown) => {
-        void this.redisService.delete(lockKey).catch((err: unknown) => {
-          const errorObj =
-            typeof err === 'object' && err !== null
-              ? (err as Record<string, unknown>)
-              : {};
-
-          const message =
-            typeof errorObj.message === 'string'
-              ? errorObj.message
-              : JSON.stringify(errorObj);
-
-          const stack =
-            typeof errorObj.stack === 'string' ? errorObj.stack : '';
-
-          this.logger.error(
-            {
-              trace: `[Trace: ${traceId}] !! ${method} ${url} | Critical Lock Eviction Error`,
-              error: message,
-            },
-            stack,
-            'Lock Eviction Failure',
-          );
-        });
-
+        this.releaseLock(lockKey, traceId, method, url);
         return throwError(() => error);
       }),
     );
+  }
+
+  private releaseLock(
+    lockKey: string,
+    traceId: string,
+    method: string,
+    url: string,
+  ): void {
+    void this.redisService.delete(lockKey).catch((err: unknown) => {
+      const errorObj =
+        typeof err === 'object' && err !== null
+          ? (err as Record<string, unknown>)
+          : {};
+      const message =
+        typeof errorObj.message === 'string'
+          ? errorObj.message
+          : JSON.stringify(errorObj);
+      const stack = typeof errorObj.stack === 'string' ? errorObj.stack : '';
+
+      this.logger.error(
+        { trace: `[Trace: ${traceId}] ${method} ${url}`, error: message },
+        stack,
+        'Lock Eviction Error',
+      );
+    });
   }
 }

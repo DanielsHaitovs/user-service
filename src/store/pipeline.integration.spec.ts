@@ -1,12 +1,9 @@
 import type { StorePipelineService } from '@/store/store.pipeline';
 import type { StoreResponseDto } from '@/storeDto/store.dto';
 import { AuditProducerService } from '@/storeServices/audit.service';
-import { bootstrapTestApp } from '@/test/bootstrap-e2e';
-import { createTestUser } from '@/test/db/user';
-import { assignStoreToUser } from '@/test/db/userStore';
+import { bootstrapTestApp, type TestUser } from '@/test/bootstrap-e2e';
 import { createTestStore, getTestStoreById } from '@/test/pipeline/store';
 import { validateStoreResponseDto } from '@/test/validate/store';
-import type { User } from '@/userEntities/user.entity';
 import { faker } from '@faker-js/faker';
 import {
   ConflictException,
@@ -15,24 +12,25 @@ import {
 import type { TestingModule } from '@nestjs/testing';
 
 import { randomUUID, type UUID } from 'crypto';
-import type { DataSource } from 'typeorm';
 
 describe('StorePipelineService (Integration)', () => {
   let storePipelineService: StorePipelineService;
-  let dataSource: DataSource;
   let moduleFixture: TestingModule;
   let systemUserId: UUID;
   let auditLogSpy: jest.SpyInstance;
   let cacheSetSpy: jest.SpyInstance;
-  let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheGetByIdSpy: jest.SpyInstance;
+  let cacheInvalidateByIdSpy: jest.SpyInstance;
   let cacheInvalidateByTagsSpy: jest.SpyInstance;
-  let conflictStore: StoreResponseDto;
-  let testUser: User;
+  let cacheInvalidateByKeyPatternSpy: jest.SpyInstance;
+  let seedStore: StoreResponseDto;
+  let testUser: TestUser;
+  let targetUser: TestUser;
 
   beforeAll(async () => {
     ({
-      dataSource,
+      testUser,
+      targetUser,
       moduleFixture,
       systemUserId,
       storePipelineService,
@@ -40,19 +38,21 @@ describe('StorePipelineService (Integration)', () => {
       cacheGetByIdSpy,
       cacheInvalidateByIdSpy,
       cacheInvalidateByTagsSpy,
+      cacheInvalidateByKeyPatternSpy,
     } = await bootstrapTestApp());
 
     auditLogSpy = jest.spyOn(AuditProducerService.prototype, 'sendLog');
-    conflictStore = await createTestStore({
+  });
+
+  beforeEach(async () => {
+    seedStore = await createTestStore({
       storePipelineService,
       createdById: systemUserId,
       cacheSetSpy,
+      cacheInvalidateByTagsSpy,
       auditLogSpy,
     });
-    testUser = await createTestUser({ dataSource });
-  });
 
-  beforeEach(() => {
     jest.clearAllMocks();
   });
 
@@ -62,17 +62,18 @@ describe('StorePipelineService (Integration)', () => {
 
   it('should be defined', () => {
     expect(storePipelineService).toBeDefined();
-    expect(dataSource).toBeDefined();
   });
 
   describe('Should create store -> StorePipelineService -> create()', () => {
     it('should create store', async () => {
+      const createDto = {
+        name: `Test Store ${randomUUID()}`,
+        code: `test-store-${randomUUID()}`,
+        viewCode: `test-store-view-${randomUUID()}`,
+      };
+
       const createdStore = await storePipelineService.create({
-        createDto: {
-          name: `Test Store ${randomUUID()}`,
-          code: `test-store-${randomUUID()}`,
-          viewCode: `test-store-view-${randomUUID()}`,
-        },
+        createDto,
         createdById: systemUserId,
         metadata: {
           ipAddress: faker.internet.ip(),
@@ -81,34 +82,24 @@ describe('StorePipelineService (Integration)', () => {
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
-      await getTestStoreById({
-        storePipelineService,
-        id: createdStore.id,
-        expected: createdStore,
-        cacheGetByIdSpy,
-        cacheSetSpy,
-      });
+      expect(createdStore).toBeDefined();
+      expect(createdStore.id).toBeDefined();
+      expect(createdStore.name).toBe(createDto.name);
+      expect(createdStore.code).toBe(createDto.code);
+      expect(createdStore.viewCode).toBe(createDto.viewCode);
     });
 
     it('should throw Conflict when trying to save store with the same name', async () => {
-      const storeName = `Test Store ${randomUUID()}`;
-
-      await createTestStore({
-        storePipelineService,
-        overrides: {
-          name: storeName,
-        },
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       await expect(
         storePipelineService.create({
           createDto: {
-            name: storeName,
+            name: seedStore.name,
             code: `test-store-${randomUUID()}`,
             viewCode: `test-store-view-${randomUUID()}`,
           },
@@ -121,27 +112,19 @@ describe('StorePipelineService (Integration)', () => {
       ).rejects.toThrow(new ConflictException('A store already exists.'));
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
     it('should throw Conflict when trying to save store with the same code', async () => {
-      const storeCode = `test-store-${randomUUID()}`;
-
-      await createTestStore({
-        storePipelineService,
-        overrides: {
-          code: storeCode,
-        },
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       await expect(
         storePipelineService.create({
           createDto: {
             name: `Test Store ${randomUUID()}`,
-            code: storeCode,
+            code: seedStore.code,
             viewCode: `test-store-view-${randomUUID()}`,
           },
           createdById: systemUserId,
@@ -153,28 +136,20 @@ describe('StorePipelineService (Integration)', () => {
       ).rejects.toThrow(new ConflictException('A store already exists.'));
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
     it('should throw Conflict when trying to save store with the same viewCode', async () => {
-      const storeViewCode = `test-store-view-${randomUUID()}`;
-
-      await createTestStore({
-        storePipelineService,
-        overrides: {
-          viewCode: storeViewCode,
-        },
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       await expect(
         storePipelineService.create({
           createDto: {
             name: `Test Store ${randomUUID()}`,
             code: `test-store-${randomUUID()}`,
-            viewCode: storeViewCode,
+            viewCode: seedStore.viewCode,
           },
           createdById: systemUserId,
           metadata: {
@@ -185,28 +160,28 @@ describe('StorePipelineService (Integration)', () => {
       ).rejects.toThrow(new ConflictException('A store already exists.'));
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('Should retrieve store -> StorePipelineService -> getByIdOrThrow()', () => {
     it('should retrieve the test store by its ID', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
-      const retrieved = await storePipelineService.getByIdOrThrow(store.id);
+      const store = await storePipelineService.getByIdOrThrow(seedStore.id);
 
       validateStoreResponseDto({
-        response: retrieved,
-        expected: store,
+        response: store,
+        expected: seedStore,
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('should throw EntityNotFoundError when looking up a missing store', async () => {
@@ -214,29 +189,28 @@ describe('StorePipelineService (Integration)', () => {
         storePipelineService.getByIdOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('Should retrieve store -> StorePipelineService -> getByCodeOrThrow()', () => {
     it('should retrieve the test store by its code', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
-      const retrieved = await storePipelineService.getByCodeOrThrow(store.code);
+      const store = await storePipelineService.getByCodeOrThrow(seedStore.code);
 
       validateStoreResponseDto({
-        response: retrieved,
-        expected: store,
+        response: store,
+        expected: seedStore,
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('should throw EntityNotFoundError when looking up a missing store', async () => {
@@ -244,31 +218,30 @@ describe('StorePipelineService (Integration)', () => {
         storePipelineService.getByCodeOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('Should retrieve store -> StorePipelineService -> getByViewCodeOrThrow()', () => {
     it('should retrieve the test store by its viewCode', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
-      const retrieved = await storePipelineService.getByViewCodeOrThrow(
-        store.viewCode,
+      const store = await storePipelineService.getByViewCodeOrThrow(
+        seedStore.viewCode,
       );
 
       validateStoreResponseDto({
-        response: retrieved,
-        expected: store,
+        response: store,
+        expected: seedStore,
       });
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
       expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
 
     it('should throw EntityNotFoundError when looking up a missing store', async () => {
@@ -276,20 +249,16 @@ describe('StorePipelineService (Integration)', () => {
         storePipelineService.getByViewCodeOrThrow(randomUUID()),
       ).rejects.toThrow(/Could not find any entity of type "Store"/);
 
-      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('Should update store -> StorePipelineService -> update()', () => {
     it('should update the test store', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       const updatedName = `Updated Store ${randomUUID()}`;
       const updatedCode = `updated-store-${randomUUID()}`;
       const updatedViewCode = `updated-store-view-${randomUUID()}`;
@@ -300,7 +269,7 @@ describe('StorePipelineService (Integration)', () => {
           code: updatedCode,
           viewCode: updatedViewCode,
         },
-        store,
+        store: seedStore,
         metadata: {
           ipAddress: faker.internet.ip(),
           userAgent: faker.internet.userAgent(),
@@ -312,14 +281,17 @@ describe('StorePipelineService (Integration)', () => {
       expect(updatedStore).toBe(true);
 
       expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
 
       await getTestStoreById({
         storePipelineService,
-        id: store.id,
+        id: seedStore.id,
         expected: {
-          id: store.id,
+          id: seedStore.id,
           name: updatedName,
           code: updatedCode,
           viewCode: updatedViewCode,
@@ -331,19 +303,12 @@ describe('StorePipelineService (Integration)', () => {
     });
 
     it('Should throw if trying to update store with a name that already exists', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       await expect(
         storePipelineService.update({
           updateDto: {
-            name: conflictStore.name,
+            name: seedStore.name,
           },
-          store,
+          store: seedStore,
           metadata: {
             ipAddress: faker.internet.ip(),
             userAgent: faker.internet.userAgent(),
@@ -352,28 +317,25 @@ describe('StorePipelineService (Integration)', () => {
         }),
       ).rejects.toThrow(
         new ConflictException(
-          `Cannot update store with ID ${store.id}. A store with the same name, code, or view code already exists.`,
+          `Cannot update store with ID ${seedStore.id}. A store with the same name, code, or view code already exists.`,
         ),
       );
 
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
     it('Should throw if trying to update store with a code that already exists', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       await expect(
         storePipelineService.update({
           updateDto: {
-            code: conflictStore.code,
+            code: seedStore.code,
           },
-          store,
+          store: seedStore,
           metadata: {
             ipAddress: faker.internet.ip(),
             userAgent: faker.internet.userAgent(),
@@ -382,28 +344,25 @@ describe('StorePipelineService (Integration)', () => {
         }),
       ).rejects.toThrow(
         new ConflictException(
-          `Cannot update store with ID ${store.id}. A store with the same name, code, or view code already exists.`,
+          `Cannot update store with ID ${seedStore.id}. A store with the same name, code, or view code already exists.`,
         ),
       );
 
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
 
     it('Should throw if trying to update store with a view code that already exists', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       await expect(
         storePipelineService.update({
           updateDto: {
-            viewCode: conflictStore.viewCode,
+            viewCode: seedStore.viewCode,
           },
-          store,
+          store: seedStore,
           metadata: {
             ipAddress: faker.internet.ip(),
             userAgent: faker.internet.userAgent(),
@@ -412,26 +371,23 @@ describe('StorePipelineService (Integration)', () => {
         }),
       ).rejects.toThrow(
         new ConflictException(
-          `Cannot update store with ID ${store.id}. A store with the same name, code, or view code already exists.`,
+          `Cannot update store with ID ${seedStore.id}. A store with the same name, code, or view code already exists.`,
         ),
       );
 
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(0);
     });
   });
 
   describe('Should delete store -> StorePipelineService -> delete()', () => {
     it('should delete the unused test store with canDeleteAssignedStore set to true', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       const deleted = await storePipelineService.delete({
-        store,
+        store: seedStore,
         canDeleteAssignedStore: true,
         requestedByUserId: systemUserId,
         metadata: {
@@ -442,21 +398,17 @@ describe('StorePipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
 
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should delete the unused test store with canDeleteAssignedStore set to false', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
       const deleted = await storePipelineService.delete({
-        store,
+        store: seedStore,
         canDeleteAssignedStore: false,
         requestedByUserId: systemUserId,
         metadata: {
@@ -467,27 +419,17 @@ describe('StorePipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
 
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should delete the test store with canDeleteAssignedStore set to true and when store is assigned to user', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
-      await assignStoreToUser({
-        dataSource,
-        userId: testUser.id,
-        storeId: store.id,
-      });
-
       const deleted = await storePipelineService.delete({
-        store,
+        store: targetUser.store,
         canDeleteAssignedStore: true,
         requestedByUserId: systemUserId,
         metadata: {
@@ -498,28 +440,18 @@ describe('StorePipelineService (Integration)', () => {
 
       expect(deleted).toBe(true);
 
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
       expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(1);
       expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
       expect(auditLogSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should throw unprocessable entity exception when trying to delete a store assigned to users with canDeleteAssignedStore set to false', async () => {
-      const store = await createTestStore({
-        storePipelineService,
-        createdById: systemUserId,
-        cacheSetSpy,
-        auditLogSpy,
-      });
-
-      await assignStoreToUser({
-        dataSource,
-        userId: testUser.id,
-        storeId: store.id,
-      });
-
       await expect(
         storePipelineService.delete({
-          store,
+          store: testUser.store,
           canDeleteAssignedStore: false,
           requestedByUserId: systemUserId,
           metadata: {

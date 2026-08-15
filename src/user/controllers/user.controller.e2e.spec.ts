@@ -1,16 +1,33 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords */
 import { COUNTRIES } from '@/commonConst/countries.const';
-import { ASSIGN_USER_ROLE } from '@/commonConst/role.const';
-import { ASSIGN_USER_STORE } from '@/commonConst/store.const';
+import {
+  ASSIGN_USER_ROLE,
+  READ_ROLE,
+  READ_USER_ROLE,
+  UNASSIGN_USER_ROLE,
+} from '@/commonConst/role.const';
+import {
+  ASSIGN_USER_STORE,
+  READ_STORE,
+  READ_USER_STORE,
+  UNASSIGN_USER_STORE,
+} from '@/commonConst/store.const';
 import type { RolePipelineService } from '@/role/role.pipeline';
-import { CREATE_USER_ENDPOINT_PERMISSION } from '@/system/const/user.const';
+import {
+  CREATE_USER_ENDPOINT_PERMISSION,
+  DELETE_USER_ENDPOINT_PERMISSION,
+} from '@/system/const/user.const';
 import { bootstrapTestApp, type TestUser } from '@/test/bootstrap-e2e';
 import { changePermissionsForTestUser } from '@/test/e2e/auth';
 import { createTestUser } from '@/test/pipeline/user';
 import { validateUserResponseDto } from '@/test/validate/user';
 import type { UserRolePipelineService } from '@/user/role.pipeline';
 import type { UserPipelineService } from '@/user/user.pipeline';
-import type { CreateUserDto, UserResponseDto } from '@/userDto/user.dto';
+import type {
+  CreateUserDto,
+  UserListResponseDto,
+  UserResponseDto,
+} from '@/userDto/user.dto';
 import { HttpStatus } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { TestingModule } from '@nestjs/testing';
@@ -539,134 +556,257 @@ describe('UserController (e2e)', () => {
     });
   });
 
-  // describe('GET /v1/user', () => {
-  //   it('200 OK - should scan structural layouts using query limit tags inside index route trackers', async () => {
-  //     const response = await app.inject({
-  //       method: 'GET',
-  //       url: '/v1/user',
-  //       headers: authorizedHeader,
-  //       query: { page: '1', limit: '5' },
-  //     });
+  describe('GET /v1/user', () => {
+    it('200 OK - should scan structural layouts using query limit tags inside index route trackers', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/user',
+        headers: authorizedHeader,
+        query: {
+          page: '1',
+          limit: '5',
+          sortOrder: 'ASC',
+          sortField: 'createdAt',
+          ids: [seedUser.id],
+        },
+      });
 
-  //     expect(response.statusCode).toBe(HttpStatus.OK);
-  //     const body = JSON.parse(response.payload);
-  //     expect(body).toHaveProperty('data');
-  //     expect(Array.isArray(body.data)).toBe(true);
-  //   });
-  // });
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      const body = JSON.parse(response.payload) as UserListResponseDto;
+      expect(body).toHaveProperty('data');
+      expect(Array.isArray(body.data)).toBe(true);
 
-  // describe('PATCH /v1/user/:id', () => {
-  //   it('200 OK - should map data modification adjustments smoothly and return operational true indicators', async () => {
-  //     const payload = {
-  //       firstName: `MUTATED_NAME_${randomUUID().substring(0, 8)}`,
-  //     };
+      const { data } = body;
+      data.forEach((user) => {
+        validateUserResponseDto({
+          response: user,
+          expected: seedUser,
+        });
+      });
 
-  //     const response = await app.inject({
-  //       method: 'PATCH',
-  //       url: `/v1/user/${seedUser.id}`,
-  //       headers: authorizedHeader,
-  //       payload,
-  //     });
+      expect(cacheSetSpy).toHaveBeenCalledTimes(1);
+      expect(cacheGetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+  });
 
-  //     expect(response.statusCode).toBe(HttpStatus.OK);
-  //     expect(response.payload).toBe('true');
-  //   });
+  describe('PATCH /v1/user/:id', () => {
+    it('200 OK - should map data modification adjustments smoothly and return operational true indicators', async () => {
+      const payload = {
+        firstName: `MUTATED_NAME_${randomUUID().substring(0, 8)}`,
+      };
 
-  //   it('404 NOT FOUND - should abort operational chains if FetchUserPipe discovers user assets are missing', async () => {
-  //     const response = await app.inject({
-  //       method: 'PATCH',
-  //       url: `/v1/user/${randomUUID()}`,
-  //       headers: authorizedHeader,
-  //       payload: { firstName: 'Ghost' },
-  //     });
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/user/${seedUser.id}`,
+        headers: authorizedHeader,
+        payload,
+      });
 
-  //     expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
-  //   });
-  // });
+      expect(response.statusCode).toBe(HttpStatus.OK);
+      expect(response.payload).toBe('true');
 
-  // describe('DELETE /v1/user/:id', () => {
-  //   it('204 NO CONTENT - should successfully drop model targets completely when loose conditions are met', async () => {
-  //     const deleteUserTarget = await createTestUser({
-  //       userPipelineService,
-  //       overrides: { email: `${randomUUID()}@transient-delete.com` },
-  //       createdById: systemUserId,
-  //     });
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(2);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
 
-  //     const response = await app.inject({
-  //       method: 'DELETE',
-  //       url: `/v1/user/${deleteUserTarget.id}`,
-  //       headers: authorizedHeader,
-  //     });
+    it('404 NOT FOUND - should abort operational chains if FetchUserPipe discovers user assets are missing', async () => {
+      const randomId = randomUUID();
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/user/${randomId}`,
+        headers: authorizedHeader,
+        payload: { firstName: 'Ghost' },
+      });
 
-  //     expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
-  //   });
+      expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message:
+            'Could not find any entity of type "User" matching: {\n' +
+            `    "id": "${randomId}"\n` +
+            '}',
+          error: 'EntityNotFoundError',
+          statusCode: HttpStatus.NOT_FOUND,
+        }),
+      );
 
-  //   it('204 NO CONTENT - should securely complete deletion cycles even if loose relational removal authorization is absent', async () => {
-  //     await unAssignPermissionFromRole({
-  //       rolePipelineService,
-  //       testRole,
-  //       permissionsToUnassign: [
-  //         READ_ROLE,
-  //         READ_USER_ROLE,
-  //         UNASSIGN_USER_ROLE,
-  //         READ_STORE,
-  //         READ_USER_STORE,
-  //         UNASSIGN_USER_STORE,
-  //       ],
-  //       systemUserId,
-  //     });
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
 
-  //     const headers = await loginTestUser({
-  //       app,
-  //       email: testUser.email,
-  //       password: testUserPassword,
-  //     });
+    it('404 NOT FOUND - should abort operational chains if FetchUserPipe discovers user assets are missing', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/v1/user/${seedUser.id}`,
+        headers: authorizedHeader,
+        payload: { email: 'Ghost' },
+      });
 
-  //     const deleteUserTarget = await createTestUser({
-  //       userPipelineService,
-  //       overrides: { email: `${randomUUID()}@loose-transient-delete.com` },
-  //       createdById: systemUserId,
-  //     });
+      expect(response.statusCode).toBe(HttpStatus.BAD_REQUEST);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: ['email must be an email'],
+          error: 'Bad Request',
+          statusCode: HttpStatus.BAD_REQUEST,
+        }),
+      );
 
-  //     const response = await app.inject({
-  //       method: 'DELETE',
-  //       url: `/v1/user/${deleteUserTarget.id}`,
-  //       headers,
-  //     });
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+  });
 
-  //     expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
-  //   });
+  describe('DELETE /v1/user/:id', () => {
+    it('204 NO CONTENT - should successfully drop model targets completely when loose conditions are met', async () => {
+      const deleteUserTarget = await createTestUser({
+        userPipelineService,
+        overrides: { email: `${randomUUID()}@transient-delete.com` },
+        createdById: systemUserId,
+      });
 
-  //   it('404 NOT FOUND - should cancel deletion pipeline requests if FetchFullUserPipe unmasks an empty identifier', async () => {
-  //     const response = await app.inject({
-  //       method: 'DELETE',
-  //       url: `/v1/user/${randomUUID()}`,
-  //       headers: authorizedHeader,
-  //     });
+      cacheSetSpy.mockClear();
+      cacheGetSpy.mockClear();
+      cacheGetByIdSpy.mockClear();
+      cacheInvalidateByIdSpy.mockClear();
+      cacheInvalidateByTagsSpy.mockClear();
+      cacheInvalidateByKeyPatternSpy.mockClear();
 
-  //     expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
-  //   });
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/user/${deleteUserTarget.id}`,
+        headers: authorizedHeader,
+      });
 
-  //   it('403 FORBIDDEN - should restrict execution routines instantly if strict core deletion scopes are missing', async () => {
-  //     await unAssignPermissionFromRole({
-  //       rolePipelineService,
-  //       testRole,
-  //       permissionsToUnassign: DELETE_USER_ENDPOINT_PERMISSION,
-  //       systemUserId,
-  //     });
+      expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
 
-  //     const headers = await loginTestUser({
-  //       app,
-  //       email: testUser.email,
-  //       password: testUserPassword,
-  //     });
-  //     const response = await app.inject({
-  //       method: 'DELETE',
-  //       url: `/v1/user/${seedUser.id}`,
-  //       headers,
-  //     });
+    it('204 NO CONTENT - should securely complete deletion cycles even if loose relational removal authorization is absent and user is not assigned to store or role', async () => {
+      const headers = await changePermissionsForTestUser({
+        permissionsToUnassign: [
+          READ_ROLE,
+          READ_USER_ROLE,
+          UNASSIGN_USER_ROLE,
+          READ_STORE,
+          READ_USER_STORE,
+          UNASSIGN_USER_STORE,
+        ],
+        permissionsToAssign: [],
+        systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
+      });
 
-  //     expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
-  //   });
-  // });
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/user/${seedUser.id}`,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NO_CONTENT);
+      expect(cacheSetSpy).toHaveBeenCalledTimes(2);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(5);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('404 NOT FOUND - should cancel deletion pipeline requests if FetchFullUserPipe unmasks an empty identifier', async () => {
+      const randomId = randomUUID();
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/user/${randomId}`,
+        headers: authorizedHeader,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.NOT_FOUND);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          statusCode: HttpStatus.NOT_FOUND,
+          message:
+            'Could not find any entity of type "User" matching: {\n' +
+            `    "userId": "${randomId}"\n` +
+            '}',
+          error: 'EntityNotFoundError',
+        }),
+      );
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(3);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('403 FORBIDDEN - should restrict execution routines instantly if strict core deletion scopes are missing', async () => {
+      const headers = await changePermissionsForTestUser({
+        permissionsToUnassign: DELETE_USER_ENDPOINT_PERMISSION,
+        permissionsToAssign: [],
+        systemUserId,
+        rolePipelineService,
+        userRolePipelineService,
+        testRole: testUser.role,
+        cacheSetSpy,
+        cacheGetByIdSpy,
+        cacheInvalidateByIdSpy,
+        cacheInvalidateByTagsSpy,
+        cacheInvalidateByKeyPatternSpy,
+        app,
+        testUser: {
+          id: testUser.user.id,
+          email: testUser.user.email,
+          password: testUserPassword,
+        },
+      });
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/v1/user/${seedUser.id}`,
+        headers,
+      });
+
+      expect(response.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(JSON.parse(response.body)).toEqual(
+        expect.objectContaining({
+          message: 'Invalid token',
+          error: 'Forbidden',
+          statusCode: HttpStatus.FORBIDDEN,
+        }),
+      );
+
+      expect(cacheSetSpy).toHaveBeenCalledTimes(0);
+      expect(cacheGetByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByIdSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByTagsSpy).toHaveBeenCalledTimes(0);
+      expect(cacheInvalidateByKeyPatternSpy).toHaveBeenCalledTimes(0);
+    });
+  });
 });

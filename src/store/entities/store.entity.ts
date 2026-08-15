@@ -11,6 +11,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  Relation,
   Unique,
 } from 'typeorm';
 
@@ -43,11 +44,11 @@ export class Store extends MecBaseEntity {
   viewCode: string;
 
   @OneToMany(() => UserStores, (userStore) => userStore.store)
-  userStores: UserStores[];
+  userStores: Relation<UserStores[]>;
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })
-  createdBy: User;
+  createdBy: Relation<User>;
 
   constructor(
     id: UUID,

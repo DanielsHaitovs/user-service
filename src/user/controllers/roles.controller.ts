@@ -9,6 +9,7 @@ import {
   GetClientMetadata,
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
+import { ResourceLock } from '@/commonDecorators/resource-lock.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
@@ -75,6 +76,8 @@ export class UserRolesController {
   @Permissions({
     required: ASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('userRole', { paramKey: 'id', ttl: 5 })
   @ApiOperation({
     summary: 'Assign roles to a user',
     description:
@@ -108,7 +111,6 @@ export class UserRolesController {
     description: 'User unique identifier - must be a valid UUID',
     example: EXAMPLE_USER_ID,
   })
-  @Idempotent()
   async assignRole(
     @Param('id', FetchUserRolesPipe) userRoles: UserWithRoles,
     @Body() assignDto: AssignRolesToUserDto,
@@ -129,6 +131,8 @@ export class UserRolesController {
   @Permissions({
     required: UNASSIGN_ROLE_TO_USER_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('userRole', { paramKey: 'id', ttl: 5 })
   @ApiOperation({
     summary: 'Remove roles from a user',
     description:
@@ -162,7 +166,6 @@ export class UserRolesController {
     description: 'User unique identifier - must be a valid UUID',
     example: EXAMPLE_USER_ID,
   })
-  @Idempotent()
   async remove(
     @Param('id', FetchUserRolesPipe) userRoles: UserWithRoles,
     @Body() unassignDto: UnassignRolesFromUserDto,

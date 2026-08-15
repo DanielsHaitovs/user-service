@@ -21,6 +21,7 @@ import {
   GetClientMetadata,
 } from '@/commonDecorators/meta.decorator';
 import { Permissions } from '@/commonDecorators/permission.decorator';
+import { ResourceLock } from '@/commonDecorators/resource-lock.decorator';
 import { TraceController } from '@/commonDecorators/trace.decorator';
 import { CurrentUser, CurrentUserId } from '@/commonDecorators/user.decorator';
 import {
@@ -111,6 +112,8 @@ export class UserController {
       READ_USER_STORE,
     ],
   })
+  @Idempotent()
+  @ResourceLock('user', { paramKey: 'email', ttl: 5 })
   @ApiOperation({
     summary: 'Create a new user',
     description:
@@ -125,7 +128,6 @@ export class UserController {
     description: 'User successfully created',
     type: UserResponseDto,
   })
-  @Idempotent()
   async create(
     @Body() createDto: CreateUserDto,
     @CurrentUser() requestedByUser: JwtPayload,
@@ -280,6 +282,8 @@ export class UserController {
   @Permissions({
     required: UPDATE_USER_ENDPOINT_PERMISSION,
   })
+  @Idempotent()
+  @ResourceLock('user', { paramKey: 'id', ttl: 5 })
   @ApiBody({
     type: UpdateUserDto,
     description: 'Data for updating the user',
@@ -347,7 +351,6 @@ export class UserController {
     example: EXAMPLE_USER_ID,
     format: 'uuid',
   })
-  @Idempotent()
   async update(
     @Param('id', FetchUserPipe) user: FetchedUser,
     @Body() data: UpdateUserDto,
@@ -376,6 +379,8 @@ export class UserController {
       UNASSIGN_USER_STORE,
     ],
   })
+  @Idempotent()
+  @ResourceLock('user', { paramKey: 'id', ttl: 5 })
   @ApiOperation({
     summary: 'Delete a user',
     description:
@@ -414,7 +419,6 @@ export class UserController {
     example: EXAMPLE_USER_ID,
     format: 'uuid',
   })
-  @Idempotent()
   async delete(
     @CurrentUser() requestedByUser: JwtPayload,
     @Param('id', FetchFullUserPipe) data: FullUser,
